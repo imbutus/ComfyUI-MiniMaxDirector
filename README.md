@@ -7,6 +7,22 @@ clip length the sampler will accept.
 
 MIT licensed. No dependencies beyond ComfyUI itself.
 
+## Where this came from
+
+I loved [LTXDirector](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI). Directing
+a video by laying shots out on a timeline, instead of cramming everything into one prompt
+box and hoping, is the right idea — and WhatDreamsCost got there first and built it
+properly. Thank you for it.
+
+MiniMaxDirector is that idea carried over to MiniMax H3. It is not a port: none of
+LTXDirector's code is here, and the two models want different things. LTX needs keyframes
+injected into latent space because it has no notion of a shot list; H3's text encoder is a
+32B vision-language model that reads one itself, so the same idea comes out as a compiler
+rather than a guide injector. The debt is to the concept, and it is a large one.
+
+If you work with LTX, use LTXDirector — it is more mature than this, and it is the
+original.
+
 ## Why a compiler rather than latent guides
 
 H3's text encoder is a 32B vision-language model, and it parses a shot list on its own:
