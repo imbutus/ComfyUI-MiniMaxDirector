@@ -100,10 +100,40 @@ click cannot drift apart.
 copies are tested: the editor must not be able to express a length the compiler would
 reject.
 
+## Long pieces: windows that join
+
+H3's trained range is roughly 5-15 seconds, so anything longer is generated in windows.
+Splitting the timeline into separate workflows would work, but then the global prompt,
+the shot list and the reference numbering exist in several places and drift apart.
+
+Instead the document stays whole and carries a window (`start` plus `duration`).
+`Timeline.advanced()` moves that window to the next piece, and `MiniMaxDirectorChain`
+does the same at graph level while also handing back the previous window's final frame:
+
+```
+Director(window 1) -> sample -> VAEDecode --+--> CreateVideo
+                                            |
+                                            +--> Chain --> last_frame --+
+                                                       --> timeline ----+--> Director(window 2)
+```
+
+Wire `last_frame` into the next Director's `first_frame` and the windows continue rather
+than cutting. `overlap` re-renders a frame or two of the previous window, because a
+window's first frame is a reconstruction of its guide rather than the guide itself, and
+an editor needs something to cut on.
+
+`more` reports whether content remains, so a loop stops instead of generating empty tails.
+
+One upstream constraint makes this sharp-edged: `MiniMaxH3ReferenceToVideo` has no
+`first_frame`. Reference conditioning and keyframe continuation are mutually exclusive in
+the model, so the Director reports an error rather than silently dropping the guide.
+
 ## Known gaps
 
 - Latent-space keyframe guides at shot boundaries are not implemented. They are only worth
   building if a real run shows the prompt-level timeline is not precise enough.
+- Window chaining is built but has never run against real weights, so how visible a seam
+  remains -- and how much `overlap` it needs -- is unmeasured.
 - Reference slot counts (3 pictures, 1 audio, 1 video) mirror what the official template
   wires. Whether the model accepts more is untested.
 - Which dialect H3 follows more faithfully — `[0s-1s]` timestamps or `SHOT 1:` ordinals —

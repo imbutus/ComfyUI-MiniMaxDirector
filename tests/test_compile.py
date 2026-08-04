@@ -198,3 +198,45 @@ def test_duration_wins_when_both_are_given():
 
 def test_end_is_not_stored():
     assert "end" not in build(start=10, duration=60).to_dict()
+
+
+def test_advancing_moves_the_window_to_the_next_piece():
+    timeline = build(duration=124)          # a 124-frame window from zero
+    following = timeline.advanced()
+    assert timeline.window == (0, 124)
+    assert following.window == (124, 248)
+    assert following.duration == 124        # the window keeps its size
+
+
+def test_overlap_starts_the_next_window_inside_the_previous_one():
+    following = build(duration=124).advanced(overlap=6)
+    assert following.start == 118
+
+
+def test_advancing_preserves_the_document():
+    timeline = build(duration=124)
+    following = timeline.advanced()
+    assert following.shots == timeline.shots
+    assert following.global_prompt == timeline.global_prompt
+
+
+def test_exhausted_reports_when_the_content_has_run_out():
+    shots = [{"start": 0, "length": 300, "prompt": "long"}]
+    timeline = build(shots=shots, duration=124)
+    assert not timeline.exhausted                       # 0..124
+    assert not timeline.advanced().exhausted            # 124..248
+    assert not timeline.advanced().advanced().exhausted  # 248..372, still inside 300
+    assert timeline.advanced().advanced().advanced().exhausted  # starts at 372
+
+
+def test_windows_tile_the_whole_timeline():
+    shots = [{"start": 0, "length": 400, "prompt": "long"}]
+    timeline = build(shots=shots, duration=124)
+    covered, guard = [], 0
+    while not timeline.exhausted and guard < 20:
+        covered.append(timeline.window)
+        timeline = timeline.advanced()
+        guard += 1
+    assert covered[0][0] == 0
+    assert all(b[0] == a[1] for a, b in zip(covered, covered[1:]))  # no gaps
+    assert covered[-1][1] >= 400

@@ -330,6 +330,25 @@ class Timeline:
 
     # -- editing -----------------------------------------------------------
 
+    def advanced(self, overlap: int = 0) -> "Timeline":
+        """The same timeline, its window moved to the next piece.
+
+        H3 generates 5-15 seconds at a time, so a longer edit is rendered in windows.
+        Advancing rather than splitting keeps one document: one global prompt, one shot
+        list, one set of reference numbers.
+
+        `overlap` starts the next window slightly inside the previous one. The first
+        frame of a window is a reconstruction of its guide rather than the guide itself,
+        so re-rendering a frame or two gives an editor something to cut on.
+        """
+        _, finish = self.window
+        return replace(self, start=max(0, finish - max(0, overlap)))
+
+    @property
+    def exhausted(self) -> bool:
+        """True when the window has passed the end of the content."""
+        return self.window[0] >= self.span
+
     def with_references(self, references: list[Reference]) -> "Timeline":
         """A copy whose wired inputs are `references`.
 
