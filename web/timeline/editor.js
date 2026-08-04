@@ -833,13 +833,22 @@ export class TimelineEditor {
       node.appendChild(chip);
     }
 
-    node.insertAdjacentHTML("beforeend", '<div class="grip l"></div><div class="grip r"></div>');
+    node.insertAdjacentHTML(
+      "beforeend", '<div class="mmd-grip mmd-l"></div><div class="mmd-grip mmd-r"></div>');
     return node;
   }
 
+  /** Repaint one segment's caption without redrawing the tracks.
+   *
+   * Typing in the prompt box has to show on the block immediately; a full render would
+   * fight the caret. Any selector here has to stay in step with `segment()` -- an
+   * earlier rename left this looking for `.cap`, so the caption silently never updated.
+   */
   refreshLabel(item) {
+    if (!this.selection) return;
+    const { track, index } = this.selection;
     const node = this.canvas.querySelector(
-      `[data-track="${this.selection.track}"] [data-index="${this.selection.index}"] .cap`);
+      `[data-track="${track}"] [data-index="${index}"] .mmd-cap`);
     if (node) node.textContent = item.prompt?.trim() || item.camera || "";
   }
 
