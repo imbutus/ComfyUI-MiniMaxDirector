@@ -94,6 +94,7 @@ export class TimelineEditor {
       <div class="mmd-bar">
         <button data-media="image">${ICON.image} Add Image</button>
         <button data-add="shots">${ICON.text} Add Text</button>
+        <button data-add="cues" title="Describe a sound over a span -- H3 generates it, no file needed">${ICON.sound} Add Sound</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
         <button data-add="moves">${ICON.camera} Add Camera</button>
