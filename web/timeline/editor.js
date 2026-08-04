@@ -36,9 +36,13 @@ const ICON = {
   video: svg('<rect x="2" y="4" width="8.5" height="8" rx="1.2"/><path d="M10.5 7.4L14 5.4v5.2l-3.5-2z"/>'),
   camera: svg('<circle cx="8" cy="8" r="4.6"/><path d="M8 3.4V1.8M12.6 8h1.6"/><circle cx="8" cy="8" r="1.4"/>'),
   trash: svg('<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.2a1 1 0 001 .8h3.8a1 1 0 001-.8l.6-8.2M7 7v4M9 7v4"/>'),
+  sound: svg('<path d="M1.5 8h2l2-4.5 2 9 2-7 1.5 2.5h2"/>'),
 };
 
-const EDGE = 7;
+/** Anything a keystroke could legitimately be typed into. */
+const isEditable = (el) =>
+  !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
 /** One lattice step, in seconds, used as the inputs' `step`.
@@ -480,8 +484,6 @@ export class TimelineEditor {
     const index = Number(node.dataset.index);
     const timeline = this.read();
     const item = items(timeline, track)[index];
-    const box = node.getBoundingClientRect();
-    const offset = (event.clientX - box.left) / this.factor();
 
     // Grabbing something already in a multi-selection keeps the group and moves it
     // together; grabbing anything else selects just that one.
@@ -490,7 +492,14 @@ export class TimelineEditor {
       else this.selected = [{ track, index }];
     }
 
-    const mode = offset <= EDGE ? "start" : offset >= box.width - EDGE ? "end" : "body";
+    // What the pointer is actually over decides the gesture -- the same element the
+    // cursor style comes from. Measuring an offset instead let the two disagree: the
+    // offset is in the widget's own pixels while `box.width` is screen pixels, and the
+    // graph's zoom sits between them, so the resize zone drifted with the zoom level.
+    const grip = event.target.closest(".mmd-grip");
+    const mode = grip
+      ? (grip.classList.contains("mmd-l") ? "start" : "end")
+      : "body";
     this.drag = {
       track, index, mode,
       originX: event.clientX,

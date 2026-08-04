@@ -76,9 +76,13 @@ const CSS = `
   border:5px solid transparent; border-top-color:#e2564b; }
 
 /* segments --------------------------------------------------------------- */
+/* The outline is an inset shadow, not a border, on purpose. A border creates a padding
+   box one pixel inside the element, so a grip pinned to right:0 lands on that inner edge
+   -- leaving a hairline of the block that answers to the parent's grab cursor instead of
+   the grip's resize cursor. A shadow paints the same line without moving anything. */
 .mmd-seg { position:absolute; top:3px; bottom:3px; border-radius:4px; cursor:grab;
   overflow:hidden; box-sizing:border-box; user-select:none;
-  border:1px solid rgba(0,0,0,.35); }
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
 .mmd-seg { transition:filter .12s ease; }
 .mmd-seg:hover { filter:brightness(1.18); }
 .mmd-seg:active { cursor:grabbing; }
