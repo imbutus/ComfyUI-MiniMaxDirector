@@ -42,6 +42,19 @@ vocabulary this file happens not to know yet.
 """
 
 
+def _duration(data: dict[str, Any]) -> int:
+    """Read a duration, accepting an `end` as the way to express one.
+
+    `end` is not stored -- it is derived from start and duration -- but a document or a
+    UI may still speak in terms of it.
+    """
+    duration = int(data.get("duration", 0))
+    if duration:
+        return duration
+    end = int(data.get("end", 0))
+    return max(0, end - int(data.get("start", 0))) if end else 0
+
+
 @dataclass(frozen=True, slots=True)
 class Reference:
     """One wired input, addressable from prose as `<Picture 1>`, `<Audio 2>`, ...
@@ -138,8 +151,6 @@ class Timeline:
     """Explicit clip length in frames. Zero means "as long as the content needs"."""
     start: int = 0
     """First frame of the render window."""
-    end: int = 0
-    """Last frame of the render window. Zero means "to the end of the clip"."""
 
     # -- derived -----------------------------------------------------------
 
@@ -153,22 +164,22 @@ class Timeline:
     def window(self) -> tuple[int, int]:
         """The half-open frame range that will actually be rendered.
 
-        Zero `end` means "to the end", so a fresh document renders everything.
+        Only `start` and `duration` are stored. The end is derived, so the three numbers
+        a director reads -- start, end, duration -- can never contradict each other:
+        `end == start + length` by construction, not by everyone remembering to update
+        the third field.
         """
-        finish = self.end or self.duration or self.span
         start = max(0, self.start)
-        return start, max(start, finish)
+        return start, start + self.length
 
     @property
     def length(self) -> int:
         """The clip length H3 will be asked for.
 
-        The render window decides it, and it lands on the lattice. Windowing is how a
-        long timeline gets worked on in pieces without cutting it up: keep the whole
-        edit, render two seconds of it.
+        Zero duration follows the content. Either way it lands on the lattice, which is
+        why the end can sit slightly past the last shot.
         """
-        start, finish = self.window
-        return lattice.snap_up(finish - start)
+        return lattice.snap_up(self.duration or max(0, self.span - max(0, self.start)))
 
     def clipped(self) -> "Timeline":
         """This timeline as the window sees it: cropped, and rebased to frame zero.
@@ -196,7 +207,6 @@ class Timeline:
             cues=crop(self.cues, lambda c, a, b: replace(c, start=a, length=b)),
             moves=crop(self.moves, lambda m, a, b: replace(m, start=a, length=b)),
             start=0,
-            end=0,
             duration=finish - start,
         )
 
@@ -266,9 +276,8 @@ class Timeline:
                 for item in data.get("references", [])
             ],
             dialect=str(data.get("dialect", "timeline")),
-            duration=int(data.get("duration", 0)),
+            duration=_duration(data),
             start=int(data.get("start", 0)),
-            end=int(data.get("end", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
 
@@ -287,7 +296,6 @@ class Timeline:
             "dialect": self.dialect,
             "duration": self.duration,
             "start": self.start,
-            "end": self.end,
             "global_prompt": self.global_prompt,
             "shots": [
                 {

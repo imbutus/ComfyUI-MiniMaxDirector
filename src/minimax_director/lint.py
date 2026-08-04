@@ -94,7 +94,7 @@ def _check_coverage(timeline: Timeline) -> Iterator[Issue]:
         if shot.start < 0:
             yield Issue("error", f"A shot starts before frame zero ({shot.start}).")
 
-    if timeline.duration and timeline.duration < timeline.span:
+    if timeline.duration and timeline.start + timeline.duration < timeline.span:
         yield Issue(
             "warning",
             f"The clip is fixed at {timeline.duration} frames but the tracks run to "

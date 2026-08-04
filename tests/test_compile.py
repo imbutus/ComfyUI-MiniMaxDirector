@@ -174,3 +174,27 @@ def test_the_window_length_is_always_on_the_lattice():
     for start in range(0, 40, 7):
         for end in range(start + 5, start + 60, 11):
             assert compile_timeline(build(start=start, end=end)).length % 17 == 5
+
+
+def test_end_is_always_start_plus_length():
+    for start in (0, 12, 40):
+        for duration in (0, 30, 124):
+            timeline = build(start=start, duration=duration)
+            first, last = timeline.window
+            assert last - first == timeline.length
+            assert first == start
+
+
+def test_an_end_in_the_document_is_read_as_a_duration():
+    from_end = Timeline.from_dict({"start": 24, "end": 72, "shots": []})
+    assert from_end.duration == 48
+    assert from_end.window == (24, 24 + 56)  # 48 snapped up to 56
+
+
+def test_duration_wins_when_both_are_given():
+    both = Timeline.from_dict({"start": 0, "end": 200, "duration": 48, "shots": []})
+    assert both.duration == 48
+
+
+def test_end_is_not_stored():
+    assert "end" not in build(start=10, duration=60).to_dict()

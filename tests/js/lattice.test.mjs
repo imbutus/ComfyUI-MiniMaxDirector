@@ -35,8 +35,14 @@ for (let frames = 0; frames < 600; frames++) {
 }
 
 check("48 frames rounds up, not down", snapUp(48), 56);
-check("window length", length({ start: 24, end: 72, shots: [], moves: [], cues: [] }), 56);
-check("window range", renderWindow({ start: 24, end: 72 }).join(","), "24,72");
+// `end` is an input alias for a duration; the stored end is always derived.
+check("legacy end reads as duration", length({ start: 24, end: 72, shots: [], moves: [], cues: [] }), 56);
+check("window range", renderWindow({ start: 24, end: 72 }).join(","), "24,80");
+check("end is start plus length", (() => {
+  const t = { start: 40, duration: 30, shots: [], moves: [], cues: [] };
+  const [a, b] = renderWindow(t);
+  return b - a === length(t) && a === 40;
+})(), true);
 
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log("lattice.test.mjs: all checks passed");
