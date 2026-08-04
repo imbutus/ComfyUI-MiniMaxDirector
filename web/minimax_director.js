@@ -10,6 +10,7 @@
 import { app } from "../../scripts/app.js";
 import { parse, serialize } from "./timeline/model.js";
 import { TimelineEditor } from "./timeline/editor.js";
+import { BUILD } from "./build.js";
 
 const NODE = "MiniMaxDirector";
 const STATE_WIDGET = "timeline";
@@ -18,6 +19,8 @@ const MIN_HEIGHT = 420;
 /** Matches LTXDirector, whose editor sets `size[0] = 1375` and saves at 1380x1000.
  *  A director is a workspace, not a form -- at form size the tracks are unreadable. */
 const DEFAULT_SIZE = [1380, 1000];
+
+console.info(`[MiniMaxDirector] build ${BUILD}`);
 
 app.registerExtension({
   name: "imbutus.MiniMaxDirector",

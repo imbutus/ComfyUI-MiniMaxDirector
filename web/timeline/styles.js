@@ -129,6 +129,14 @@ const CSS = `
 .mmd-settings .mmd-hint { color:#6b7280; font-size:11px; }
 .mmd-settings .mmd-grow { flex:1; }
 
+.mmd-settings .mmd-build { color:#4b5563; font-size:10px; font-variant-numeric:tabular-nums; }
+
+/* A value the lattice had to correct flashes, so the correction is seen happening
+   rather than discovered later as "my number did not save". */
+@keyframes mmd-snap { 0% { background:#3d5a2a; border-color:#7fbf6a; }
+                      100% { background:#1c1f26; border-color:#2c313c; } }
+.mmd-settings input.mmd-snapped { animation:mmd-snap .9s ease-out; }
+
 /* transport -------------------------------------------------------------- */
 .mmd-transport { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
 .mmd-transport button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;

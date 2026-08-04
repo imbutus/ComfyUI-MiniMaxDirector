@@ -9,6 +9,7 @@
  * sync, and a graph saved without this extension still carries a complete timeline.
  */
 
+import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
@@ -731,7 +732,20 @@ export class TimelineEditor {
         </select>
       </label>
       <span class="mmd-grow"></span>
-      <span class="mmd-hint">${this.snapNote(timeline)}</span>`;
+      <span class="mmd-hint">${this.snapNote(timeline)}</span>
+      <span class="mmd-build" title="extension build">${BUILD}</span>`;
+
+    // Flash the field whose value the lattice had to correct. This runs after the row
+    // is written, not while the markup is being built -- the element addressed then is
+    // the one about to be thrown away.
+    if (this.asked && this.asked.frames && this.asked.frames !== length(timeline)) {
+      const field = this.settings.querySelector(`.${this.asked.field}`);
+      if (field) {
+        field.classList.remove("mmd-snapped");
+        void field.offsetWidth; // restart the animation
+        field.classList.add("mmd-snapped");
+      }
+    }
 
     const setWidget = (name, raw) => {
       const widget = this.widgets[name];
