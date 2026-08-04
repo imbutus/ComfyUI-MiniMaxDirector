@@ -27,11 +27,18 @@ DEFAULT_TIMELINE = """{
   "version": 1,
   "fps": 24,
   "dialect": "timeline",
+  "duration": 124,
   "global_prompt": "",
   "shots": [],
+  "moves": [],
   "cues": [],
   "references": []
 }"""
+"""124 frames is the shortest length the model was trained on, and it is on the lattice.
+
+Starting with an explicit duration rather than none is what makes the clip a fixed thing
+you arrange segments inside, instead of a bag that silently grows to fit whatever the
+last drag did."""
 
 
 def _grow(name: str, prefix: str, input_type, maximum: int):
