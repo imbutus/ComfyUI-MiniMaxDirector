@@ -67,6 +67,8 @@ class Shot:
     length: int
     prompt: str
     camera: str = ""
+    media: dict | None = None
+    """An attached file: `{"kind": "image", "filename": ..., "subfolder": ...}`."""
 
     @property
     def end(self) -> int:
@@ -91,6 +93,7 @@ class Cue:
     start: int
     length: int
     prompt: str
+    media: dict | None = None
 
     @property
     def end(self) -> int:
@@ -191,6 +194,7 @@ class Timeline:
                     length=int(item.get("length", 0)),
                     prompt=str(item.get("prompt", "")),
                     camera=str(item.get("camera", "")),
+                    media=item.get("media") or None,
                 )
                 for item in data.get("shots", [])
             ],
@@ -199,6 +203,7 @@ class Timeline:
                     start=int(item.get("start", 0)),
                     length=int(item.get("length", 0)),
                     prompt=str(item.get("prompt", "")),
+                    media=item.get("media") or None,
                 )
                 for item in data.get("cues", [])
             ],
@@ -245,11 +250,17 @@ class Timeline:
                     "length": shot.length,
                     "prompt": shot.prompt,
                     "camera": shot.camera,
+                    **({"media": shot.media} if shot.media else {}),
                 }
                 for shot in self.shots
             ],
             "cues": [
-                {"start": cue.start, "length": cue.length, "prompt": cue.prompt}
+                {
+                    "start": cue.start,
+                    "length": cue.length,
+                    "prompt": cue.prompt,
+                    **({"media": cue.media} if cue.media else {}),
+                }
                 for cue in self.cues
             ],
             "moves": [

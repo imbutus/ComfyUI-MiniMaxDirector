@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import lattice
+from . import attachments
 from .timeline import Timeline
 
 
@@ -65,18 +66,39 @@ def compile_timeline(timeline: Timeline) -> Compiled:
     )
 
 
+def _with_tokens(text: str, tokens: list[str]) -> str:
+    """Make sure a segment's line names the files attached to it.
+
+    A file dropped on a shot is meant to be used in that shot, and H3 only uses a
+    reference if the prose points at it. Rather than making the author remember to type
+    `<Picture 1>`, the token is appended where it is missing -- and left alone where they
+    have already placed it deliberately.
+    """
+    missing = [token for token in tokens if token.lower() not in text.lower()]
+    if not missing:
+        return text
+    joined = " ".join(missing)
+    return f"{text} {joined}" if text else joined
+
+
 def _render_shots(timeline: Timeline) -> str:
-    shots = [shot for shot in timeline.ordered_shots() if shot.text()]
-    if not shots:
+    tokens = attachments.tokens_by_segment(timeline)
+    entries = [
+        (shot, _with_tokens(shot.text(), tokens.get(("shots", shot.start), [])))
+        for shot in timeline.ordered_shots()
+    ]
+    entries = [(shot, text) for shot, text in entries if text]
+    if not entries:
         return ""
 
     if timeline.dialect == "shots":
         return "\n".join(
-            f"SHOT {number}: {shot.text()}"
-            for number, shot in enumerate(shots, start=1)
+            f"SHOT {number}: {text}" for number, (_, text) in enumerate(entries, start=1)
         )
 
-    lines = [f"{_span(shot.start, shot.end, timeline.fps)} {shot.text()}" for shot in shots]
+    lines = [
+        f"{_span(shot.start, shot.end, timeline.fps)} {text}" for shot, text in entries
+    ]
     return "Timeline:\n" + "\n".join(lines)
 
 
@@ -97,14 +119,16 @@ def _render_moves(timeline: Timeline) -> str:
 
 
 def _render_cues(timeline: Timeline) -> str:
-    cues = [cue for cue in timeline.ordered_cues() if cue.prompt.strip()]
-    if not cues:
+    tokens = attachments.tokens_by_segment(timeline)
+    entries = [
+        (cue, _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), [])))
+        for cue in timeline.ordered_cues()
+    ]
+    entries = [(cue, text) for cue, text in entries if text]
+    if not entries:
         return ""
 
-    lines = [
-        f"{_span(cue.start, cue.end, timeline.fps)} {cue.prompt.strip()}"
-        for cue in cues
-    ]
+    lines = [f"{_span(cue.start, cue.end, timeline.fps)} {text}" for cue, text in entries]
     return "Audio:\n" + "\n".join(lines)
 
 

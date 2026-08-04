@@ -1,8 +1,8 @@
 {
   "id": "minimax-director-example",
   "revision": 0,
-  "last_node_id": 17,
-  "last_link_id": 19,
+  "last_node_id": 16,
+  "last_link_id": 18,
   "nodes": [
     {
       "id": 1,
@@ -24,7 +24,7 @@
       "color": "#432",
       "bgcolor": "#653",
       "widgets_values": [
-        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Wire an image to `ref_image` and refer to it as `<Picture 1>` in the shot text.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
+        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Drop an image on a shot with **Add Image**; it becomes `<Picture 1>` automatically.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
       ]
     },
     {
@@ -48,8 +48,8 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            5,
-            6
+            4,
+            5
           ]
         }
       ],
@@ -117,7 +117,7 @@
           "slot_index": 0,
           "links": [
             2,
-            14
+            13
           ]
         }
       ],
@@ -150,7 +150,7 @@
           "slot_index": 0,
           "links": [
             3,
-            16
+            15
           ]
         }
       ],
@@ -163,45 +163,6 @@
     },
     {
       "id": 6,
-      "type": "LoadImage",
-      "pos": [
-        40,
-        880
-      ],
-      "size": [
-        400,
-        314
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "slot_index": 0,
-          "links": [
-            4
-          ]
-        },
-        {
-          "name": "MASK",
-          "type": "MASK",
-          "slot_index": 1,
-          "links": []
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadImage"
-      },
-      "widgets_values": [
-        "example.png",
-        "image"
-      ]
-    },
-    {
-      "id": 7,
       "type": "MiniMaxDirector",
       "pos": [
         500,
@@ -212,7 +173,7 @@
         1000
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -229,11 +190,6 @@
           "name": "audio_vae",
           "type": "VAE",
           "link": 3
-        },
-        {
-          "name": "ref_image_0",
-          "type": "IMAGE",
-          "link": 4
         }
       ],
       "outputs": [
@@ -242,7 +198,7 @@
           "type": "CONDITIONING",
           "slot_index": 0,
           "links": [
-            7
+            6
           ]
         },
         {
@@ -250,7 +206,7 @@
           "type": "LATENT",
           "slot_index": 1,
           "links": [
-            12
+            11
           ]
         },
         {
@@ -276,14 +232,14 @@
         "Node name for S&R": "MiniMaxDirector"
       },
       "widgets_values": [
-        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"timeline\",\n  \"global_prompt\": \"Editorial neon-noir short. Rain-slick alley, cyan and magenta signage, 35mm grain, shallow depth of field. Keep the subject from <Picture 1> consistent throughout.\",\n  \"shots\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"prompt\": \"Wide establishing shot of the alley, puddles holding the sign reflections.\",\n      \"camera\": \"dolly_in\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"prompt\": \"Medium shot: the subject from <Picture 1> steps into the magenta light.\",\n      \"camera\": \"pan_right\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"prompt\": \"Close on the face, rain beading on the collar, a slow blink.\",\n      \"camera\": \"static\"\n    }\n  ],\n  \"moves\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"camera\": \"dolly_in\",\n      \"prompt\": \"\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"camera\": \"pan_right\",\n      \"prompt\": \"following the subject\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"camera\": \"static\",\n      \"prompt\": \"\"\n    }\n  ],\n  \"cues\": [\n    {\n      \"start\": 0,\n      \"length\": 60,\n      \"prompt\": \"Distant siren over steady rain on metal.\"\n    },\n    {\n      \"start\": 60,\n      \"length\": 64,\n      \"prompt\": \"The rain thins; a low synth pad swells.\"\n    }\n  ],\n  \"references\": [\n    {\n      \"kind\": \"picture\",\n      \"index\": 1,\n      \"label\": \"subject\"\n    }\n  ]\n}",
+        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"timeline\",\n  \"global_prompt\": \"Editorial neon-noir short. Rain-slick alley, cyan and magenta signage, 35mm grain, shallow depth of field. Keep the subject from <Picture 1> consistent throughout.\",\n  \"shots\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"prompt\": \"Wide establishing shot of the alley, puddles holding the sign reflections.\",\n      \"camera\": \"dolly_in\",\n      \"media\": {\n        \"kind\": \"image\",\n        \"filename\": \"example.png\",\n        \"subfolder\": \"\"\n      }\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"prompt\": \"Medium shot: the subject from <Picture 1> steps into the magenta light.\",\n      \"camera\": \"pan_right\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"prompt\": \"Close on the face, rain beading on the collar, a slow blink.\",\n      \"camera\": \"static\"\n    }\n  ],\n  \"moves\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"camera\": \"dolly_in\",\n      \"prompt\": \"\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"camera\": \"pan_right\",\n      \"prompt\": \"following the subject\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"camera\": \"static\",\n      \"prompt\": \"\"\n    }\n  ],\n  \"cues\": [\n    {\n      \"start\": 0,\n      \"length\": 60,\n      \"prompt\": \"Distant siren over steady rain on metal.\"\n    },\n    {\n      \"start\": 60,\n      \"length\": 64,\n      \"prompt\": \"The rain thins; a low synth pad swells.\"\n    }\n  ],\n  \"references\": [\n    {\n      \"kind\": \"picture\",\n      \"index\": 1,\n      \"label\": \"subject\"\n    }\n  ]\n}",
         1344,
         768,
         "match"
       ]
     },
     {
-      "id": 8,
+      "id": 7,
       "type": "RandomNoise",
       "pos": [
         500,
@@ -294,7 +250,7 @@
         82
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -303,7 +259,7 @@
           "type": "NOISE",
           "slot_index": 0,
           "links": [
-            8
+            7
           ]
         }
       ],
@@ -316,7 +272,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 8,
       "type": "KSamplerSelect",
       "pos": [
         500,
@@ -327,7 +283,7 @@
         58
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -336,7 +292,7 @@
           "type": "SAMPLER",
           "slot_index": 0,
           "links": [
-            10
+            9
           ]
         }
       ],
@@ -348,7 +304,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 9,
       "type": "BasicScheduler",
       "pos": [
         500,
@@ -359,13 +315,13 @@
         106
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 5
+          "link": 4
         }
       ],
       "outputs": [
@@ -374,7 +330,7 @@
           "type": "SIGMAS",
           "slot_index": 0,
           "links": [
-            11
+            10
           ]
         }
       ],
@@ -388,7 +344,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 10,
       "type": "BasicGuider",
       "pos": [
         1940,
@@ -399,18 +355,18 @@
         78
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 6
+          "link": 5
         },
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 7
+          "link": 6
         }
       ],
       "outputs": [
@@ -419,7 +375,7 @@
           "type": "GUIDER",
           "slot_index": 0,
           "links": [
-            9
+            8
           ]
         }
       ],
@@ -428,7 +384,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
         1940,
@@ -439,33 +395,33 @@
         150
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "noise",
           "type": "NOISE",
-          "link": 8
+          "link": 7
         },
         {
           "name": "guider",
           "type": "GUIDER",
-          "link": 9
+          "link": 8
         },
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 10
+          "link": 9
         },
         {
           "name": "sigmas",
           "type": "SIGMAS",
-          "link": 11
+          "link": 10
         },
         {
           "name": "latent_image",
           "type": "LATENT",
-          "link": 12
+          "link": 11
         }
       ],
       "outputs": [
@@ -474,8 +430,8 @@
           "type": "LATENT",
           "slot_index": 0,
           "links": [
-            13,
-            15
+            12,
+            14
           ]
         },
         {
@@ -490,11 +446,51 @@
       }
     },
     {
-      "id": 13,
+      "id": 12,
       "type": "VAEDecode",
       "pos": [
         1940,
         350
+      ],
+      "size": [
+        280,
+        78
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 12
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            16
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 13,
+      "type": "VAEDecodeAudio",
+      "pos": [
+        1940,
+        470
       ],
       "size": [
         280,
@@ -507,52 +503,12 @@
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 13
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
           "link": 14
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "slot_index": 0,
-          "links": [
-            17
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEDecode"
-      }
-    },
-    {
-      "id": 14,
-      "type": "VAEDecodeAudio",
-      "pos": [
-        1940,
-        470
-      ],
-      "size": [
-        280,
-        78
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 15
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 16
+          "link": 15
         }
       ],
       "outputs": [
@@ -561,7 +517,7 @@
           "type": "AUDIO",
           "slot_index": 0,
           "links": [
-            18
+            17
           ]
         }
       ],
@@ -570,7 +526,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 14,
       "type": "CreateVideo",
       "pos": [
         1940,
@@ -581,18 +537,18 @@
         106
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 17
+          "link": 16
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 18
+          "link": 17
         }
       ],
       "outputs": [
@@ -601,7 +557,7 @@
           "type": "VIDEO",
           "slot_index": 0,
           "links": [
-            19
+            18
           ]
         }
       ],
@@ -614,7 +570,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 15,
       "type": "SaveVideo",
       "pos": [
         1940,
@@ -625,13 +581,13 @@
         130
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 19
+          "link": 18
         }
       ],
       "outputs": [],
@@ -650,7 +606,7 @@
       1,
       3,
       0,
-      7,
+      6,
       0,
       "CLIP"
     ],
@@ -658,7 +614,7 @@
       2,
       4,
       0,
-      7,
+      6,
       1,
       "VAE"
     ],
@@ -666,17 +622,17 @@
       3,
       5,
       0,
-      7,
+      6,
       2,
       "VAE"
     ],
     [
       4,
-      6,
+      2,
       0,
-      7,
-      3,
-      "IMAGE"
+      9,
+      0,
+      "MODEL"
     ],
     [
       5,
@@ -688,113 +644,105 @@
     ],
     [
       6,
-      2,
+      6,
       0,
-      11,
-      0,
-      "MODEL"
-    ],
-    [
-      7,
-      7,
-      0,
-      11,
+      10,
       1,
       "CONDITIONING"
     ],
     [
-      8,
-      8,
+      7,
+      7,
       0,
-      12,
+      11,
       0,
       "NOISE"
     ],
     [
-      9,
-      11,
+      8,
+      10,
       0,
-      12,
+      11,
       1,
       "GUIDER"
     ],
     [
-      10,
       9,
+      8,
       0,
-      12,
+      11,
       2,
       "SAMPLER"
     ],
     [
-      11,
       10,
+      9,
       0,
-      12,
+      11,
       3,
       "SIGMAS"
     ],
     [
-      12,
-      7,
+      11,
+      6,
       1,
-      12,
+      11,
       4,
       "LATENT"
     ],
     [
-      13,
+      12,
+      11,
+      0,
       12,
       0,
-      13,
-      0,
       "LATENT"
+    ],
+    [
+      13,
+      4,
+      0,
+      12,
+      1,
+      "VAE"
     ],
     [
       14,
-      4,
+      11,
       0,
       13,
-      1,
-      "VAE"
+      0,
+      "LATENT"
     ],
     [
       15,
+      5,
+      0,
+      13,
+      1,
+      "VAE"
+    ],
+    [
+      16,
       12,
       0,
       14,
       0,
-      "LATENT"
-    ],
-    [
-      16,
-      5,
-      0,
-      14,
-      1,
-      "VAE"
+      "IMAGE"
     ],
     [
       17,
       13,
       0,
-      15,
-      0,
-      "IMAGE"
+      14,
+      1,
+      "AUDIO"
     ],
     [
       18,
       14,
       0,
       15,
-      1,
-      "AUDIO"
-    ],
-    [
-      19,
-      15,
-      0,
-      16,
       0,
       "VIDEO"
     ]

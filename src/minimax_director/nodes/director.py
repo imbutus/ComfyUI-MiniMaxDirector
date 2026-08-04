@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from comfy_api.latest import ComfyExtension, io
 
-from .. import core, lattice, references
+from .. import attachments, core, lattice, references
 from ..compile import compile_timeline
 from ..lint import Issue, lint
 from ..timeline import Timeline
@@ -42,6 +42,46 @@ def _grow(name: str, prefix: str, input_type, maximum: int):
             input=input_type, prefix=prefix, min=0, max=maximum
         ),
     )
+
+
+def _path(record: dict) -> str:
+    """How ComfyUI's loaders name a file in the input folder."""
+    subfolder = (record.get("subfolder") or "").strip("/")
+    name = record.get("filename", "")
+    return f"{subfolder}/{name}" if subfolder else name
+
+
+def _load(record: dict):
+    """Read a file the timeline points at, through ComfyUI's own loaders.
+
+    Reusing the core nodes means EXIF orientation, alpha, sample rates and container
+    quirks are somebody else's solved problem rather than ours.
+
+    A reference video yields two things: its frames, and the soundtrack that travels with
+    it -- the core H3 node expects exactly that pair.
+    """
+    kind = record.get("kind")
+    path = _path(record)
+
+    if kind == "image":
+        return core.call("LoadImage", image=path)[0], None
+    if kind == "audio":
+        return core.call("LoadAudio", audio=path)[0], None
+    if kind == "video":
+        video = core.call("LoadVideo", file=path)[0]
+        images, audio, *_ = core.call("GetVideoComponents", video=video)
+        return images, audio
+
+    raise ValueError(f"Unknown attachment kind {kind!r} on the timeline")
+
+
+def _present(entries) -> bool:
+    """Whether any slot is filled.
+
+    `any()` cannot be used here: the entries are tensors, and asking a multi-element
+    tensor for its truth value raises rather than answering.
+    """
+    return any(entry is not None for entry in entries)
 
 
 def _report(issues) -> str:
@@ -93,12 +133,25 @@ class MiniMaxDirector(io.ComfyNode):
     def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",
                 audio_vae=None, first_frame=None, last_frame=None, ref_images=None,
                 ref_videos=None, ref_video_audios=None, ref_audios=None) -> io.NodeOutput:
-        pictures = references.ordered("ref_image_", ref_images, MAX_PICTURES)
-        videos = references.ordered("ref_video_", ref_videos, MAX_VIDEOS)
-        soundtracks = references.ordered("ref_video_audio_", ref_video_audios, MAX_VIDEOS)
-        audios = references.ordered("ref_audio_", ref_audios, MAX_AUDIOS)
+        document = Timeline.from_json(timeline)
 
-        document = Timeline.from_json(timeline).with_references(
+        # Files on the timeline come first and files wired into sockets follow, so the
+        # ordinals the compiler wrote into the prompt are the ones the model receives.
+        # The timeline is where an author actually looks, so it owns the numbering.
+        pictures = [_load(a.record)[0] for a in attachments.of_kind(document, "image")]
+        videos, soundtracks = [], []
+        for item in attachments.of_kind(document, "video"):
+            frames, sound = _load(item.record)
+            videos.append(frames)
+            soundtracks.append(sound)
+        audios = [_load(a.record)[0] for a in attachments.of_kind(document, "audio")]
+
+        pictures += references.ordered("ref_image_", ref_images, MAX_PICTURES)
+        videos += references.ordered("ref_video_", ref_videos, MAX_VIDEOS)
+        soundtracks += references.ordered("ref_video_audio_", ref_video_audios, MAX_VIDEOS)
+        audios += references.ordered("ref_audio_", ref_audios, MAX_AUDIOS)
+
+        document = document.with_references(
             references.assign(pictures, videos, soundtracks, audios)
         )
         compiled = compile_timeline(document)
@@ -106,7 +159,8 @@ class MiniMaxDirector(io.ComfyNode):
 
         # The core reference node has no `first_frame`, so wiring both would silently
         # drop the keyframe rather than fail.
-        if first_frame is not None and (ref_images or ref_videos or ref_audios):
+        if first_frame is not None and (
+            _present(pictures) or _present(videos) or _present(audios)):
             issues.insert(0, Issue(
                 "error",
                 "first_frame is ignored when references are wired: MiniMax H3 has no "
@@ -124,16 +178,16 @@ class MiniMaxDirector(io.ComfyNode):
             "length": compiled.length,
         }
 
-        if ref_images or ref_videos or ref_audios:
+        if _present(pictures) or _present(videos) or _present(audios):
             positive, latent = core.call(
                 "MiniMaxH3ReferenceToVideo",
                 **shared,
                 audio_vae=audio_vae,
                 ref_image_size=ref_image_size,
-                ref_images=ref_images,
-                ref_videos=ref_videos,
-                ref_video_audios=ref_video_audios,
-                ref_audios=ref_audios,
+                ref_images=references.slots("ref_image_", pictures),
+                ref_videos=references.slots("ref_video_", videos),
+                ref_video_audios=references.slots("ref_video_audio_", soundtracks),
+                ref_audios=references.slots("ref_audio_", audios),
             )
         else:
             positive, latent = core.call(

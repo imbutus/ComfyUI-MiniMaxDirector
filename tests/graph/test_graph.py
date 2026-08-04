@@ -28,7 +28,7 @@ TIMELINE = {
 }
 
 
-def graph(prefix: str) -> dict:
+def base_graph(prefix: str) -> dict:
     return {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "stub-unet"}},
         "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "stub-clip"}},
@@ -84,7 +84,7 @@ def graph(prefix: str) -> dict:
 @pytest.fixture(scope="module")
 def run():
     prefix = f"minimax-director-test-{int(time.time())}"
-    result = harness.run(graph(prefix), outputs=["14"])
+    result = harness.run(base_graph(prefix), outputs=["14"])
     result["prefix"] = prefix
     return result
 
@@ -124,3 +124,44 @@ def test_the_length_is_on_the_lattice(run):
 def test_the_geometry_survives_the_round_trip(run):
     call = h3_call(run)
     assert (call["width"], call["height"]) == (448, 256)
+
+
+# --- media attached on the timeline, with nothing wired ----------------------
+
+MEDIA_TIMELINE = {
+    "global_prompt": "Neon-lit alley after rain.",
+    "dialect": "timeline",
+    "shots": [
+        {"start": 0, "length": 48, "prompt": "The alley",
+         "media": {"kind": "image", "filename": "example.png", "subfolder": ""}},
+    ],
+}
+
+
+def media_graph(prefix):
+    graph = base_graph(prefix)
+    graph["5"]["inputs"]["timeline"] = json.dumps(MEDIA_TIMELINE)
+    return graph
+
+
+@pytest.fixture(scope="module")
+def media_run():
+    prefix = f"minimax-director-media-{int(time.time())}"
+    result = harness.run(media_graph(prefix), outputs=["14"])
+    result["prefix"] = prefix
+    return result
+
+
+def test_an_attached_image_reaches_the_model(media_run):
+    call = h3_call(media_run)
+    assert call["node"] == "MiniMaxH3ReferenceToVideo"
+    assert "ref_image_0" in call["slots"]
+
+
+def test_the_prompt_names_the_attached_image(media_run):
+    assert "The alley <Picture 1>" in h3_call(media_run)["prompt"]
+
+
+def test_no_loader_node_is_needed(media_run):
+    wired = [c for c in media_run["calls"] if c["node"].startswith("MiniMaxH3")]
+    assert len(wired) == 1  # one H3 call, fed entirely from the timeline

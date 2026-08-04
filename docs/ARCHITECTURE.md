@@ -50,6 +50,22 @@ Consequences worth stating, because they were the point:
 - Frames are authoritative; seconds are derived at compile time only, so a timeline cannot
   drift by a rounding error.
 
+## Files on the timeline
+
+Dropping a picture on a shot is enough. `attachments.py` reads the document and decides
+everything that follows from where the file sits: which reference slot it lands in, the
+ordinal H3 will call it by, and -- because the model only uses a reference the prose
+points at -- the token gets appended to that segment's line if the author has not written
+it themselves.
+
+Numbering follows the timeline, so moving a block renumbers its reference the way a
+viewer would expect. Files wired into sockets by hand still work and are numbered after
+the timeline's, because the timeline is where an author actually looks.
+
+The node loads the files through ComfyUI's own `LoadImage` / `LoadAudio` / `LoadVideo`
+(plus `GetVideoComponents` for frames and soundtrack), so EXIF orientation, alpha,
+sample rates and container quirks stay somebody else's solved problem.
+
 ## Reference slots
 
 `references` in the document is *not* what the compiler trusts. The node rebuilds it from
