@@ -29,10 +29,16 @@ export const CAMERAS = [
   "tilt_up", "tilt_down", "orbit", "handheld", "crash_zoom",
 ];
 
-/** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`). */
+/** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`).
+ *
+ * The double modulo is not redundant. JavaScript's `%` keeps the sign of the left
+ * operand, so `(5 - 14) % 17` is `-9` here and `8` in Python. Without the correction
+ * this rounds *down* for any input where `frames % 17 > 5` -- silently shortening the
+ * clip while still landing on the lattice, which makes it look correct.
+ */
 export function snapUp(frames) {
   const floored = Math.max(PHASE, Math.round(frames));
-  return floored + ((PHASE - (floored % STRIDE)) % STRIDE);
+  return floored + (((PHASE - (floored % STRIDE)) % STRIDE) + STRIDE) % STRIDE;
 }
 
 export function fromSeconds(seconds) {
@@ -87,10 +93,18 @@ export function span(timeline) {
   return ends.length ? Math.max(...ends) : 0;
 }
 
-/** Clip length: an explicit duration if set, else the content, snapped to the lattice.
+/** The half-open frame range that will be rendered. Mirrors `Timeline.window`. */
+export function renderWindow(timeline) {
+  const finish = timeline.end || timeline.duration || span(timeline);
+  const start = Math.max(0, timeline.start || 0);
+  return [start, Math.max(start, finish)];
+}
+
+/** Clip length: the render window, snapped to the lattice.
  *  Mirrors `Timeline.length` in timeline.py -- these two must never disagree. */
 export function length(timeline) {
-  return snapUp(timeline.duration || span(timeline));
+  const [from, to] = renderWindow(timeline);
+  return snapUp(to - from);
 }
 
 /** Append an item to a track, starting where that track currently ends. */

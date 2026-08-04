@@ -510,18 +510,17 @@ export class TimelineEditor {
    * keeps the node the single source of truth -- the graph still serialises normally.
    */
   renderSettings(timeline) {
-    const seconds = timeline.duration ? toSeconds(timeline.duration) : 0;
     const value = (name) => this.widgets[name]?.value;
+    const secs = (frames) => toSeconds(frames || 0).toFixed(2);
 
     this.settings.innerHTML = `
-      <label>duration
-        <input class="s-duration" type="number" min="0" step="0.1" value="${seconds.toFixed(2)}">
-        <span class="unit">s</span>
-      </label>
-      <label>fps <span class="fixed">${FPS}</span></label>
+      <label>start <input class="s-start" type="number" min="0" step="0.1" value="${secs(timeline.start)}"><span class="unit">s</span></label>
+      <label>end <input class="s-end" type="number" min="0" step="0.1" value="${secs(timeline.end)}"><span class="unit">s</span></label>
+      <label>duration <input class="s-duration" type="number" min="0" step="0.1" value="${secs(timeline.duration)}"><span class="unit">s</span></label>
+      <label>frame rate <span class="fixed">${FPS}</span><span class="unit">fps</span></label>
       <label>width <input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
       <label>height <input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
-      <label>ref size
+      <label>resize
         <select class="s-ref">
           ${["match", "max"].map((o) =>
             `<option value="${o}"${o === value("ref_image_size") ? " selected" : ""}>${o}</option>`).join("")}
@@ -534,7 +533,7 @@ export class TimelineEditor {
         </select>
       </label>
       <span class="mmd-grow"></span>
-      <span class="hint">0 duration = fit the content</span>`;
+      <span class="hint">0 = auto · end 0 = to the end</span>`;
 
     const setWidget = (name, raw) => {
       const widget = this.widgets[name];
@@ -543,11 +542,16 @@ export class TimelineEditor {
       widget.callback?.(raw);
     };
 
-    this.settings.querySelector(".s-duration").onchange = (e) => {
-      const next = this.read();
-      next.duration = Math.max(0, Math.round(Number(e.target.value) * FPS));
-      this.commit(next);
+    const setFrames = (field, key) => {
+      this.settings.querySelector(field).onchange = (e) => {
+        const next = this.read();
+        next[key] = Math.max(0, Math.round(Number(e.target.value) * FPS));
+        this.commit(next);
+      };
     };
+    setFrames(".s-duration", "duration");
+    setFrames(".s-start", "start");
+    setFrames(".s-end", "end");
     this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);

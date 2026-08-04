@@ -74,8 +74,9 @@ const CSS = `
   flex:0 0 auto; padding:5px 8px; background:#181c23; border:1px solid #2c313c;
   border-radius:6px; }
 .mmd-settings label { display:flex; align-items:center; gap:5px; color:#9ca3af;
-  font-size:11px; }
-.mmd-settings input, .mmd-settings select { width:78px; background:#1c1f26;
+  font-size:11px; white-space:nowrap; flex:0 0 auto; }
+.mmd-settings input, .mmd-settings select { width:72px; flex:0 0 auto;
+  background:#1c1f26;
   color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 5px;
   font:inherit; }
 .mmd-settings select { width:96px; }
