@@ -114,7 +114,8 @@ src/minimax_director/
   timeline.py            the timeline document and its JSON
   compile.py             timeline -> prompt
   lint.py                checks that run before sampling
-  references.py          reference ordinals, in H3's presentation order
+  references.py          reference ordinals for wired sockets
+  attachments.py         reference ordinals for files on the timeline
   core.py                adapter over ComfyUI's built-in H3 nodes
   nodes/                 the classes ComfyUI registers
 web/                     the timeline widget: plain ES modules, no build step

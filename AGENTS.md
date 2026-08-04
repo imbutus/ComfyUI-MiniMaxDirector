@@ -192,6 +192,28 @@ The graph tests import ComfyUI in-process, patch the registry with stubs from
 `execution.PromptExecutor` directly. `CreateVideo` and `SaveVideo` are deliberately not
 stubbed, so a pass leaves a real h264+aac mp4 whose duration is `length / 24`.
 
+## Keeping this file true
+
+**This file is part of the code. A change that makes it wrong is an incomplete change.**
+
+Documentation that lags the code is worse than none: it is read with the same trust and
+answers with the wrong facts. So the rule is not "update the docs when convenient", it is
+that the following pairs land in the same commit.
+
+| When you change | Also update |
+|---|---|
+| a node's inputs, outputs or name | the module map and the two-core-nodes table here; `README.md` node table |
+| the timeline JSON schema | the document section here; `docs/ARCHITECTURE.md` |
+| the lattice, fps, or any model limit | the constraints table here; `README.md`; **both** `lattice.py` and `web/timeline/model.js` |
+| reference ordering or token rules | the numbering section here; `tests/test_references.py`, `tests/test_attachments.py` |
+| how ComfyUI is called (`core.py`) | the calling section here |
+| anything that fails silently when broken | add it to the invariants list here |
+| a fact moving from unverified to measured | the "never been verified" list — shrink it, do not leave it stale |
+
+If a GPU run answers one of the open questions, that answer belongs here in the same
+sitting. The value of the list is that it is honest about its own edges; a stale entry
+destroys that in a way a missing entry does not.
+
 ## What has never been verified
 
 Nothing in this repository has run against real H3 weights. Specifically unknown:
