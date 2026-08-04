@@ -87,7 +87,15 @@ const CSS = `
    where the edges are rather than making the user hunt for them. */
 .mmd-seg .mmd-grip { background:transparent; transition:background .12s ease; }
 .mmd-seg:hover .mmd-grip { background:rgba(255,255,255,.22); }
-.mmd-seg .mmd-grip:hover { background:rgba(255,255,255,.55); }
+.mmd-seg .mmd-grip:hover { background:#6ea8c4; }
+
+/* Touching blocks put two handles side by side. Outlining the whole block whose edge is
+   under the pointer says which one a drag would resize -- the handles alone are 7px of
+   near-identical highlight and give no answer. */
+.mmd-seg:has(.mmd-grip:hover), .mmd-seg.mmd-resizing {
+  outline:2px solid #6ea8c4; outline-offset:-2px; z-index:4; }
+.mmd-seg.mmd-resizing .mmd-grip.mmd-l, .mmd-seg.mmd-resizing .mmd-grip.mmd-r {
+  background:#6ea8c4; }
 .mmd-seg .mmd-cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.85); pointer-events:none; }

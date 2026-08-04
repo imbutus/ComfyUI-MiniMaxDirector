@@ -13,8 +13,8 @@ import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, formatSeconds, items, length, remove,
-  reshape, span, toSeconds, FPS,
+  CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, bounds, formatSeconds, items, length,
+  remove, reshape, span, toSeconds, FPS,
 } from "./model.js";
 
 /**
@@ -495,9 +495,16 @@ export class TimelineEditor {
       group: mode === "body"
         ? this.selected.map(({ track: t, index: i }) => {
             const entry = items(timeline, t)[i];
-            return { track: t, index: i, start: entry.start };
+            const kin = this.selected.filter((o) => o.track === t).map((o) => o.index);
+            return {
+              track: t, index: i, start: entry.start, length: entry.length,
+              limits: bounds(timeline, t, i, kin),
+            };
           })
         : [],
+      // Neighbours are read once, at the start of the gesture, so they cannot shift
+      // underneath a drag that is still in progress.
+      limits: bounds(timeline, track, index),
       baseline: JSON.stringify(timeline),
       recorded: false,
     };
@@ -675,15 +682,27 @@ export class TimelineEditor {
       this.drag.recorded = true;
     }
 
+    // Blocks may not overlap: a segment describes what happens over a span of frames,
+    // and two descriptions of the same frames is not something the prompt can express.
     if (this.drag.mode === "body") {
+      let lowest = -Infinity;
+      let highest = Infinity;
       for (const member of this.drag.group) {
-        reshape(items(timeline, member.track)[member.index], { start: member.start + frames });
+        lowest = Math.max(lowest, member.limits[0] - member.start);
+        highest = Math.min(highest, member.limits[1] - (member.start + member.length));
+      }
+      const shift = Math.max(lowest, Math.min(highest, frames));
+      for (const member of this.drag.group) {
+        reshape(items(timeline, member.track)[member.index], { start: member.start + shift });
       }
     } else if (this.drag.mode === "start") {
-      const start = Math.min(this.drag.start + frames, this.drag.start + this.drag.length - 1);
-      reshape(item, { start, length: this.drag.length - (start - this.drag.start) });
+      const finish = this.drag.start + this.drag.length;
+      const start = Math.min(
+        Math.max(this.drag.start + frames, this.drag.limits[0]), finish - 1);
+      reshape(item, { start, length: finish - start });
     } else {
-      reshape(item, { length: this.drag.length + frames });
+      const room = this.drag.limits[1] - this.drag.start;
+      reshape(item, { length: Math.max(1, Math.min(this.drag.length + frames, room)) });
     }
     this.write(timeline);
     this.render();
@@ -837,6 +856,12 @@ export class TimelineEditor {
     const node = document.createElement("div");
     node.className = "mmd-seg";
     if (this.isSelected(track, index)) node.classList.add("mmd-sel");
+    // Survives the re-render each drag frame triggers, so the block being resized stays
+    // marked for the whole gesture rather than flickering.
+    if (this.drag && this.drag.mode !== "body"
+        && this.drag.track === track && this.drag.index === index) {
+      node.classList.add("mmd-resizing");
+    }
     node.dataset.index = index;
     node.style.left = `${item.start * scale}px`;
     node.style.width = `${Math.max(item.length * scale, 14)}px`;

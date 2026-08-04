@@ -113,6 +113,28 @@ export function remove(timeline, track, index) {
   items(timeline, track).splice(index, 1);
 }
 
+/**
+ * The free span around an item on its track: the gap its neighbours leave it.
+ *
+ * `ignore` holds indices that are moving with it, so a group drag is bounded by the
+ * blocks it is passing rather than by its own members.
+ */
+export function bounds(timeline, track, index, ignore = []) {
+  const list = items(timeline, track);
+  const self = list[index];
+  if (!self) return [0, Infinity];
+
+  let lower = 0;
+  let upper = Infinity;
+  list.forEach((other, at) => {
+    if (at === index || ignore.includes(at)) return;
+    const end = other.start + other.length;
+    if (end <= self.start) lower = Math.max(lower, end);
+    else if (other.start >= self.start + self.length) upper = Math.min(upper, other.start);
+  });
+  return [lower, upper];
+}
+
 /** Move or resize, clamped so an item stays on screen and at least one frame long. */
 export function reshape(item, { start, length: len }) {
   if (start !== undefined) item.start = Math.max(0, Math.round(start));

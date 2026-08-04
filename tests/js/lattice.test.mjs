@@ -43,3 +43,19 @@ check("no duration follows the content",
 
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log("lattice.test.mjs: all checks passed");
+
+// --- neighbours bound a gesture -------------------------------------------
+import { bounds } from "../../web/timeline/model.js";
+
+const track = {
+  shots: [
+    { start: 0, length: 24, prompt: "a" },
+    { start: 30, length: 24, prompt: "b" },
+    { start: 80, length: 24, prompt: "c" },
+  ],
+  moves: [], cues: [],
+};
+check("middle block is fenced by both neighbours", bounds(track, "shots", 1).join(","), "24,80");
+check("first block is fenced on the right only", bounds(track, "shots", 0).join(","), "0,30");
+check("last block is open to the right", bounds(track, "shots", 2)[1], Infinity);
+check("a moving neighbour is ignored", bounds(track, "shots", 1, [0]).join(","), "0,80");
