@@ -13,6 +13,19 @@ export const FPS = 24;
 export const STRIDE = 17;
 export const PHASE = 5;
 
+/** The three editable tracks, in the order they are drawn. */
+export const TRACKS = [
+  { key: "shots", label: "shots", noun: "shot" },
+  { key: "moves", label: "camera", noun: "camera move" },
+  { key: "cues", label: "audio", noun: "audio cue" },
+];
+
+/** Camera vocabulary; must match CAMERA_PROSE in timeline.py. */
+export const CAMERAS = [
+  "", "static", "dolly_in", "dolly_out", "pan_left", "pan_right",
+  "tilt_up", "tilt_down", "orbit", "handheld", "crash_zoom",
+];
+
 /** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`). */
 export function snapUp(frames) {
   const floored = Math.max(PHASE, Math.round(frames));
@@ -29,8 +42,7 @@ export function toSeconds(frames) {
 
 /** `0`, `1`, `2.5` — the timestamp form the H3 prompt templates use. */
 export function formatSeconds(seconds) {
-  const rounded = Math.round(seconds * 100) / 100;
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  return String(Math.round(seconds * 100) / 100);
 }
 
 export function emptyTimeline() {
@@ -40,6 +52,7 @@ export function emptyTimeline() {
     dialect: "timeline",
     global_prompt: "",
     shots: [],
+    moves: [],
     cues: [],
     references: [],
   };
@@ -59,9 +72,15 @@ export function serialize(timeline) {
   return JSON.stringify(timeline, null, 2);
 }
 
+export function items(timeline, track) {
+  if (!Array.isArray(timeline[track])) timeline[track] = [];
+  return timeline[track];
+}
+
 /** Last frame covered by any track. */
 export function span(timeline) {
-  const ends = [...timeline.shots, ...timeline.cues].map((item) => item.start + item.length);
+  const ends = TRACKS.flatMap(({ key }) =>
+    items(timeline, key).map((item) => item.start + item.length));
   return ends.length ? Math.max(...ends) : 0;
 }
 
@@ -70,33 +89,21 @@ export function length(timeline) {
   return snapUp(span(timeline));
 }
 
-/** Append a shot after the current end, one second long by default. */
-export function addShot(timeline, seconds = 1) {
-  const start = span(timeline);
-  timeline.shots.push({
-    start,
-    length: Math.max(1, Math.round(seconds * FPS)),
-    prompt: "",
-    camera: "",
-  });
-  return timeline;
+/** Append an item to a track, starting where that track currently ends. */
+export function add(timeline, track, seconds = 1.5) {
+  const list = items(timeline, track);
+  const start = list.reduce((end, item) => Math.max(end, item.start + item.length), 0);
+  const item = { start, length: Math.max(1, Math.round(seconds * FPS)), prompt: "" };
+  if (track !== "cues") item.camera = "";
+  list.push(item);
+  return list.length - 1;
 }
 
-export function addCue(timeline, seconds = 1) {
-  timeline.cues.push({
-    start: 0,
-    length: Math.max(1, Math.round(seconds * FPS)),
-    prompt: "",
-  });
-  return timeline;
+export function remove(timeline, track, index) {
+  items(timeline, track).splice(index, 1);
 }
 
-export function removeItem(timeline, track, index) {
-  timeline[track].splice(index, 1);
-  return timeline;
-}
-
-/** Move or resize an item, keeping it on screen and at least one frame long. */
+/** Move or resize, clamped so an item stays on screen and at least one frame long. */
 export function reshape(item, { start, length: len }) {
   if (start !== undefined) item.start = Math.max(0, Math.round(start));
   if (len !== undefined) item.length = Math.max(1, Math.round(len));

@@ -1,21 +1,19 @@
 /**
  * The MiniMaxDirector timeline widget.
  *
- * Registers one custom widget on the `MiniMaxDirector` node and hides the raw JSON
- * string widget behind it. The JSON stays the only stored state -- the widget reads it
- * on draw and writes it back on every edit -- so a graph saved with this extension
- * installed still loads, and still runs, without it.
+ * Mounts the editor as a DOM widget on the `MiniMaxDirector` node and hides the raw
+ * JSON string widget behind it. The JSON stays the only stored state -- the editor
+ * reads it on render and writes it back on every edit -- so a graph saved with this
+ * extension installed still loads, and still runs, without it.
  */
 
 import { app } from "../../scripts/app.js";
-import * as model from "./timeline/model.js";
-import { draw, layout } from "./timeline/view.js";
-import { widgetHeight } from "./timeline/theme.js";
-import { applyDrag, beginDrag, hitTest } from "./timeline/interactions.js";
+import { parse, serialize } from "./timeline/model.js";
+import { TimelineEditor } from "./timeline/editor.js";
 
 const NODE = "MiniMaxDirector";
 const STATE_WIDGET = "timeline";
-const TRACKS = 2;
+const MIN_HEIGHT = 420;
 
 app.registerExtension({
   name: "imbutus.MiniMaxDirector",
@@ -36,77 +34,30 @@ function attach(node) {
   if (!json) return;
 
   // The JSON is still the stored value; it just stops taking up room on the node.
+  // -4 cancels the padding ComfyUI adds around every widget.
   json.hidden = true;
   json.computeSize = () => [0, -4];
+  if (json.inputEl) json.inputEl.style.display = "none";
 
-  const state = { selection: null, drag: null, geometry: null };
+  const editor = new TimelineEditor(
+    () => parse(json.value),
+    (timeline) => { json.value = serialize(timeline); },
+  );
 
-  const read = () => model.parse(json.value);
-  const write = (timeline) => {
-    json.value = model.serialize(timeline);
-    node.setDirtyCanvas(true, true);
-  };
-
-  const widget = node.addCustomWidget({
-    name: "director",
-    type: "minimax_director",
-    value: null,
-
-    computeSize: (width) => [width, widgetHeight(TRACKS)],
-
-    draw(ctx, owner, width, y) {
-      const timeline = read();
-      const height = widgetHeight(TRACKS);
-      ctx.save();
-      ctx.translate(0, y);
-      state.geometry = layout(timeline, width, height);
-      draw(ctx, timeline, state.geometry, state);
-      ctx.restore();
-      this.last_y = y;
-    },
-
-    mouse(event, pos) {
-      const geometry = state.geometry;
-      if (!geometry) return false;
-
-      const x = pos[0];
-      const y = pos[1] - (this.last_y ?? 0);
-      const timeline = read();
-
-      if (event.type === "pointerdown") {
-        const hit = hitTest(geometry, x, y);
-        state.selection = hit && hit.index !== null ? hit : null;
-        state.drag = beginDrag(timeline, hit, x, geometry);
-        node.setDirtyCanvas(true, true);
-        return Boolean(hit);
-      }
-
-      if (event.type === "pointermove" && state.drag) {
-        if (applyDrag(timeline, state.drag, x)) write(timeline);
-        return true;
-      }
-
-      if (event.type === "pointerup") {
-        const dragged = Boolean(state.drag);
-        state.drag = null;
-        return dragged;
-      }
-
-      return false;
-    },
-
-    // The custom widget holds no state of its own; the JSON widget is serialised.
-    serializeValue: () => null,
+  const widget = node.addDOMWidget(STATE_WIDGET + "_editor", "minimax_director", editor.root, {
+    getMinHeight: () => MIN_HEIGHT,
+    hideOnZoom: false,
+    // The editor owns no state, so there is nothing here to serialise.
+    serialize: false,
+    getValue: () => undefined,
+    setValue: () => {},
   });
+  widget.serializeValue = () => undefined;
 
-  widget.serialize = false;
+  // A node sized for three tracks plus the inspector; still resizable by hand.
+  const width = Math.max(node.size?.[0] ?? 0, 620);
+  node.setSize([width, Math.max(node.size?.[1] ?? 0, node.computeSize()[1])]);
 
-  node.addWidget("button", "add shot", null, () => write(model.addShot(read())));
-  node.addWidget("button", "add audio cue", null, () => write(model.addCue(read())));
-  node.addWidget("button", "remove selected", null, () => {
-    if (!state.selection || state.selection.index === null) return;
-    const timeline = model.removeItem(read(), state.selection.track, state.selection.index);
-    state.selection = null;
-    write(timeline);
-  });
+  // The first render needs a laid-out element to measure, so wait one frame.
+  requestAnimationFrame(() => editor.render());
 }
