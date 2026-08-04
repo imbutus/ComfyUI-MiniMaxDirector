@@ -7,51 +7,90 @@
  */
 
 const CSS = `
-.mmd { display:flex; flex-direction:column; gap:6px; width:100%; height:100%;
+.mmd { display:flex; flex-direction:column; gap:7px; width:100%; height:100%;
   font:12px/1.4 system-ui,sans-serif; color:#e5e7eb; box-sizing:border-box; }
 
-.mmd-bar { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+/* toolbar ---------------------------------------------------------------- */
+.mmd-bar { display:flex; align-items:center; gap:6px; flex:0 0 auto; flex-wrap:wrap; }
 .mmd-bar button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
-  border-radius:4px; padding:3px 9px; cursor:pointer; font:inherit; }
+  border-radius:5px; padding:5px 11px; cursor:pointer; font:inherit; }
 .mmd-bar button:hover { background:#39404e; }
+.mmd-bar button.danger { background:#3a2422; border-color:#5c332d; }
 .mmd-bar .mmd-grow { flex:1; }
 .mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
-.mmd-stage { flex:1 1 auto; min-height:120px; overflow:auto;
-  background:#15181e; border:1px solid #2c313c; border-radius:5px; padding:6px; }
+/* stage: fixed label column + scrolling track area ------------------------ */
+.mmd-stage { flex:1 1 auto; min-height:150px; display:flex;
+  background:#15181e; border:1px solid #2c313c; border-radius:6px; overflow:hidden; }
+.mmd-labels { flex:0 0 92px; padding-top:21px; border-right:1px solid #2c313c;
+  background:#181c23; }
+.mmd-label { height:62px; margin-bottom:6px; display:flex; align-items:center;
+  justify-content:center; font-size:10px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-scroll { flex:1 1 auto; overflow-x:auto; overflow-y:hidden; position:relative; }
+.mmd-canvas { position:relative; height:100%; min-width:100%; }
 
-.mmd-ruler { position:relative; height:15px; margin-bottom:4px; }
-.mmd-ruler span { position:absolute; top:0; font-size:10px; color:#6b7280;
-  transform:translateX(2px); border-left:1px solid #3a4150; padding-left:3px; height:100%; }
+.mmd-ruler { position:relative; height:17px; border-bottom:1px solid #262b34; }
+.mmd-ruler span { position:absolute; top:0; font-size:9px; color:#6b7280;
+  border-left:1px solid #333a45; padding-left:3px; height:100%;
+  font-variant-numeric:tabular-nums; }
 
-.mmd-track { position:relative; height:38px; margin-bottom:5px;
-  background:#1c1f26; border:1px solid #2c313c; border-radius:4px; }
-.mmd-track::after { content:attr(data-label); position:absolute; left:5px; top:2px;
-  font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#4b5563;
+.mmd-track { position:relative; height:62px; margin-bottom:6px; margin-top:4px;
+  background:#1c1f26; border-top:1px solid #22262e; border-bottom:1px solid #22262e; }
+
+.mmd-playhead { position:absolute; top:0; bottom:0; width:2px; background:#e2564b;
+  pointer-events:none; z-index:5; }
+.mmd-playhead::before { content:""; position:absolute; top:0; left:-4px;
+  border:5px solid transparent; border-top-color:#e2564b; }
+
+/* segments --------------------------------------------------------------- */
+.mmd-seg { position:absolute; top:3px; bottom:3px; border-radius:4px; cursor:grab;
+  overflow:hidden; box-sizing:border-box; user-select:none;
+  border:1px solid rgba(0,0,0,.35); }
+.mmd-seg.sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
+.mmd-seg .cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  text-shadow:0 1px 2px rgba(0,0,0,.85); pointer-events:none; }
+.mmd-seg .chip { position:absolute; left:0; bottom:0; padding:1px 5px; font-size:9px;
+  background:rgba(0,0,0,.62); color:#d7dbe2; border-top-right-radius:4px;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   pointer-events:none; }
-
-.mmd-seg { position:absolute; top:3px; bottom:3px; border-radius:3px; cursor:grab;
-  overflow:hidden; padding:3px 7px; box-sizing:border-box; font-size:11px;
-  white-space:nowrap; text-overflow:ellipsis; user-select:none; }
-.mmd-seg.sel { outline:2px solid #cbd5e1; outline-offset:-1px; }
-.mmd-seg .grip { position:absolute; top:0; bottom:0; width:6px; cursor:ew-resize; }
+.mmd-seg .grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
 .mmd-seg .grip.l { left:0; } .mmd-seg .grip.r { right:0; }
+.mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; pointer-events:none; }
+.mmd-seg.has-media .cap { top:auto; bottom:16px; }
 
 .mmd-track[data-track="shots"] .mmd-seg { background:#2f6d8f; }
-.mmd-track[data-track="moves"] .mmd-seg { background:#4b5563; }
-.mmd-track[data-track="cues"]  .mmd-seg { background:#7a5b2e; }
+.mmd-track[data-track="moves"] .mmd-seg { background:#414958; }
+.mmd-track[data-track="cues"]  .mmd-seg { background:#5d4a22; }
+.mmd-track .mmd-seg.has-media { background:#0d1014; }
 
-.mmd-edit { flex:0 0 auto; display:grid; gap:5px;
-  grid-template-columns:repeat(4,minmax(0,1fr)); align-items:center; }
-.mmd-edit textarea { grid-column:1/-1; min-height:46px; resize:vertical;
-  background:#15181e; color:#e5e7eb; border:1px solid #2c313c; border-radius:4px;
-  padding:5px; font:inherit; }
-.mmd-edit label { display:flex; align-items:center; gap:4px; color:#9ca3af; font-size:11px; }
-.mmd-edit input, .mmd-edit select { width:100%; background:#15181e; color:#e5e7eb;
-  border:1px solid #2c313c; border-radius:4px; padding:3px; font:inherit; }
-.mmd-edit .danger { background:#4a2320; border-color:#6b3029; color:#f3d3cf;
-  cursor:pointer; border-radius:4px; padding:4px; }
-.mmd-hint { color:#6b7280; font-size:11px; }
+/* transport -------------------------------------------------------------- */
+.mmd-transport { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
+.mmd-transport button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
+  border-radius:5px; padding:3px 10px; cursor:pointer; font:inherit; }
+.mmd-transport .mmd-clock { font-variant-numeric:tabular-nums; color:#e2564b;
+  min-width:52px; }
+.mmd-transport .mmd-range { color:#9ca3af; font-variant-numeric:tabular-nums; }
+.mmd-transport .mmd-scrub { flex:1; accent-color:#e2564b; }
+
+/* prompt boxes ----------------------------------------------------------- */
+.mmd-prompt { flex:0 0 auto; display:flex; flex-direction:column; gap:3px;
+  border:1px solid #2c313c; border-radius:6px; padding:6px 8px; background:#15181e; }
+.mmd-prompt > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-prompt textarea { min-height:44px; resize:vertical; background:transparent;
+  color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
+.mmd-prompt textarea:disabled { color:#6b7280; }
+
+.mmd-seg-fields { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
+  margin-top:3px; }
+.mmd-seg-fields label { display:flex; align-items:center; gap:4px; color:#9ca3af;
+  font-size:11px; }
+.mmd-seg-fields input, .mmd-seg-fields select { width:88px; background:#1c1f26;
+  color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 4px;
+  font:inherit; }
+.mmd-seg-fields button { background:#3a2422; color:#f3d3cf; border:1px solid #5c332d;
+  border-radius:4px; padding:2px 9px; cursor:pointer; font:inherit; }
 `;
 
 export function install() {

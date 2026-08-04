@@ -15,10 +15,13 @@ export const PHASE = 5;
 
 /** The three editable tracks, in the order they are drawn. */
 export const TRACKS = [
-  { key: "shots", label: "shots", noun: "shot" },
-  { key: "moves", label: "camera", noun: "camera move" },
-  { key: "cues", label: "audio", noun: "audio cue" },
+  { key: "shots", label: "MAIN", noun: "shot", media: ["image", "video"] },
+  { key: "moves", label: "CAMERA", noun: "camera move", media: [] },
+  { key: "cues", label: "AUDIO", noun: "audio cue", media: ["audio"] },
 ];
+
+/** Which track a piece of media belongs on. */
+export const TRACK_FOR_MEDIA = { image: "shots", video: "shots", audio: "cues" };
 
 /** Camera vocabulary; must match CAMERA_PROSE in timeline.py. */
 export const CAMERAS = [
