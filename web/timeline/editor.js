@@ -36,6 +36,9 @@ export class TimelineEditor {
 
     this.root = document.createElement("div");
     this.root.className = "mmd";
+    // Focusable so Delete can be handled here and kept away from ComfyUI, which binds
+    // the same key to "remove the selected node".
+    this.root.tabIndex = 0;
     this.root.innerHTML = `
       <div class="mmd-bar">
         <button data-media="image">⬆ Add Image</button>
@@ -107,6 +110,39 @@ export class TimelineEditor {
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
       else if (el.classList.contains("mmd-play")) this.togglePlay();
     });
+
+    // Delete / Backspace remove the selected segment.
+    //
+    // This has to listen on the document in the capture phase. Clicking a segment does
+    // not leave focus inside the widget -- LiteGraph pulls it straight back to <body> --
+    // so a listener on our own element never fires. Capture also puts us ahead of
+    // ComfyUI's handler, which binds the same key to "delete the selected node": without
+    // stopping the event, deleting a shot would delete the whole Director.
+    //
+    // Having a selection is what scopes it. Clicking anywhere outside clears that below,
+    // so we never swallow a Delete meant for the graph.
+    document.addEventListener("keydown", (event) => {
+      if (!this.selection) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        event.stopPropagation();
+        this.deleteSelected();
+      } else if (event.key === "Escape") {
+        event.stopPropagation();
+        this.selection = null;
+        this.render();
+      }
+    }, true);
+
+    // A click outside the editor gives the keyboard back to ComfyUI.
+    document.addEventListener("pointerdown", (event) => {
+      if (this.selection && !this.root.contains(event.target)) {
+        this.selection = null;
+        this.render();
+      }
+    }, true);
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     document.addEventListener("pointermove", (event) => this.move(event));
@@ -214,6 +250,9 @@ export class TimelineEditor {
   // -- gestures ------------------------------------------------------------
 
   grab(event) {
+    // Take focus so the keyboard shortcuts below apply to the timeline, not the graph.
+    this.root.focus({ preventScroll: true });
+
     const node = event.target.closest(".mmd-seg");
     const total = length(this.read());
 
