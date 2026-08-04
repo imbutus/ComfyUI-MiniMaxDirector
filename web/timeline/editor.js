@@ -13,7 +13,8 @@ import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, bounds, formatSeconds, items, length,
+  CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds, items, length,
+  neighbours,
   remove, reshape, span, toSeconds, FPS,
 } from "./model.js";
 

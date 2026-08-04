@@ -99,13 +99,33 @@ export function length(timeline) {
   return snapUp(timeline.duration || span(timeline));
 }
 
-/** Append an item to a track, starting where that track currently ends. */
+/**
+ * The hard right edge nothing may cross.
+ *
+ * An explicit duration pins the clip, and segments live inside it: set the length of the
+ * piece first, then arrange it. Without one the clip is content-sized, so there is
+ * nothing to bump into and blocks grow the timeline as they go.
+ */
+export function ceiling(timeline) {
+  return timeline.duration > 0 ? length(timeline) : Infinity;
+}
+
+/**
+ * Append an item to a track, starting where that track currently ends.
+ *
+ * A full clip is not a reason to refuse. Pressing Add and getting nothing reads as a
+ * broken button, so the segment is added at its normal length and the clip stretches to
+ * hold it -- the same rule a typed length follows.
+ */
 export function add(timeline, track, seconds = 1.5) {
   const list = items(timeline, track);
   const start = list.reduce((end, item) => Math.max(end, item.start + item.length), 0);
   const item = { start, length: Math.max(1, Math.round(seconds * FPS)), prompt: "" };
   if (track !== "cues") item.camera = "";
   list.push(item);
+
+  const end = start + item.length;
+  if (end > ceiling(timeline)) timeline.duration = end;
   return list.length - 1;
 }
 
@@ -120,6 +140,18 @@ export function remove(timeline, track, index) {
  * blocks it is passing rather than by its own members.
  */
 export function bounds(timeline, track, index, ignore = []) {
+  const [lower, upper] = neighbours(timeline, track, index, ignore);
+  return [lower, Math.min(upper, ceiling(timeline))];
+}
+
+/**
+ * The same gap, ignoring the end of the clip.
+ *
+ * Dragging is bounded by the duration -- a gesture aims at a place on screen, and the
+ * clip is that screen. A typed number is not: it says how long the segment is, and the
+ * clip grows to hold it. Both still refuse to overlap a neighbour.
+ */
+export function neighbours(timeline, track, index, ignore = []) {
   const list = items(timeline, track);
   const self = list[index];
   if (!self) return [0, Infinity];
