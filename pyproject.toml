@@ -10,9 +10,19 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = []
+classifiers = ["Operating System :: OS Independent"]
+
+[project.urls]
+Repository = "https://github.com/imbutus/ComfyUI-MiniMaxDirector"
+"Bug Tracker" = "https://github.com/imbutus/ComfyUI-MiniMaxDirector/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+
+[tool.comfy]
+PublisherId = ""  # TODO: from registry.comfy.org — the handle after the @ on your profile.
+DisplayName = "MiniMax Director"
+requires-comfyui = ">=0.30.0"  # where the MiniMax H3 nodes landed
 
 [tool.setuptools]
 package-dir = { "" = "src" }
