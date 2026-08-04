@@ -185,8 +185,8 @@
         40
       ],
       "size": [
-        560,
-        460
+        620,
+        560
       ],
       "flags": {},
       "order": 5,
@@ -208,7 +208,7 @@
           "link": 3
         },
         {
-          "name": "picture_1",
+          "name": "ref_image_0",
           "type": "IMAGE",
           "link": 4
         }
@@ -264,7 +264,7 @@
       "type": "RandomNoise",
       "pos": [
         500,
-        540
+        660
       ],
       "size": [
         300,
@@ -297,7 +297,7 @@
       "type": "KSamplerSelect",
       "pos": [
         500,
-        660
+        780
       ],
       "size": [
         300,
@@ -329,7 +329,7 @@
       "type": "BasicScheduler",
       "pos": [
         500,
-        760
+        880
       ],
       "size": [
         300,
@@ -368,12 +368,12 @@
       "id": 10,
       "type": "BasicGuider",
       "pos": [
-        840,
-        540
+        1180,
+        40
       ],
       "size": [
         280,
-        58
+        78
       ],
       "flags": {},
       "order": 9,
@@ -408,12 +408,12 @@
       "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        840,
-        640
+        1180,
+        160
       ],
       "size": [
         280,
-        130
+        150
       ],
       "flags": {},
       "order": 10,
@@ -470,12 +470,12 @@
       "id": 12,
       "type": "VAEDecode",
       "pos": [
-        1160,
-        540
+        1180,
+        350
       ],
       "size": [
-        260,
-        58
+        280,
+        78
       ],
       "flags": {},
       "order": 11,
@@ -510,12 +510,12 @@
       "id": 13,
       "type": "VAEDecodeAudio",
       "pos": [
-        1160,
-        640
+        1180,
+        470
       ],
       "size": [
-        260,
-        58
+        280,
+        78
       ],
       "flags": {},
       "order": 12,
@@ -550,12 +550,12 @@
       "id": 14,
       "type": "CreateVideo",
       "pos": [
-        1160,
-        740
+        1180,
+        590
       ],
       "size": [
-        260,
-        82
+        280,
+        106
       ],
       "flags": {},
       "order": 13,
@@ -594,12 +594,12 @@
       "id": 15,
       "type": "SaveVideo",
       "pos": [
-        1160,
-        870
+        1180,
+        740
       ],
       "size": [
         340,
-        110
+        130
       ],
       "flags": {},
       "order": 14,
@@ -625,12 +625,12 @@
       "id": 16,
       "type": "MarkdownNote",
       "pos": [
-        500,
-        900
+        1560,
+        40
       ],
       "size": [
-        560,
-        220
+        520,
+        300
       ],
       "flags": {},
       "order": 15,
@@ -639,7 +639,7 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Wire an image to `picture_1` and refer to it as `<Picture 1>` in the shot text.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
+        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Wire an image to `ref_image` and refer to it as `<Picture 1>` in the shot text.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
       ],
       "color": "#432",
       "bgcolor": "#653"
