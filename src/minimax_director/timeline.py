@@ -134,6 +134,8 @@ class Timeline:
     references: list[Reference] = field(default_factory=list)
     dialect: str = "timeline"
     fps: int = lattice.FPS
+    duration: int = 0
+    """Explicit clip length in frames. Zero means "as long as the content needs"."""
 
     # -- derived -----------------------------------------------------------
 
@@ -145,8 +147,12 @@ class Timeline:
 
     @property
     def length(self) -> int:
-        """`span` rounded up to a length H3 accepts."""
-        return lattice.snap_up(self.span)
+        """The clip length H3 will be asked for.
+
+        An explicit `duration` wins, so a director can hold a fixed runtime while
+        editing. Otherwise the content decides. Either way it lands on the lattice.
+        """
+        return lattice.snap_up(self.duration or self.span)
 
     def ordered_shots(self) -> list[Shot]:
         return sorted(self.shots, key=lambda shot: (shot.start, shot.length))
@@ -214,6 +220,7 @@ class Timeline:
                 for item in data.get("references", [])
             ],
             dialect=str(data.get("dialect", "timeline")),
+            duration=int(data.get("duration", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
 
@@ -230,6 +237,7 @@ class Timeline:
             "version": 1,
             "fps": self.fps,
             "dialect": self.dialect,
+            "duration": self.duration,
             "global_prompt": self.global_prompt,
             "shots": [
                 {

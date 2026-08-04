@@ -136,3 +136,16 @@ def test_blocks_are_ordered_shots_camera_then_audio():
     )
     prompt = compile_timeline(timeline).prompt
     assert prompt.index("Timeline:") < prompt.index("Camera:") < prompt.index("Audio:")
+
+
+def test_an_explicit_duration_overrides_the_content_length():
+    timeline = build(duration=200)
+    assert compile_timeline(timeline).length == 209  # 200 snapped up onto the lattice
+
+
+def test_duration_zero_means_let_the_content_decide():
+    assert compile_timeline(build(duration=0)).length == 73
+
+
+def test_a_short_duration_still_lands_on_the_lattice():
+    assert compile_timeline(build(duration=30)).length % 17 == 5
