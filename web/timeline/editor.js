@@ -23,11 +23,14 @@ export class TimelineEditor {
   /**
    * @param {() => object} read   parse the JSON widget
    * @param {(t: object) => void} write  serialise it back
+   * @param {object} widgets  the node's own width/height/ref_image_size widgets, which
+   *   this editor renders compactly instead of letting them span the node
    */
-  constructor(read, write) {
+  constructor(read, write, widgets = {}) {
     install();
     this.read = read;
     this.write = write;
+    this.widgets = widgets;
     this.selection = null;
     this.drag = null;
     this.zoom = 1;
@@ -50,6 +53,8 @@ export class TimelineEditor {
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
       </div>
+
+      <div class="mmd-settings"></div>
 
       <div class="mmd-stage">
         <div class="mmd-labels">
@@ -85,6 +90,7 @@ export class TimelineEditor {
         <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
       </div>`;
 
+    this.settings = this.root.querySelector(".mmd-settings");
     this.stage = this.root.querySelector(".mmd-scroll");
     this.canvas = this.root.querySelector(".mmd-canvas");
     this.ruler = this.root.querySelector(".mmd-ruler");
@@ -132,7 +138,7 @@ export class TimelineEditor {
       } else if (event.key === "Escape") {
         event.stopPropagation();
         this.selection = null;
-        this.render();
+        this.applySelection();
       }
     }, true);
 
@@ -140,11 +146,12 @@ export class TimelineEditor {
     document.addEventListener("pointerdown", (event) => {
       if (this.selection && !this.root.contains(event.target)) {
         this.selection = null;
-        this.render();
+        this.applySelection();
       }
     }, true);
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
+    this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     document.addEventListener("pointermove", (event) => this.move(event));
     document.addEventListener("pointerup", () => { this.drag = null; });
 
@@ -250,8 +257,8 @@ export class TimelineEditor {
   // -- gestures ------------------------------------------------------------
 
   grab(event) {
-    // Take focus so the keyboard shortcuts below apply to the timeline, not the graph.
-    this.root.focus({ preventScroll: true });
+    // An open inline editor owns its own clicks; starting a drag would close it.
+    if (event.target.classList.contains("mmd-inline")) return;
 
     const node = event.target.closest(".mmd-seg");
     const total = length(this.read());
@@ -261,7 +268,8 @@ export class TimelineEditor {
       const box = this.canvas.getBoundingClientRect();
       this.playhead = Math.max(0, Math.min(total, (event.clientX - box.left) / this.scale(total)));
       this.selection = null;
-      this.render();
+      this.renderPlayhead(total);
+      this.applySelection();
       return;
     }
 
@@ -281,7 +289,82 @@ export class TimelineEditor {
       length: item.length,
       mode: offset <= EDGE ? "start" : offset >= box.width - EDGE ? "end" : "body",
     };
-    this.render();
+    this.applySelection();
+  }
+
+  /**
+   * Update the selection without rebuilding the track DOM.
+   *
+   * A full render on pointerdown replaces every segment element, so the second click of
+   * a double-click lands on a node that did not receive the first one and the dblclick
+   * event never reaches the segment. Selection is a class toggle; only document changes
+   * justify a re-render.
+   */
+  applySelection() {
+    for (const node of this.canvas.querySelectorAll(".mmd-seg.sel")) {
+      node.classList.remove("sel");
+    }
+    if (this.selection) {
+      this.canvas
+        .querySelector(`[data-track="${this.selection.track}"] [data-index="${this.selection.index}"]`)
+        ?.classList.add("sel");
+    }
+    this.renderPanel(this.read());
+  }
+
+  /**
+   * Double-click a segment to write in it.
+   *
+   * The prompt box below works, but reads like a form. Editing where the text already
+   * is keeps attention on the timeline, which is where the shape of the clip lives.
+   */
+  editInPlace(event) {
+    const node = event.target.closest(".mmd-seg");
+    if (!node) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const track = node.parentElement.dataset.track;
+    const index = Number(node.dataset.index);
+    const item = items(this.read(), track)[index];
+    if (!item) return;
+
+    this.selection = { track, index };
+    node.querySelector(".mmd-inline")?.remove();
+
+    const box = document.createElement("textarea");
+    box.className = "mmd-inline";
+    box.value = item.prompt || "";
+    node.appendChild(box);
+    box.focus();
+    box.select();
+
+    const save = () => {
+      const next = this.read();
+      const target = items(next, track)[index];
+      if (target) target.prompt = box.value;
+      box.remove();
+      this.commit(next);
+    };
+
+    box.addEventListener("input", () => {
+      const next = this.read();
+      const target = items(next, track)[index];
+      if (!target) return;
+      target.prompt = box.value;
+      this.write(next);
+      this.segPrompt.value = box.value;
+    });
+    box.addEventListener("blur", save);
+    box.addEventListener("keydown", (key) => {
+      key.stopPropagation();
+      // Enter commits, Shift+Enter keeps the newline. Escape also commits, because the
+      // text was already written through on every keystroke -- nothing to roll back to.
+      if ((key.key === "Enter" && !key.shiftKey) || key.key === "Escape") {
+        key.preventDefault();
+        box.blur();
+      }
+    });
   }
 
   move(event) {
@@ -327,6 +410,64 @@ export class TimelineEditor {
 
     this.renderPlayhead(total);
     this.renderPanel(timeline);
+    this.renderSettings(timeline);
+  }
+
+  /**
+   * The clip-level settings, in one compact row.
+   *
+   * ComfyUI gives every widget the full width of the node. At 1380px that turns four
+   * short numbers into four near-empty bars, so `width`, `height` and `ref_image_size`
+   * are hidden on the node and mirrored here. Writing back to the same widget objects
+   * keeps the node the single source of truth -- the graph still serialises normally.
+   */
+  renderSettings(timeline) {
+    const seconds = timeline.duration ? toSeconds(timeline.duration) : 0;
+    const value = (name) => this.widgets[name]?.value;
+
+    this.settings.innerHTML = `
+      <label>duration
+        <input class="s-duration" type="number" min="0" step="0.1" value="${seconds.toFixed(2)}">
+        <span class="unit">s</span>
+      </label>
+      <label>fps <span class="fixed">${FPS}</span></label>
+      <label>width <input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
+      <label>height <input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
+      <label>ref size
+        <select class="s-ref">
+          ${["match", "max"].map((o) =>
+            `<option value="${o}"${o === value("ref_image_size") ? " selected" : ""}>${o}</option>`).join("")}
+        </select>
+      </label>
+      <label>dialect
+        <select class="s-dialect">
+          ${["timeline", "shots"].map((o) =>
+            `<option value="${o}"${o === (timeline.dialect || "timeline") ? " selected" : ""}>${o}</option>`).join("")}
+        </select>
+      </label>
+      <span class="mmd-grow"></span>
+      <span class="hint">0 duration = fit the content</span>`;
+
+    const setWidget = (name, raw) => {
+      const widget = this.widgets[name];
+      if (!widget) return;
+      widget.value = raw;
+      widget.callback?.(raw);
+    };
+
+    this.settings.querySelector(".s-duration").onchange = (e) => {
+      const next = this.read();
+      next.duration = Math.max(0, Math.round(Number(e.target.value) * FPS));
+      this.commit(next);
+    };
+    this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
+    this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
+    this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);
+    this.settings.querySelector(".s-dialect").onchange = (e) => {
+      const next = this.read();
+      next.dialect = e.target.value;
+      this.commit(next);
+    };
   }
 
   renderRuler(total, scale) {

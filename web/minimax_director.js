@@ -43,9 +43,23 @@ function attach(node) {
   json.computeSize = () => [0, -4];
   if (json.inputEl) json.inputEl.style.display = "none";
 
+  // The clip settings are short numbers, and ComfyUI gives every widget the node's full
+  // width. At 1380px that is four near-empty bars, so they are hidden here and drawn
+  // compactly inside the editor -- still the same widget objects, so the graph
+  // serialises exactly as before.
+  const settings = {};
+  for (const name of ["width", "height", "ref_image_size"]) {
+    const widget = node.widgets?.find((w) => w.name === name);
+    if (!widget) continue;
+    settings[name] = widget;
+    widget.hidden = true;
+    widget.computeSize = () => [0, -4];
+  }
+
   const editor = new TimelineEditor(
     () => parse(json.value),
     (timeline) => { json.value = serialize(timeline); },
+    settings,
   );
 
   const widget = node.addDOMWidget(STATE_WIDGET + "_editor", "minimax_director", editor.root, {

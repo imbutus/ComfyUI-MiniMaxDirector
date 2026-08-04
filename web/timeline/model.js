@@ -87,9 +87,10 @@ export function span(timeline) {
   return ends.length ? Math.max(...ends) : 0;
 }
 
-/** Clip length: the span, snapped up to the lattice. */
+/** Clip length: an explicit duration if set, else the content, snapped to the lattice.
+ *  Mirrors `Timeline.length` in timeline.py -- these two must never disagree. */
 export function length(timeline) {
-  return snapUp(span(timeline));
+  return snapUp(timeline.duration || span(timeline));
 }
 
 /** Append an item to a track, starting where that track currently ends. */

@@ -65,6 +65,24 @@ const CSS = `
 .mmd-track[data-track="cues"]  .mmd-seg { background:#5d4a22; }
 .mmd-track .mmd-seg.has-media { background:#0d1014; }
 
+.mmd-seg .mmd-inline { position:absolute; inset:2px; z-index:6; resize:none;
+  background:#0f1216; color:#f3f4f6; border:1px solid #6ea8c4; border-radius:3px;
+  padding:4px 6px; font:inherit; outline:none; }
+
+/* settings row ----------------------------------------------------------- */
+.mmd-settings { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  flex:0 0 auto; padding:5px 8px; background:#181c23; border:1px solid #2c313c;
+  border-radius:6px; }
+.mmd-settings label { display:flex; align-items:center; gap:5px; color:#9ca3af;
+  font-size:11px; }
+.mmd-settings input, .mmd-settings select { width:78px; background:#1c1f26;
+  color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 5px;
+  font:inherit; }
+.mmd-settings select { width:96px; }
+.mmd-settings .unit, .mmd-settings .fixed { color:#e5e7eb; }
+.mmd-settings .hint { color:#6b7280; font-size:11px; }
+.mmd-settings .mmd-grow { flex:1; }
+
 /* transport -------------------------------------------------------------- */
 .mmd-transport { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
 .mmd-transport button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
