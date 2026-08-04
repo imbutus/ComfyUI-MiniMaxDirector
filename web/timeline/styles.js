@@ -125,6 +125,8 @@ const CSS = `
   color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 5px;
   font:inherit; }
 .mmd-settings select { width:96px; }
+.mmd-settings .mmd-derived { color:#e5e7eb; font-variant-numeric:tabular-nums;
+  min-width:38px; text-align:right; }
 .mmd-settings .mmd-unit, .mmd-settings .mmd-value { color:#e5e7eb; }
 .mmd-settings .mmd-hint { color:#6b7280; font-size:11px; }
 .mmd-settings .mmd-grow { flex:1; }

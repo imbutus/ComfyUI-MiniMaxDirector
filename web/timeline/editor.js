@@ -41,6 +41,14 @@ const ICON = {
 const EDGE = 7;
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
+/** One lattice step, in seconds, used as the inputs' `step`.
+ *
+ * `min` has to be the first legal length rather than zero: a browser steps from `min`,
+ * and legal lengths are 17n+**5** frames. Basing the step at zero walks 17-frame
+ * multiples that all miss the grid by five, so every arrow press would need correcting.
+ */
+const STEP = (17 / 24).toFixed(4);
+const BASE = (5 / 24).toFixed(4);
 const TAIL = 34;
 const TYPING_PAUSE = 500;
 
@@ -678,6 +686,26 @@ export class TimelineEditor {
     this.renderSettings(timeline);
   }
 
+  renderRuler(total, scale) {
+    const seconds = toSeconds(total);
+    const perSecond = 24 * scale;
+    const step = perSecond > 90 ? 0.5 : perSecond > 45 ? 1 : Math.ceil(60 / perSecond);
+
+    let html = "";
+    for (let at = 0; at <= seconds + 0.001; at += step) {
+      const label = step < 1 ? at.toFixed(2) : String(Math.round(at));
+      html += `<span style="left:${at * perSecond}px">${label}</span>`;
+    }
+    this.ruler.innerHTML = html;
+  }
+
+  renderPlayhead(total) {
+    const scale = this.scale(total);
+    this.head.style.left = `${this.playhead * scale}px`;
+    this.clock.textContent = `${toSeconds(this.playhead).toFixed(2)}s`;
+    this.scrub.value = String(Math.round((this.playhead / Math.max(total, 1)) * 1000));
+  }
+
   /**
    * What the last edit did, in words.
    *
@@ -706,39 +734,33 @@ export class TimelineEditor {
    * keeps the node the single source of truth -- the graph still serialises normally.
    */
   renderSettings(timeline) {
-    const value = (name) => this.widgets[name]?.value;
     const [from, to] = renderWindow(timeline);
+    const total = length(timeline);
     const secs = (frames) => toSeconds(frames || 0).toFixed(2);
+    const widget = (name) => this.widgets[name]?.value;
 
-    // The fields show what the clip *is*, not the raw overrides. A blank override reads
-    // as the value it resolves to, so the row always describes the real render.
-    this.settings.innerHTML = `
-      <label><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1" value="${secs(from)}"><span class="mmd-unit">s</span></label>
-      <label><span class="mmd-key">end</span><input class="s-end" type="number" min="0" step="0.1" value="${secs(to)}"><span class="mmd-unit">s</span></label>
-      <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1" value="${secs(length(timeline))}"><span class="mmd-unit">s</span><span class="mmd-unit">${length(timeline)}f</span></label>
-      <label><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps</span></label>
-      <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
-      <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
-      <label><span class="mmd-key">resize</span>
-        <select class="s-ref">
-          ${["match", "max"].map((o) =>
-            `<option value="${o}"${o === value("ref_image_size") ? " selected" : ""}>${o}</option>`).join("")}
-        </select>
-      </label>
-      <label><span class="mmd-key">dialect</span>
-        <select class="s-dialect">
-          ${["timeline", "shots"].map((o) =>
-            `<option value="${o}"${o === (timeline.dialect || "timeline") ? " selected" : ""}>${o}</option>`).join("")}
-        </select>
-      </label>
-      <span class="mmd-grow"></span>
-      <span class="mmd-hint">${this.snapNote(timeline)}</span>
-      <span class="mmd-build" title="extension build">${BUILD}</span>`;
+    if (!this.settings.firstChild) this.buildSettings();
 
-    // Flash the field whose value the lattice had to correct. This runs after the row
-    // is written, not while the markup is being built -- the element addressed then is
-    // the one about to be thrown away.
-    if (this.asked && this.asked.frames && this.asked.frames !== length(timeline)) {
+    // Values are written into the existing controls rather than re-rendered. Rebuilding
+    // the markup on every commit destroyed whatever was being typed and threw away the
+    // caret -- a field would silently revert to the stored value mid-edit.
+    const set = (selector, value) => {
+      const node = this.settings.querySelector(selector);
+      if (node && node !== document.activeElement) node.value = value;
+    };
+    set(".s-start", secs(from));
+    set(".s-end", secs(to));
+    set(".s-duration", secs(total));
+    set(".s-width", widget("width") ?? 1344);
+    set(".s-height", widget("height") ?? 768);
+    set(".s-ref", widget("ref_image_size") ?? "match");
+    set(".s-dialect", timeline.dialect || "timeline");
+
+    this.settings.querySelector(".mmd-frames").textContent = `${total} frames`;
+    this.settings.querySelector(".mmd-hint").textContent = this.snapNote(timeline);
+
+    // Flash the field whose value the lattice had to correct.
+    if (this.asked && this.asked.frames && this.asked.frames !== total) {
       const field = this.settings.querySelector(`.${this.asked.field}`);
       if (field) {
         field.classList.remove("mmd-snapped");
@@ -746,70 +768,54 @@ export class TimelineEditor {
         field.classList.add("mmd-snapped");
       }
     }
+  }
 
-    const setWidget = (name, raw) => {
-      const widget = this.widgets[name];
-      if (!widget) return;
-      widget.value = raw;
-      widget.callback?.(raw);
-    };
+  /** The settings row, built once. */
+  buildSettings() {
+    this.settings.innerHTML = `
+      <label><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">end</span><input class="s-end" type="number" min="${BASE}" step="${STEP}"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="${BASE}" step="${STEP}"><span class="mmd-unit">s</span><span class="mmd-unit mmd-frames"></span></label>
+      <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
+      <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
+      <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
+      <label><span class="mmd-key">resize</span>
+        <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
+      </label>
+      <label><span class="mmd-key">dialect</span>
+        <select class="s-dialect">${["timeline", "shots"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
+      </label>
+      <span class="mmd-grow"></span>
+      <span class="mmd-hint"></span>
+      <span class="mmd-build" title="extension build">${BUILD}</span>`;
 
-    // start / end / duration describe two facts, so editing any one resolves the
-    // others rather than letting them drift apart.
     const frames = (input) => {
       const asked = Math.max(0, Math.round(Number(input.value) * FPS));
       this.asked = { field: input.className, frames: asked };
       return asked;
     };
 
-    this.settings.querySelector(".s-start").onchange = (e) => {
-      const next = this.read();
-      const [, finish] = renderWindow(next);
-      next.start = frames(e.target);
-      // Hold the end still; the duration absorbs the move, as an in-point should.
-      next.duration = Math.max(0, finish - next.start);
-      this.commit(next);
+    const bind = (selector, apply) => {
+      const node = this.settings.querySelector(selector);
+      node.onchange = () => { const next = this.read(); apply(next, node); this.commit(next); };
     };
 
-    this.settings.querySelector(".s-end").onchange = (e) => {
-      const next = this.read();
-      next.duration = Math.max(0, frames(e.target) - Math.max(0, next.start || 0));
-      this.commit(next);
-    };
+    bind(".s-start", (next, node) => { next.start = frames(node); });
+    bind(".s-end", (next, node) => {
+      next.duration = Math.max(0, frames(node) - Math.max(0, next.start || 0));
+    });
+    bind(".s-duration", (next, node) => { next.duration = frames(node); });
+    bind(".s-dialect", (next, node) => { next.dialect = node.value; });
 
-    this.settings.querySelector(".s-duration").onchange = (e) => {
-      const next = this.read();
-      next.duration = frames(e.target);
-      this.commit(next);
+    const setWidget = (name, raw) => {
+      const w = this.widgets[name];
+      if (!w) return;
+      w.value = raw;
+      w.callback?.(raw);
     };
     this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);
-    this.settings.querySelector(".s-dialect").onchange = (e) => {
-      const next = this.read();
-      next.dialect = e.target.value;
-      this.commit(next);
-    };
-  }
-
-  renderRuler(total, scale) {
-    const seconds = toSeconds(total);
-    const perSecond = 24 * scale;
-    const step = perSecond > 90 ? 0.5 : perSecond > 45 ? 1 : Math.ceil(60 / perSecond);
-
-    let html = "";
-    for (let at = 0; at <= seconds + 0.001; at += step) {
-      const label = step < 1 ? at.toFixed(2) : String(Math.round(at));
-      html += `<span style="left:${at * perSecond}px">${label}</span>`;
-    }
-    this.ruler.innerHTML = html;
-  }
-
-  renderPlayhead(total) {
-    const scale = this.scale(total);
-    this.head.style.left = `${this.playhead * scale}px`;
-    this.clock.textContent = `${toSeconds(this.playhead).toFixed(2)}s`;
-    this.scrub.value = String(Math.round((this.playhead / Math.max(total, 1)) * 1000));
   }
 
   segment(track, index, item, scale) {

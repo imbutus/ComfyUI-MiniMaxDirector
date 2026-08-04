@@ -115,6 +115,13 @@ export function renderWindow(timeline) {
   return [start, start + length(timeline)];
 }
 
+/** Every clip length H3 accepts, up to its maximum. Mirrors `lattice.ladder`. */
+export function ladder(maxFrames = 3600) {
+  const out = [];
+  for (let frames = PHASE; frames <= maxFrames; frames += STRIDE) out.push(frames);
+  return out;
+}
+
 /** Append an item to a track, starting where that track currently ends. */
 export function add(timeline, track, seconds = 1.5) {
   const list = items(timeline, track);
