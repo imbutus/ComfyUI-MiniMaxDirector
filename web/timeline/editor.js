@@ -346,8 +346,9 @@ export class TimelineEditor {
     const timeline = this.read();
     const firstImage = kind === "image"
       && !items(timeline, track).some((entry) => entry.media?.kind === "image");
-    const target =
-      this.selection?.track === track ? this.selection.index : add(timeline, track, 2);
+    // Always a new segment, never a swap. Dropping the file onto whatever happened to
+    // be selected silently destroyed the media already there -- and "add" should add.
+    const target = add(timeline, track, 2);
     const item = items(timeline, track)[target];
     item.media = record;
     this.selection = { track, index: target };
