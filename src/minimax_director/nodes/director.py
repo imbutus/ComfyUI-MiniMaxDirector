@@ -2,32 +2,23 @@
 
 from __future__ import annotations
 
-from .. import core, lattice
+from .. import core, lattice, references
 from ..compile import compile_timeline
 from ..lint import lint
-from ..timeline import Reference, Timeline
+from ..timeline import Timeline
 
 CATEGORY = "MiniMaxDirector"
 
-MAX_PICTURES = 3
-MAX_AUDIO = 1
-MAX_VIDEO = 1
-"""Slot counts the official reference template wires. Raise them once a real run
-confirms the model accepts more."""
+MAX_PICTURES = 9
+MAX_VIDEOS = 3
+MAX_AUDIOS = 3
+"""Slot counts declared by the core node's autogrow templates
+(`ref_image_` 0-9, `ref_video_` 0-3, `ref_video_audio_` 0-3, `ref_audio_` 0-3)."""
 
 
-def _references(kwargs: dict) -> list[Reference]:
-    """Which reference slots are actually connected, in token order."""
-    found: list[Reference] = []
-    for kind, count, prefix in (
-        ("picture", MAX_PICTURES, "picture"),
-        ("audio", MAX_AUDIO, "audio"),
-        ("video", MAX_VIDEO, "video"),
-    ):
-        for index in range(1, count + 1):
-            if kwargs.get(f"{prefix}_{index}") is not None:
-                found.append(Reference(kind=kind, index=index))  # type: ignore[arg-type]
-    return found
+def _wired(prefix: str, count: int, given: dict) -> list:
+    """Slot values in order, `None` where nothing is connected."""
+    return [given.get(f"{prefix}_{index}") for index in range(1, count + 1)]
 
 
 def _report(issues) -> str:
@@ -39,25 +30,29 @@ class MiniMaxDirector:
 
     @classmethod
     def INPUT_TYPES(cls):
-        pictures = {
-            f"picture_{index}": ("IMAGE",) for index in range(1, MAX_PICTURES + 1)
+        optional = {
+            "audio_vae": ("VAE",),
+            "first_frame": ("IMAGE",),
+            "last_frame": ("IMAGE",),
         }
+        for index in range(1, MAX_PICTURES + 1):
+            optional[f"picture_{index}"] = ("IMAGE",)
+        for index in range(1, MAX_VIDEOS + 1):
+            optional[f"video_{index}"] = ("IMAGE",)
+            optional[f"video_audio_{index}"] = ("AUDIO",)
+        for index in range(1, MAX_AUDIOS + 1):
+            optional[f"audio_{index}"] = ("AUDIO",)
+
         return {
             "required": {
                 "clip": ("CLIP",),
                 "vae": ("VAE",),
                 "timeline": ("STRING", {"multiline": True, "default": ""}),
-                "width": ("INT", {"default": 1344, "min": 64, "max": 4096, "step": 32}),
-                "height": ("INT", {"default": 768, "min": 64, "max": 4096, "step": 32}),
+                "width": ("INT", {"default": 1344, "min": 32, "max": 4096, "step": 32}),
+                "height": ("INT", {"default": 768, "min": 32, "max": 4096, "step": 32}),
+                "ref_image_size": (["match", "max"], {"default": "match"}),
             },
-            "optional": {
-                "audio_vae": ("VAE",),
-                "first_frame": ("IMAGE",),
-                "last_frame": ("IMAGE",),
-                "audio_1": ("AUDIO",),
-                "video_1": ("IMAGE",),
-                **pictures,
-            },
+            "optional": optional,
         }
 
     RETURN_TYPES = ("CONDITIONING", "LATENT", "STRING", "INT", "STRING")
@@ -66,8 +61,15 @@ class MiniMaxDirector:
     CATEGORY = CATEGORY
     DESCRIPTION = __doc__
 
-    def direct(self, clip, vae, timeline, width, height, **optional):
-        document = Timeline.from_json(timeline).with_references(_references(optional))
+    def direct(self, clip, vae, timeline, width, height, ref_image_size="match", **optional):
+        pictures = _wired("picture", MAX_PICTURES, optional)
+        videos = _wired("video", MAX_VIDEOS, optional)
+        video_audios = _wired("video_audio", MAX_VIDEOS, optional)
+        audios = _wired("audio", MAX_AUDIOS, optional)
+
+        document = Timeline.from_json(timeline).with_references(
+            references.assign(pictures, videos, video_audios, audios)
+        )
         compiled = compile_timeline(document)
         report = _report(lint(document))
 
@@ -80,18 +82,23 @@ class MiniMaxDirector:
             "length": compiled.length,
         }
 
-        references = {
-            "audio_vae": optional.get("audio_vae"),
-            "ref_image_0": optional.get("picture_1"),
-            "ref_image_1": optional.get("picture_2"),
-            "ref_image_2": optional.get("picture_3"),
-            "ref_video_0": optional.get("video_1"),
-            "ref_audio_0": optional.get("audio_1"),
-        }
+        # Autogrow inputs arrive as dicts keyed by slot name; a video's soundtrack is
+        # paired to it by the numeric suffix, so slot numbers are preserved.
+        ref_images = references.slots("ref_image_", pictures)
+        ref_videos = references.slots("ref_video_", videos)
+        ref_video_audios = references.slots("ref_video_audio_", video_audios)
+        ref_audios = references.slots("ref_audio_", audios)
 
-        if any(value is not None for value in references.values()):
+        if ref_images or ref_videos or ref_audios:
             positive, latent = core.call(
-                "MiniMaxH3ReferenceToVideo", **shared, **references
+                "MiniMaxH3ReferenceToVideo",
+                **shared,
+                audio_vae=optional.get("audio_vae"),
+                ref_image_size=ref_image_size,
+                ref_images=ref_images or None,
+                ref_videos=ref_videos or None,
+                ref_video_audios=ref_video_audios or None,
+                ref_audios=ref_audios or None,
             )
         else:
             positive, latent = core.call(
