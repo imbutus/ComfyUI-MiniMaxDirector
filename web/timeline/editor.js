@@ -749,8 +749,10 @@ export class TimelineEditor {
       if (node && node !== document.activeElement) node.value = value;
     };
     set(".s-start", secs(from));
-    set(".s-end", secs(to));
     set(".s-duration", secs(total));
+    // `end` is derived, so it is written as text: two editable boxes for one number
+    // meant every edit to either one bounced back off the other.
+    this.settings.querySelector(".s-end").textContent = secs(to);
     set(".s-width", widget("width") ?? 1344);
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
@@ -774,7 +776,7 @@ export class TimelineEditor {
   buildSettings() {
     this.settings.innerHTML = `
       <label><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
-      <label><span class="mmd-key">end</span><input class="s-end" type="number" min="${BASE}" step="${STEP}"><span class="mmd-unit">s</span></label>
+      <label title="end = start + duration, so it is shown rather than typed"><span class="mmd-key">end</span><span class="s-end mmd-derived"></span><span class="mmd-unit">s</span></label>
       <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="${BASE}" step="${STEP}"><span class="mmd-unit">s</span><span class="mmd-unit mmd-frames"></span></label>
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
@@ -798,12 +800,15 @@ export class TimelineEditor {
     const bind = (selector, apply) => {
       const node = this.settings.querySelector(selector);
       node.onchange = () => { const next = this.read(); apply(next, node); this.commit(next); };
+      // Enter means "I am done": drop focus so the field is rewritten with the value
+      // that will actually be rendered, and flashes if the lattice moved it. Holding a
+      // typed number that the clip is not using would be the more confusing choice.
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { event.preventDefault(); node.blur(); }
+      });
     };
 
     bind(".s-start", (next, node) => { next.start = frames(node); });
-    bind(".s-end", (next, node) => {
-      next.duration = Math.max(0, frames(node) - Math.max(0, next.start || 0));
-    });
     bind(".s-duration", (next, node) => { next.duration = frames(node); });
     bind(".s-dialect", (next, node) => { next.dialect = node.value; });
 
