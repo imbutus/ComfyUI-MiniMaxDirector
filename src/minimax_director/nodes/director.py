@@ -1,6 +1,14 @@
-"""The nodes ComfyUI sees."""
+"""The nodes ComfyUI sees.
+
+These use ComfyUI's V3 schema, for one reason that matters: `io.Autogrow`. Declaring
+nine picture slots as plain optional inputs puts a wall of 27 sockets on the node and
+pushes the timeline off the bottom of it. Autogrow shows only the slots in use plus one
+spare, which is what the core H3 node does and what leaves room for the editor.
+"""
 
 from __future__ import annotations
+
+from comfy_api.latest import ComfyExtension, io
 
 from .. import core, lattice, references
 from ..compile import compile_timeline
@@ -8,67 +16,90 @@ from ..lint import lint
 from ..timeline import Timeline
 
 CATEGORY = "MiniMaxDirector"
+MAX_RESOLUTION = 16384
 
 MAX_PICTURES = 9
 MAX_VIDEOS = 3
 MAX_AUDIOS = 3
-"""Slot counts declared by the core node's autogrow templates
-(`ref_image_` 0-9, `ref_video_` 0-3, `ref_video_audio_` 0-3, `ref_audio_` 0-3)."""
+"""Mirrors the core node's autogrow templates exactly."""
+
+DEFAULT_TIMELINE = """{
+  "version": 1,
+  "fps": 24,
+  "dialect": "timeline",
+  "global_prompt": "",
+  "shots": [],
+  "cues": [],
+  "references": []
+}"""
 
 
-def _wired(prefix: str, count: int, given: dict) -> list:
-    """Slot values in order, `None` where nothing is connected."""
-    return [given.get(f"{prefix}_{index}") for index in range(1, count + 1)]
+def _grow(name: str, prefix: str, input_type, maximum: int):
+    return io.Autogrow.Input(
+        name,
+        optional=True,
+        template=io.Autogrow.TemplatePrefix(
+            input=input_type, prefix=prefix, min=0, max=maximum
+        ),
+    )
 
 
 def _report(issues) -> str:
     return "\n".join(str(issue) for issue in issues)
 
 
-class MiniMaxDirector:
-    """Compile a timeline and hand H3 its conditioning and starting latent."""
+class MiniMaxDirector(io.ComfyNode):
+    """Lay out shots on a timeline; get back H3's conditioning and starting latent."""
 
     @classmethod
-    def INPUT_TYPES(cls):
-        optional = {
-            "audio_vae": ("VAE",),
-            "first_frame": ("IMAGE",),
-            "last_frame": ("IMAGE",),
-        }
-        for index in range(1, MAX_PICTURES + 1):
-            optional[f"picture_{index}"] = ("IMAGE",)
-        for index in range(1, MAX_VIDEOS + 1):
-            optional[f"video_{index}"] = ("IMAGE",)
-            optional[f"video_audio_{index}"] = ("AUDIO",)
-        for index in range(1, MAX_AUDIOS + 1):
-            optional[f"audio_{index}"] = ("AUDIO",)
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirector",
+            display_name="MiniMax Director",
+            category=CATEGORY,
+            description=(
+                "Timeline director for MiniMax H3. Shots and audio cues compile into the "
+                "structured prompt H3 reads, and the clip snaps to a valid length."
+            ),
+            inputs=[
+                io.Clip.Input("clip"),
+                io.Vae.Input("vae"),
+                io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE),
+                io.Int.Input("width", default=1344, min=32, max=MAX_RESOLUTION, step=32),
+                io.Int.Input("height", default=768, min=32, max=MAX_RESOLUTION, step=32),
+                io.Combo.Input(
+                    "ref_image_size", options=["match", "max"], default="match",
+                    tooltip="How reference images are sized; 'max' is slower but keeps identity.",
+                ),
+                io.Vae.Input("audio_vae", optional=True),
+                io.Image.Input("first_frame", optional=True),
+                io.Image.Input("last_frame", optional=True),
+                _grow("ref_images", "ref_image_", io.Image.Input("ref_image"), MAX_PICTURES),
+                _grow("ref_videos", "ref_video_", io.Image.Input("ref_video"), MAX_VIDEOS),
+                _grow("ref_video_audios", "ref_video_audio_",
+                      io.Audio.Input("ref_video_audio"), MAX_VIDEOS),
+                _grow("ref_audios", "ref_audio_", io.Audio.Input("ref_audio"), MAX_AUDIOS),
+            ],
+            outputs=[
+                io.Conditioning.Output(display_name="positive"),
+                io.Latent.Output(display_name="latent"),
+                io.String.Output(display_name="prompt"),
+                io.Int.Output(display_name="length"),
+                io.String.Output(display_name="report"),
+            ],
+        )
 
-        return {
-            "required": {
-                "clip": ("CLIP",),
-                "vae": ("VAE",),
-                "timeline": ("STRING", {"multiline": True, "default": ""}),
-                "width": ("INT", {"default": 1344, "min": 32, "max": 4096, "step": 32}),
-                "height": ("INT", {"default": 768, "min": 32, "max": 4096, "step": 32}),
-                "ref_image_size": (["match", "max"], {"default": "match"}),
-            },
-            "optional": optional,
-        }
-
-    RETURN_TYPES = ("CONDITIONING", "LATENT", "STRING", "INT", "STRING")
-    RETURN_NAMES = ("positive", "latent", "prompt", "length", "report")
-    FUNCTION = "direct"
-    CATEGORY = CATEGORY
-    DESCRIPTION = __doc__
-
-    def direct(self, clip, vae, timeline, width, height, ref_image_size="match", **optional):
-        pictures = _wired("picture", MAX_PICTURES, optional)
-        videos = _wired("video", MAX_VIDEOS, optional)
-        video_audios = _wired("video_audio", MAX_VIDEOS, optional)
-        audios = _wired("audio", MAX_AUDIOS, optional)
+    @classmethod
+    def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",
+                audio_vae=None, first_frame=None, last_frame=None, ref_images=None,
+                ref_videos=None, ref_video_audios=None, ref_audios=None) -> io.NodeOutput:
+        pictures = references.ordered("ref_image_", ref_images, MAX_PICTURES)
+        videos = references.ordered("ref_video_", ref_videos, MAX_VIDEOS)
+        soundtracks = references.ordered("ref_video_audio_", ref_video_audios, MAX_VIDEOS)
+        audios = references.ordered("ref_audio_", ref_audios, MAX_AUDIOS)
 
         document = Timeline.from_json(timeline).with_references(
-            references.assign(pictures, videos, video_audios, audios)
+            references.assign(pictures, videos, soundtracks, audios)
         )
         compiled = compile_timeline(document)
         report = _report(lint(document))
@@ -82,85 +113,88 @@ class MiniMaxDirector:
             "length": compiled.length,
         }
 
-        # Autogrow inputs arrive as dicts keyed by slot name; a video's soundtrack is
-        # paired to it by the numeric suffix, so slot numbers are preserved.
-        ref_images = references.slots("ref_image_", pictures)
-        ref_videos = references.slots("ref_video_", videos)
-        ref_video_audios = references.slots("ref_video_audio_", video_audios)
-        ref_audios = references.slots("ref_audio_", audios)
-
         if ref_images or ref_videos or ref_audios:
             positive, latent = core.call(
                 "MiniMaxH3ReferenceToVideo",
                 **shared,
-                audio_vae=optional.get("audio_vae"),
+                audio_vae=audio_vae,
                 ref_image_size=ref_image_size,
-                ref_images=ref_images or None,
-                ref_videos=ref_videos or None,
-                ref_video_audios=ref_video_audios or None,
-                ref_audios=ref_audios or None,
+                ref_images=ref_images,
+                ref_videos=ref_videos,
+                ref_video_audios=ref_video_audios,
+                ref_audios=ref_audios,
             )
         else:
             positive, latent = core.call(
                 "MiniMaxH3ImageToVideo",
                 **shared,
-                first_frame=optional.get("first_frame"),
-                last_frame=optional.get("last_frame"),
+                first_frame=first_frame,
+                last_frame=last_frame,
             )
 
-        return positive, latent, compiled.prompt, compiled.length, report
+        return io.NodeOutput(positive, latent, compiled.prompt, compiled.length, report)
 
 
-class MiniMaxDirectorCompile:
+class MiniMaxDirectorCompile(io.ComfyNode):
     """Compile a timeline to text without touching the model.
 
-    The same code path the director takes, exposed on its own so a prompt can be
-    reviewed, diffed, or edited by hand before it costs a generation.
+    The same code path the director takes, so a prompt can be reviewed or hand-edited
+    before it costs a generation.
     """
 
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "timeline": ("STRING", {"multiline": True, "default": ""}),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorCompile",
+            display_name="MiniMax Director — Compile",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE)],
+            outputs=[
+                io.String.Output(display_name="prompt"),
+                io.Int.Output(display_name="length"),
+                io.Float.Output(display_name="seconds"),
+                io.String.Output(display_name="report"),
+            ],
+        )
 
-    RETURN_TYPES = ("STRING", "INT", "FLOAT", "STRING")
-    RETURN_NAMES = ("prompt", "length", "seconds", "report")
-    FUNCTION = "build"
-    CATEGORY = CATEGORY
-    OUTPUT_NODE = True
-    DESCRIPTION = __doc__
-
-    def build(self, timeline):
+    @classmethod
+    def execute(cls, timeline) -> io.NodeOutput:
         document = Timeline.from_json(timeline)
         compiled = compile_timeline(document)
-        report = _report(lint(document))
-        return compiled.prompt, compiled.length, compiled.duration, report
+        return io.NodeOutput(
+            compiled.prompt, compiled.length, compiled.duration, _report(lint(document))
+        )
 
 
-class MiniMaxDirectorLength:
-    """Snap a duration in seconds to a length H3 accepts.
-
-    Replaces the inline math expression the official templates carry, and says out loud
-    what it is doing.
-    """
+class MiniMaxDirectorLength(io.ComfyNode):
+    """Snap a duration in seconds to a length H3 accepts."""
 
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "seconds": ("FLOAT", {"default": 5.0, "min": 0.2, "max": 120.0, "step": 0.1}),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorLength",
+            display_name="MiniMax Director — Length",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[
+                io.Float.Input("seconds", default=5.0, min=0.2, max=120.0, step=0.1)
+            ],
+            outputs=[
+                io.Int.Output(display_name="length"),
+                io.Float.Output(display_name="seconds"),
+            ],
+        )
 
-    RETURN_TYPES = ("INT", "FLOAT")
-    RETURN_NAMES = ("length", "seconds")
-    FUNCTION = "snap"
-    CATEGORY = CATEGORY
-    DESCRIPTION = __doc__
-
-    def snap(self, seconds):
+    @classmethod
+    def execute(cls, seconds) -> io.NodeOutput:
         length = lattice.from_seconds(seconds)
-        return length, lattice.to_seconds(length)
+        return io.NodeOutput(length, lattice.to_seconds(length))
+
+
+NODES = [MiniMaxDirector, MiniMaxDirectorCompile, MiniMaxDirectorLength]
+
+
+class MiniMaxDirectorExtension(ComfyExtension):
+    async def get_node_list(self):
+        return list(NODES)

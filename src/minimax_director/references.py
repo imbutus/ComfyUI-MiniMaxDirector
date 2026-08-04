@@ -65,6 +65,16 @@ def assign(
     return assigned
 
 
+def ordered(prefix: str, mapping: dict[str, Any] | None, count: int) -> list[Any]:
+    """Unpack an autogrow dict back into a positional list.
+
+    `{"ref_image_1": t}` with `count=3` becomes `[None, t, None]`, so slot numbers keep
+    their meaning and `assign` can pair a video with its soundtrack by position.
+    """
+    mapping = mapping or {}
+    return [mapping.get(f"{prefix}{index}") for index in range(count)]
+
+
 def slots(prefix: str, values: Sequence[Any]) -> dict[str, Any]:
     """Pack wired slots into the autogrow dict the core node expects.
 
