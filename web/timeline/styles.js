@@ -18,9 +18,34 @@ const CSS = `
 /* toolbar ---------------------------------------------------------------- */
 .mmd-bar { display:flex; align-items:center; gap:6px; flex:0 0 auto; flex-wrap:wrap; }
 .mmd-bar button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
-  border-radius:5px; padding:5px 11px; cursor:pointer; font:inherit; }
-.mmd-bar button:hover { background:#39404e; }
+  border-radius:5px; padding:5px 11px; cursor:pointer; font:inherit;
+  display:inline-flex; align-items:center; gap:6px; }
+.mmd-icon { width:14px; height:14px; flex:0 0 auto; }
 .mmd-bar button.mmd-danger { background:#3a2422; border-color:#5c332d; }
+
+/* interaction states -----------------------------------------------------
+   Everything clickable answers to the pointer. Without this the toolbar reads
+   as a row of labels rather than controls. */
+.mmd-bar button, .mmd-transport button, .mmd-seg-fields button {
+  transition:background .12s ease, border-color .12s ease, color .12s ease; }
+.mmd-bar button:hover, .mmd-transport button:hover {
+  background:#3d4553; border-color:#5a6474; color:#fff; }
+.mmd-bar button:active, .mmd-transport button:active {
+  background:#232833; border-color:#4b5563; }
+.mmd-bar button.mmd-danger:hover { background:#5a3029; border-color:#8a4238; color:#ffe7e3; }
+.mmd-bar button.mmd-danger:active { background:#3a2422; }
+.mmd-seg-fields button:hover { background:#5a3029; border-color:#8a4238; }
+
+.mmd-settings input, .mmd-settings select,
+.mmd-seg-fields input, .mmd-seg-fields select {
+  transition:border-color .12s ease, background .12s ease; }
+.mmd-settings input:hover, .mmd-settings select:hover,
+.mmd-seg-fields input:hover, .mmd-seg-fields select:hover { border-color:#4b5563; }
+.mmd-settings input:focus, .mmd-settings select:focus,
+.mmd-seg-fields input:focus, .mmd-seg-fields select:focus,
+.mmd-prompt textarea:focus { border-color:#6ea8c4; outline:none; }
+.mmd-prompt { transition:border-color .12s ease; }
+.mmd-prompt:focus-within { border-color:#3f5a6b; }
 .mmd-bar .mmd-grow { flex:1; }
 .mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
@@ -54,7 +79,15 @@ const CSS = `
 .mmd-seg { position:absolute; top:3px; bottom:3px; border-radius:4px; cursor:grab;
   overflow:hidden; box-sizing:border-box; user-select:none;
   border:1px solid rgba(0,0,0,.35); }
+.mmd-seg { transition:filter .12s ease; }
+.mmd-seg:hover { filter:brightness(1.18); }
+.mmd-seg:active { cursor:grabbing; }
 .mmd-seg.mmd-sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
+/* The resize handles stay invisible until the pointer is on the segment, then show
+   where the edges are rather than making the user hunt for them. */
+.mmd-seg .mmd-grip { background:transparent; transition:background .12s ease; }
+.mmd-seg:hover .mmd-grip { background:rgba(255,255,255,.22); }
+.mmd-seg .mmd-grip:hover { background:rgba(255,255,255,.55); }
 .mmd-seg .mmd-cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.85); pointer-events:none; }
