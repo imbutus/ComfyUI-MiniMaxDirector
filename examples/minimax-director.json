@@ -185,8 +185,8 @@
         40
       ],
       "size": [
-        620,
-        560
+        680,
+        780
       ],
       "flags": {},
       "order": 5,
@@ -253,7 +253,7 @@
         "Node name for S&R": "MiniMaxDirector"
       },
       "widgets_values": [
-        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"timeline\",\n  \"global_prompt\": \"Editorial neon-noir short. Rain-slick alley, cyan and magenta signage, 35mm grain, shallow depth of field. Keep the subject from <Picture 1> consistent throughout.\",\n  \"shots\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"prompt\": \"Wide establishing shot of the alley, puddles holding the sign reflections.\",\n      \"camera\": \"dolly_in\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"prompt\": \"Medium shot: the subject from <Picture 1> steps into the magenta light.\",\n      \"camera\": \"pan_right\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"prompt\": \"Close on the face, rain beading on the collar, a slow blink.\",\n      \"camera\": \"static\"\n    }\n  ],\n  \"cues\": [\n    {\n      \"start\": 0,\n      \"length\": 60,\n      \"prompt\": \"Distant siren over steady rain on metal.\"\n    },\n    {\n      \"start\": 60,\n      \"length\": 64,\n      \"prompt\": \"The rain thins; a low synth pad swells.\"\n    }\n  ],\n  \"references\": [\n    {\n      \"kind\": \"picture\",\n      \"index\": 1,\n      \"label\": \"subject\"\n    }\n  ]\n}",
+        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"timeline\",\n  \"global_prompt\": \"Editorial neon-noir short. Rain-slick alley, cyan and magenta signage, 35mm grain, shallow depth of field. Keep the subject from <Picture 1> consistent throughout.\",\n  \"shots\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"prompt\": \"Wide establishing shot of the alley, puddles holding the sign reflections.\",\n      \"camera\": \"dolly_in\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"prompt\": \"Medium shot: the subject from <Picture 1> steps into the magenta light.\",\n      \"camera\": \"pan_right\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"prompt\": \"Close on the face, rain beading on the collar, a slow blink.\",\n      \"camera\": \"static\"\n    }\n  ],\n  \"moves\": [\n    {\n      \"start\": 0,\n      \"length\": 34,\n      \"camera\": \"dolly_in\",\n      \"prompt\": \"\"\n    },\n    {\n      \"start\": 34,\n      \"length\": 45,\n      \"camera\": \"pan_right\",\n      \"prompt\": \"following the subject\"\n    },\n    {\n      \"start\": 79,\n      \"length\": 45,\n      \"camera\": \"static\",\n      \"prompt\": \"\"\n    }\n  ],\n  \"cues\": [\n    {\n      \"start\": 0,\n      \"length\": 60,\n      \"prompt\": \"Distant siren over steady rain on metal.\"\n    },\n    {\n      \"start\": 60,\n      \"length\": 64,\n      \"prompt\": \"The rain thins; a low synth pad swells.\"\n    }\n  ],\n  \"references\": [\n    {\n      \"kind\": \"picture\",\n      \"index\": 1,\n      \"label\": \"subject\"\n    }\n  ]\n}",
         1344,
         768,
         "match"
@@ -264,7 +264,7 @@
       "type": "RandomNoise",
       "pos": [
         500,
-        660
+        880
       ],
       "size": [
         300,
@@ -297,7 +297,7 @@
       "type": "KSamplerSelect",
       "pos": [
         500,
-        780
+        1000
       ],
       "size": [
         300,
@@ -329,7 +329,7 @@
       "type": "BasicScheduler",
       "pos": [
         500,
-        880
+        1100
       ],
       "size": [
         300,
@@ -368,7 +368,7 @@
       "id": 10,
       "type": "BasicGuider",
       "pos": [
-        1180,
+        1240,
         40
       ],
       "size": [
@@ -408,7 +408,7 @@
       "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        1180,
+        1240,
         160
       ],
       "size": [
@@ -470,7 +470,7 @@
       "id": 12,
       "type": "VAEDecode",
       "pos": [
-        1180,
+        1240,
         350
       ],
       "size": [
@@ -510,7 +510,7 @@
       "id": 13,
       "type": "VAEDecodeAudio",
       "pos": [
-        1180,
+        1240,
         470
       ],
       "size": [
@@ -550,7 +550,7 @@
       "id": 14,
       "type": "CreateVideo",
       "pos": [
-        1180,
+        1240,
         590
       ],
       "size": [
@@ -594,7 +594,7 @@
       "id": 15,
       "type": "SaveVideo",
       "pos": [
-        1180,
+        1240,
         740
       ],
       "size": [
@@ -625,7 +625,7 @@
       "id": 16,
       "type": "MarkdownNote",
       "pos": [
-        1560,
+        1620,
         40
       ],
       "size": [
