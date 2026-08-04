@@ -98,6 +98,13 @@ built-in node names before loading custom nodes and refuses to let a pack replac
 them (`nodes.py`, `base_node_names` passed as `ignore`). A test process has no such
 restriction, because it owns the registry.
 
+## For contributors and coding agents
+
+`AGENTS.md` is the dense version: the full data flow, the document schema, the reference
+numbering rules, the invariants that break silently, and an explicit list of what has
+never been verified against real weights. `docs/ARCHITECTURE.md` covers why the design is
+shaped the way it is.
+
 ## Layout
 
 ```
@@ -113,4 +120,5 @@ src/minimax_director/
 web/                     the timeline widget: plain ES modules, no build step
 tests/                   pure-Python tests and golden prompts
 tests/graph/             in-process ComfyUI execution with the weights stubbed
+AGENTS.md                how it all works, for contributors and coding agents
 ```

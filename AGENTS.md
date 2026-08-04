@@ -1,0 +1,204 @@
+# AGENTS.md — how this project works, in full
+
+Written for a model reading the repository cold. Everything here is checked against the
+code; where something is unverified it says so.
+
+## What it is
+
+A ComfyUI node pack. One node, `MiniMaxDirector`, turns a timeline of shots into the
+single structured prompt the MiniMax H3 video model reads, and hands the sampler
+conditioning plus a starting latent. Two helper nodes expose the compile step and the
+frame-length rule on their own.
+
+The product is a **string**. Everything else is arithmetic around it.
+
+## End-to-end data flow
+
+```
+timeline JSON  (one widget on the node)
+     │
+     ├── attachments.collect ──► reference ordinals + files to load
+     ├── references.assign ────► ordinals for sockets wired by hand
+     ▼
+compile.compile_timeline ─────► prompt string + frame count
+     │
+     ▼
+core.call("MiniMaxH3ReferenceToVideo" | "MiniMaxH3ImageToVideo")
+     │                                   (ComfyUI core, not ours)
+     ▼
+(positive CONDITIONING, LATENT)  ──► BasicGuider ──► SamplerCustomAdvanced
+                                          │
+                    ┌─────────────────────┴──────────────────────┐
+              VAEDecode(video vae)                    VAEDecodeAudio(audio vae)
+                    └──────────────► CreateVideo ◄───────────────┘
+                                          ▼
+                                      SaveVideo
+```
+
+The same `LATENT` goes to both decoders: H3's latent carries video **and** audio
+together. There is no separate audio branch to keep in sync.
+
+## The model's hard constraints
+
+These are the model's, not design choices. Verified in
+`comfy_extras/nodes_minimax_h3.py` and independently in `deepbeepmeep/Wan2GP`.
+
+| Constraint | Value | Consequence |
+|---|---|---|
+| Frame rate | fixed **24 fps** (`FPS = 24`) | no rate to expose; Wan2GP raises on anything else |
+| Clip length | `length % 17 == 5` | 5, 22, 39, 56, 73, 90, 107, 124 … only 8s, 25s, 42s are whole seconds |
+| Trained range | ~124–362 frames (5.2–15.1s) | the node accepts up to 3600, untested there |
+| Reference caps | 9 images, 3 videos, 3 video-soundtracks, 3 audios | `io.Autogrow` templates |
+| Guidance | CFG-free | official graphs use `BasicGuider`, never a negative prompt |
+
+The 17 comes from the temporal VAE, which compresses in blocks of 17 frames plus a
+5-frame head. `lattice.snap_up` implements it and **never rounds down**.
+
+## The two core nodes, and why the choice matters
+
+| | `MiniMaxH3ImageToVideo` | `MiniMaxH3ReferenceToVideo` |
+|---|---|---|
+| keyframes | `first_frame`, `last_frame` | **none** |
+| references | none | `ref_images`, `ref_videos`, `ref_video_audios`, `ref_audios` |
+| audio vae | not taken | required |
+| checkpoint | `minimax_h3_fl2va_*` | `minimax_h3_ref2va_*` |
+
+`MiniMaxDirector.execute` picks the reference node when any reference is present,
+otherwise the keyframe node. **The checkpoints are not interchangeable** — loading
+`ref2va` and taking the keyframe path is a silent mismatch the graph cannot detect.
+
+Because the reference node has no `first_frame`, wiring both is impossible to honour;
+the node reports an error rather than dropping the keyframe quietly.
+
+## The timeline document
+
+One JSON object in one widget. It is the only state; the editor is a view over it.
+
+```json
+{
+  "version": 1,
+  "fps": 24,
+  "dialect": "timeline",
+  "duration": 124,
+  "global_prompt": "Style and scene constants for the whole clip.",
+  "shots": [
+    { "start": 0, "length": 41, "prompt": "…", "camera": "dolly_in",
+      "media": { "kind": "image", "filename": "a.png", "subfolder": "" } }
+  ],
+  "moves": [ { "start": 0, "length": 41, "camera": "pan_right", "prompt": "…" } ],
+  "cues":  [ { "start": 0, "length": 41, "prompt": "…", "media": { "kind": "audio", … } } ],
+  "references": []
+}
+```
+
+- **Frames are authoritative.** Seconds are derived at compile time only.
+- `duration` 0 means "as long as the content needs". The rendered length is
+  `snap_up(duration or span)`.
+- `references` is rebuilt from what is actually connected before compiling; the stored
+  copy is never trusted.
+- Unknown keys survive a round trip through the editor.
+
+## What the compiler emits
+
+```
+<global_prompt>
+
+Timeline:                    ← or "SHOT 1: …" when dialect == "shots"
+[0s-1.7s] <shot text> <tokens>
+…
+
+Camera:
+[0s-1.7s] The camera dollies slowly in. <note>
+
+Audio:
+[0s-1.7s] <cue text> <tokens>
+```
+
+Block order is always shots → camera → audio. Camera work is its own block because a
+move can straddle a cut, and folding it into a shot line would silently pick a side.
+
+## Reference numbering — the subtle part
+
+H3 addresses references from the prose as `<Picture i>`, `<Video k>`, `<Audio j>`,
+1-based per type. The order is **presentation order**, not slot order:
+
+1. every image, in timeline order;
+2. then each video, **preceded by its own soundtrack's `<Audio j>`**;
+3. then standalone audio, continuing the same `j` counter.
+
+So one video with sound plus one standalone clip yields `<Audio 1>` (soundtrack),
+`<Video 1>`, `<Audio 2>`. Numbering per slot index instead points the prompt at the wrong
+file — it does not crash, it generates the wrong video. `attachments.py` and
+`references.py` both implement this; `tests/test_references.py` pins it.
+
+Files on the timeline are numbered first, sockets after. The compiler appends a
+segment's token to its line unless the author already wrote it, because H3 only uses a
+reference the prose points at.
+
+## Module map
+
+| File | Owns | Imports ComfyUI? |
+|---|---|---|
+| `lattice.py` | frame arithmetic, the 17-frame rule | no |
+| `timeline.py` | the document, its JSON | no |
+| `compile.py` | document → prompt | no |
+| `lint.py` | pre-flight checks | no |
+| `attachments.py` | files on segments, their ordinals | no |
+| `references.py` | files on sockets, their ordinals | no |
+| `core.py` | adapter over ComfyUI's H3 nodes | yes |
+| `nodes/director.py` | the registered node classes | yes |
+| `web/` | the editor: plain ES modules, no build step | browser only |
+
+The first six are the whole product and run under `pytest` with no torch, no ComfyUI,
+no weights, in about 0.2 seconds.
+
+## Invariants — break these and something silently misbehaves
+
+1. **The lattice exists in two languages.** `lattice.py` and `web/timeline/model.js` must
+   agree. JavaScript's `%` keeps the sign of its left operand, so `(5 - 14) % 17` is `-9`
+   there and `8` in Python; the JS needs `((x % n) + n) % n`. Getting this wrong rounds
+   *down* onto a valid-looking length. `tests/js/lattice.test.mjs` checks both.
+2. **Every CSS class is `mmd-` prefixed.** ComfyUI ships utility classes; a plain
+   `.fixed` inherited `position: fixed` and printed on top of its own label. A descendant
+   selector does not protect you — it only wins for properties it declares.
+3. **A custom node cannot replace a core node.** `init_external_custom_nodes` snapshots
+   `base_node_names` before loading and passes it as `ignore`. Display names have no such
+   guard, so the UI will happily lie about which class is running.
+4. **The settings row updates in place.** Rebuilding its markup destroys whatever is
+   being typed; never write into an element that has focus.
+5. **Selection is a class toggle, not a re-render.** Re-rendering on pointerdown replaces
+   the element mid-gesture and a double-click never lands.
+6. **Tensors are not booleans.** `any(list_of_tensors)` raises; test `is not None`.
+
+## Calling into ComfyUI
+
+`core.call(name, **kwargs)` resolves the class from `NODE_CLASS_MAPPINGS`, reads its
+entry point from `FUNCTION`, drops arguments the installed version does not declare, and
+unwraps the result. The H3 nodes use ComfyUI's **V3 schema**: `FUNCTION` is
+`EXECUTE_NORMALIZED` and the return is a `NodeOutput` carrying values on `.result`.
+Autogrow inputs arrive as **dicts** — `ref_images={"ref_image_0": tensor}` — not as flat
+keyword arguments.
+
+## Tests
+
+```bash
+pytest                                  # the compiler and its rules, no dependencies
+node tests/js/lattice.test.mjs          # the lattice on the JavaScript side
+COMFYUI_PATH=~/dev/ComfyUI $COMFYUI_PATH/.venv/bin/python -m pytest tests/graph
+```
+
+The graph tests import ComfyUI in-process, patch the registry with stubs from
+`tests/graph/stubs.py`, and drive `execution.validate_prompt` and
+`execution.PromptExecutor` directly. `CreateVideo` and `SaveVideo` are deliberately not
+stubbed, so a pass leaves a real h264+aac mp4 whose duration is `length / 24`.
+
+## What has never been verified
+
+Nothing in this repository has run against real H3 weights. Specifically unknown:
+
+- whether H3 honours `[0s-1s]` timestamps, `SHOT 1:` ordinals, or neither;
+- whether `ref_image_size: match` behaves as its tooltip describes;
+- how the model behaves outside its trained length range.
+
+Treat any claim about *output quality* as untested. Claims about *interfaces* — node
+signatures, the lattice, reference ordering — are read from the source.
