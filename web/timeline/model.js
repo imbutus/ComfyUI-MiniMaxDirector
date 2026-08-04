@@ -93,32 +93,10 @@ export function span(timeline) {
   return ends.length ? Math.max(...ends) : 0;
 }
 
-/** Length of the whole piece: an explicit duration, else the content.
- *  Mirrors `Timeline.total`. */
-export function total(timeline) {
-  return timeline.duration || span(timeline);
-}
-
-/** The half-open frame range that will be rendered, clamped inside the piece.
- *  Mirrors `Timeline.window` -- the window lives *within* the duration. */
-export function renderWindow(timeline) {
-  const whole = total(timeline);
-  const start = Math.max(0, Math.min(timeline.start || 0, whole));
-  const end = timeline.end || whole;
-  return [start, Math.max(start, Math.min(end, whole))];
-}
-
-/** Clip length: the window, snapped to the lattice. Mirrors `Timeline.length`. */
+/** Clip length: an explicit duration, else the content, snapped to the lattice.
+ *  Mirrors `Timeline.length` in timeline.py -- these two must never disagree. */
 export function length(timeline) {
-  const [from, to] = renderWindow(timeline);
-  return snapUp(to - from);
-}
-
-/** Every clip length H3 accepts, up to its maximum. Mirrors `lattice.ladder`. */
-export function ladder(maxFrames = 3600) {
-  const out = [];
-  for (let frames = PHASE; frames <= maxFrames; frames += STRIDE) out.push(frames);
-  return out;
+  return snapUp(timeline.duration || span(timeline));
 }
 
 /** Append an item to a track, starting where that track currently ends. */

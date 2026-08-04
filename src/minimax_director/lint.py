@@ -102,18 +102,7 @@ def _check_coverage(timeline: Timeline) -> Iterator[Issue]:
             f"{timeline.span}; the tail will be cut.",
         )
 
-    start, end = timeline.window
-    if start >= timeline.total:
-        yield Issue(
-            "error",
-            f"The window starts at frame {start}, at or after the end of the clip "
-            f"({timeline.total}); there is nothing in it to render.",
-        )
-        return
-
-    # Two different empties, worth telling apart: a clip longer than its content, and a
-    # window rounded up to a legal length.
-    unused = timeline.total - timeline.span
+    unused = (timeline.duration or timeline.span) - timeline.span
     if unused > 0:
         yield Issue(
             "warning",
@@ -121,11 +110,11 @@ def _check_coverage(timeline: Timeline) -> Iterator[Issue]:
             f"shot; nothing is described for that tail.",
         )
 
-    padding = timeline.length - (end - start)
+    padding = timeline.length - max(timeline.duration, timeline.span)
     if padding > 0:
         yield Issue(
             "warning",
-            f"The window is padded by {padding} frames to reach a valid length; the last "
+            f"The clip is padded by {padding} frames to reach a valid length; the last "
             f"shot will be held.",
         )
 

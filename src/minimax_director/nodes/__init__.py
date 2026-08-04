@@ -11,7 +11,6 @@ from __future__ import annotations
 from .director import (
     NODES,
     MiniMaxDirector,
-    MiniMaxDirectorChain,
     MiniMaxDirectorCompile,
     MiniMaxDirectorExtension,
     MiniMaxDirectorLength,
@@ -23,7 +22,6 @@ __all__ = [
     "NODES",
     "NODE_CLASS_MAPPINGS",
     "MiniMaxDirector",
-    "MiniMaxDirectorChain",
     "MiniMaxDirectorCompile",
     "MiniMaxDirectorExtension",
     "MiniMaxDirectorLength",

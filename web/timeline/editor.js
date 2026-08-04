@@ -14,7 +14,7 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
   CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, formatSeconds, items, length, remove,
-  renderWindow, reshape, span, toSeconds, total, FPS,
+  reshape, span, toSeconds, FPS,
 } from "./model.js";
 
 /**
@@ -106,7 +106,6 @@ export class TimelineEditor {
           <div class="mmd-canvas">
             <div class="mmd-ruler"></div>
             ${TRACKS.map((t) => `<div class="mmd-track" data-track="${t.key}"></div>`).join("")}
-            <div class="mmd-window"></div>
             <div class="mmd-end"></div>
             <div class="mmd-playhead"></div>
           </div>
@@ -140,7 +139,6 @@ export class TimelineEditor {
     this.ruler = this.root.querySelector(".mmd-ruler");
     this.head = this.root.querySelector(".mmd-playhead");
     this.end = this.root.querySelector(".mmd-end");
-    this.window = this.root.querySelector(".mmd-window");
     this.readout = this.root.querySelector(".mmd-len");
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
@@ -420,10 +418,10 @@ export class TimelineEditor {
     return this.width() / Math.max(this.extent(), 1);
   }
 
-  /** Frames the view covers: the piece, or the content if it runs past it. */
+  /** Frames the view covers: the clip, or the content if it runs past it. */
   extent() {
     const timeline = this.read();
-    return Math.max(total(timeline), span(timeline), 1);
+    return Math.max(length(timeline), span(timeline), 1);
   }
 
   // -- gestures ------------------------------------------------------------
@@ -676,13 +674,8 @@ export class TimelineEditor {
     const extent = this.extent();
     const rendered = length(timeline);
     const scale = this.scale();
-    const [from, to] = renderWindow(timeline);
-
     this.canvas.style.width = `${this.width() + TAIL}px`;
     this.end.style.left = `${extent * scale}px`;
-    this.window.style.left = `${from * scale}px`;
-    this.window.style.width = `${Math.max(0, to - from) * scale}px`;
-    this.window.classList.toggle("mmd-partial", to - from < extent);
     this.readout.textContent =
       `${rendered} frames · ${formatSeconds(toSeconds(rendered))}s · ` +
       `${rendered % 17 === 5 ? "valid" : "INVALID"}`;
@@ -750,7 +743,7 @@ export class TimelineEditor {
    * keeps the node the single source of truth -- the graph still serialises normally.
    */
   renderSettings(timeline) {
-    const [from, to] = renderWindow(timeline);
+    const rendered = length(timeline);
     const secs = (frames) => toSeconds(frames || 0).toFixed(2);
     const widget = (name) => this.widgets[name]?.value;
 
@@ -763,30 +756,24 @@ export class TimelineEditor {
       const node = this.settings.querySelector(selector);
       if (node && node !== document.activeElement) node.value = value;
     };
-    set(".s-duration", secs(total(timeline)));
-    set(".s-start", secs(from));
-    set(".s-end", secs(to));
+    set(".s-duration", secs(timeline.duration || rendered));
     set(".s-width", widget("width") ?? 1344);
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
     set(".s-dialect", timeline.dialect || "timeline");
 
-    // The lattice appears here and nowhere else. Typed values are left alone; this says
-    // what will actually be generated, which is the only place the 17-frame grid bites.
-    const rendered = length(timeline);
-    const window = to - from;
+    // The lattice appears here and nowhere else. A typed duration is left alone; this
+    // says what will actually be generated, which is where the 17-frame grid bites.
+    const asked = timeline.duration || span(timeline);
     this.settings.querySelector(".mmd-renders").textContent =
       `renders ${rendered} frames · ${(rendered / FPS).toFixed(2)}s` +
-      (rendered !== window ? ` (window ${window}f rounded up)` : "");
+      (rendered !== asked ? ` (${asked}f rounded up)` : "");
   }
 
   /** The settings row, built once. */
   buildSettings() {
     this.settings.innerHTML = `
       <label title="Length of the whole piece"><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
-      <span class="mmd-sep">window</span>
-      <label title="First frame of the part being rendered"><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
-      <label title="Last frame of the part being rendered"><span class="mmd-key">end</span><input class="s-end" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
       <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
@@ -811,8 +798,6 @@ export class TimelineEditor {
     };
 
     bind(".s-duration", (next, node) => { next.duration = frames(node); });
-    bind(".s-start", (next, node) => { next.start = frames(node); });
-    bind(".s-end", (next, node) => { next.end = frames(node); });
     bind(".s-dialect", (next, node) => { next.dialect = node.value; });
 
     const setWidget = (name, raw) => {

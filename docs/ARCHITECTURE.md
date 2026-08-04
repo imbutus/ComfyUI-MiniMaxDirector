@@ -37,6 +37,7 @@ All director state is one JSON object in one widget:
   "global_prompt": "Neon-lit alley after rain.",
   "shots": [{ "start": 0, "length": 24, "prompt": "Wide shot.", "camera": "dolly_in" }],
   "cues": [{ "start": 0, "length": 48, "prompt": "Distant siren." }],
+  "duration": 0,
   "references": [{ "kind": "picture", "index": 1, "label": "" }]
 }
 ```
@@ -100,49 +101,24 @@ click cannot drift apart.
 copies are tested: the editor must not be able to express a length the compiler would
 reject.
 
-## Long pieces: windows that join
+## One timeline, one clip
 
-H3's trained range is roughly 5-15 seconds, so anything longer is generated in windows.
-Splitting the timeline into separate workflows would work, but then the global prompt,
-the shot list and the reference numbering exist in several places and drift apart.
+There is no render window and no chaining. A timeline is a clip: `duration` sets its
+length, or the content does, and the whole thing is generated in one pass.
 
-The document therefore separates two ideas that are easy to conflate:
-
-- **`duration`** — how long the whole piece is. What you are editing.
-- **`start` / `end`** — which slice of it this run renders. Always clamped inside
-  `duration`, so a window can never describe frames the timeline does not have.
-
-Only the *window* has to land on the 17-frame lattice, because only the window is
-generated. That is why the settings row never rewrites a typed duration: it reports the
-rendered length separately instead.
-
-`Timeline.advanced()` moves the window along the piece, and `MiniMaxDirectorChain`
-does the same at graph level while also handing back the previous window's final frame:
-
-```
-Director(window 1) -> sample -> VAEDecode --+--> CreateVideo
-                                            |
-                                            +--> Chain --> last_frame --+
-                                                       --> timeline ----+--> Director(window 2)
-```
-
-Wire `last_frame` into the next Director's `first_frame` and the windows continue rather
-than cutting. `overlap` re-renders a frame or two of the previous window, because a
-window's first frame is a reconstruction of its guide rather than the guide itself, and
-an editor needs something to cut on.
-
-`more` reports whether content remains, so a loop stops instead of generating empty tails.
-
-One upstream constraint makes this sharp-edged: `MiniMaxH3ReferenceToVideo` has no
-`first_frame`. Reference conditioning and keyframe continuation are mutually exclusive in
-the model, so the Director reports an error rather than silently dropping the guide.
+That caps a piece at what H3 will generate in a single run -- ComfyUI puts the trained
+range at 124-362 frames (5.2-15.1s) and WanGP refuses past 20s. Longer work was
+prototyped as a moving window with a Chain node that carried the previous window's last
+frame forward, and it was removed: it made three numbers where one belonged, and it could
+not carry audio across a seam anyway, since `MiniMaxH3ImageToVideo` takes a keyframe and
+no audio while `MiniMaxH3ReferenceToVideo` takes audio and no keyframe. A minute of video
+came with three audible jumps.
 
 ## Known gaps
 
 - Latent-space keyframe guides at shot boundaries are not implemented. They are only worth
   building if a real run shows the prompt-level timeline is not precise enough.
-- Window chaining is built but has never run against real weights, so how visible a seam
-  remains -- and how much `overlap` it needs -- is unmeasured.
+- Nothing longer than one H3 pass. See above for why the windowed version was dropped.
 - Reference slot counts (3 pictures, 1 audio, 1 video) mirror what the official template
   wires. Whether the model accepts more is untested.
 - Which dialect H3 follows more faithfully — `[0s-1s]` timestamps or `SHOT 1:` ordinals —

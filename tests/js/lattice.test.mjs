@@ -8,7 +8,7 @@
  *   node tests/js/lattice.test.mjs
  */
 
-import { snapUp, PHASE, STRIDE, FPS, length, renderWindow, total } from "../../web/timeline/model.js";
+import { snapUp, PHASE, STRIDE, FPS, length } from "../../web/timeline/model.js";
 
 let failures = 0;
 const check = (name, got, want) => {
@@ -35,14 +35,11 @@ for (let frames = 0; frames < 600; frames++) {
 }
 
 check("48 frames rounds up, not down", snapUp(48), 56);
-// The window lives inside the piece; both ends clamp to the duration.
-const piece = { duration: 124, shots: [], moves: [], cues: [] };
-check("window inside the piece", renderWindow({ ...piece, start: 24, end: 90 }).join(","), "24,90");
-check("window clamped to the end", renderWindow({ ...piece, start: 24, end: 400 }).join(","), "24,124");
-check("start clamped too", renderWindow({ ...piece, start: 400, end: 500 }).join(","), "124,124");
-check("zero end means the end of the piece", renderWindow({ ...piece, start: 24 }).join(","), "24,124");
-check("length is the window snapped", length({ ...piece, start: 24, end: 90 }), 73);
-check("duration is the whole piece", total({ ...piece, start: 24, end: 90 }), 124);
+const clip = { shots: [], moves: [], cues: [] };
+check("explicit duration snaps up", length({ ...clip, duration: 120 }), 124);
+check("an exact duration is untouched", length({ ...clip, duration: 192 }), 192);
+check("no duration follows the content",
+      length({ ...clip, shots: [{ start: 0, length: 60 }] }), 73);
 
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log("lattice.test.mjs: all checks passed");

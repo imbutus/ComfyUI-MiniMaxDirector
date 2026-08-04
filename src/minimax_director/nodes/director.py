@@ -104,14 +104,13 @@ class MiniMaxDirector(io.ComfyNode):
         compiled = compile_timeline(document)
         issues = lint(document)
 
-        # The core reference node has no `first_frame`, so wiring both silently drops the
-        # guide -- which is exactly how a chained window loses its continuity.
+        # The core reference node has no `first_frame`, so wiring both would silently
+        # drop the keyframe rather than fail.
         if first_frame is not None and (ref_images or ref_videos or ref_audios):
             issues.insert(0, Issue(
                 "error",
                 "first_frame is ignored when references are wired: MiniMax H3 has no "
-                "reference-plus-keyframe path. Chain windows without references, or drop "
-                "the first_frame.",
+                "reference-plus-keyframe path. Use one or the other.",
             ))
 
         report = _report(issues)
@@ -145,51 +144,6 @@ class MiniMaxDirector(io.ComfyNode):
             )
 
         return io.NodeOutput(positive, latent, compiled.prompt, compiled.length, report)
-
-
-class MiniMaxDirectorChain(io.ComfyNode):
-    """Continue a timeline into its next window, starting from the frame just rendered.
-
-    H3's trained range is roughly 5-15 seconds, so a longer piece has to be generated in
-    windows. Rendering them independently produces jump cuts: nothing tells window two
-    what window one ended on.
-
-    This closes that loop. Feed it the decoded frames of the window just rendered and it
-    hands back two things -- that window's last frame, to wire into the next Director's
-    `first_frame`, and the same timeline with its window advanced. One document, one
-    shot list, rendered in legal-length pieces that actually join.
-
-    `overlap` re-renders the tail of the previous window. A frame or two hides the seam
-    where the model's first frame is a slightly imperfect reconstruction of the guide.
-    """
-
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxDirectorChain",
-            display_name="MiniMax Director — Chain",
-            category=CATEGORY,
-            description=cls.__doc__,
-            inputs=[
-                io.Image.Input("frames", tooltip="Decoded frames of the window just rendered"),
-                io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE),
-                io.Int.Input("overlap", default=0, min=0, max=120,
-                             tooltip="Frames of the previous window to render again, hiding the seam"),
-            ],
-            outputs=[
-                io.Image.Output(display_name="last_frame"),
-                io.String.Output(display_name="timeline"),
-                io.Int.Output(display_name="start"),
-                io.Boolean.Output(display_name="more"),
-            ],
-        )
-
-    @classmethod
-    def execute(cls, frames, timeline, overlap=0) -> io.NodeOutput:
-        advanced = Timeline.from_json(timeline).advanced(overlap)
-        return io.NodeOutput(
-            frames[-1:], advanced.to_json(indent=2), advanced.start, not advanced.exhausted
-        )
 
 
 class MiniMaxDirectorCompile(io.ComfyNode):
@@ -249,8 +203,7 @@ class MiniMaxDirectorLength(io.ComfyNode):
         return io.NodeOutput(length, lattice.to_seconds(length))
 
 
-NODES = [MiniMaxDirector, MiniMaxDirectorChain, MiniMaxDirectorCompile,
-         MiniMaxDirectorLength]
+NODES = [MiniMaxDirector, MiniMaxDirectorCompile, MiniMaxDirectorLength]
 
 
 class MiniMaxDirectorExtension(ComfyExtension):

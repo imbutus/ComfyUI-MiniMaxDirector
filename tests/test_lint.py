@@ -104,32 +104,6 @@ def test_linting_never_raises_on_malformed_input():
     assert lint(timeline)
 
 
-def test_a_window_that_needs_padding_is_reported():
-    timeline = Timeline.from_dict({
-        "global_prompt": "x", "start": 24, "end": 90,
-        "shots": [{"start": 0, "length": 124, "prompt": "a"}],
-    })
-    # the window is 66 frames, the nearest legal length is 73
-    assert "padded by 7 frames" in messages(timeline)
-
-
-def test_a_window_starting_after_the_clip_is_an_error():
-    timeline = Timeline.from_dict({
-        "global_prompt": "x", "start": 200,
-        "shots": [{"start": 0, "length": 124, "prompt": "a"}],
-    })
-    reported = levels(timeline)
-    assert any(level == "error" and "nothing in it to render" in text for level, text in reported)
-
-
-def test_padding_and_an_unused_tail_are_different_warnings():
-    timeline = Timeline.from_dict(
-        {"global_prompt": "x", "shots": [{"start": 0, "length": 60, "prompt": "a"}]}
-    )
-    assert "padded by 13 frames" in messages(timeline)
-    assert "past the last shot" not in messages(timeline)
-
-
 def test_an_exact_window_reports_no_tail():
     timeline = Timeline.from_dict({
         "global_prompt": "x", "duration": 124,
@@ -137,3 +111,11 @@ def test_an_exact_window_reports_no_tail():
     })
     assert "past the last shot" not in messages(timeline)
     assert "padded by" not in messages(timeline)
+
+
+def test_padding_is_reported_on_its_own():
+    timeline = Timeline.from_dict(
+        {"global_prompt": "x", "shots": [{"start": 0, "length": 60, "prompt": "a"}]}
+    )
+    assert "padded by 13 frames" in messages(timeline)
+    assert "past the last shot" not in messages(timeline)

@@ -136,10 +136,6 @@ class Timeline:
     fps: int = lattice.FPS
     duration: int = 0
     """Explicit clip length in frames. Zero means "as long as the content needs"."""
-    start: int = 0
-    """First frame of the render window, inside the clip."""
-    end: int = 0
-    """Last frame of the render window. Zero means "to the end of the clip"."""
 
     # -- derived -----------------------------------------------------------
 
@@ -150,61 +146,13 @@ class Timeline:
         return max(ends, default=0)
 
     @property
-    def total(self) -> int:
-        """Length of the whole piece: an explicit duration, else what the content needs.
-
-        This is the timeline the author is editing, not the clip about to be rendered.
-        """
-        return self.duration or self.span
-
-    @property
-    def window(self) -> tuple[int, int]:
-        """The half-open frame range that will actually be rendered.
-
-        The window lives *inside* the piece: both ends are clamped to `total`, so it can
-        never describe frames the timeline does not have. A zero `end` means "to the end
-        of the piece", which is what a fresh document wants.
-        """
-        total = self.total
-        start = max(0, min(self.start, total))
-        end = self.end or total
-        return start, max(start, min(end, total))
-
-    @property
     def length(self) -> int:
-        """The clip length H3 will be asked for: the window, snapped to the lattice."""
-        start, end = self.window
-        return lattice.snap_up(end - start)
+        """The clip length H3 will be asked for.
 
-    def clipped(self) -> "Timeline":
-        """This timeline as the window sees it: cropped, and rebased to frame zero.
-
-        Returns `self` when the window covers everything, so the common case allocates
-        nothing and the compiled prompt is byte-identical to the unwindowed one.
+        An explicit duration wins; otherwise the content decides. Either way it lands on
+        the 17-frame lattice, which is why it can sit slightly past the last shot.
         """
-        start, finish = self.window
-        if start == 0 and finish >= self.span:
-            return self
-
-        def crop(entries, rebuild):
-            kept = []
-            for entry in entries:
-                first = max(entry.start, start)
-                last = min(entry.end, finish)
-                if last <= first:
-                    continue
-                kept.append(rebuild(entry, first - start, last - first))
-            return kept
-
-        return replace(
-            self,
-            shots=crop(self.shots, lambda s, a, b: replace(s, start=a, length=b)),
-            cues=crop(self.cues, lambda c, a, b: replace(c, start=a, length=b)),
-            moves=crop(self.moves, lambda m, a, b: replace(m, start=a, length=b)),
-            start=0,
-            end=0,
-            duration=finish - start,
-        )
+        return lattice.snap_up(self.duration or self.span)
 
     def ordered_shots(self) -> list[Shot]:
         return sorted(self.shots, key=lambda shot: (shot.start, shot.length))
@@ -273,8 +221,6 @@ class Timeline:
             ],
             dialect=str(data.get("dialect", "timeline")),
             duration=int(data.get("duration", 0)),
-            start=int(data.get("start", 0)),
-            end=int(data.get("end", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
 
@@ -292,8 +238,6 @@ class Timeline:
             "fps": self.fps,
             "dialect": self.dialect,
             "duration": self.duration,
-            "start": self.start,
-            "end": self.end,
             "global_prompt": self.global_prompt,
             "shots": [
                 {
@@ -327,27 +271,6 @@ class Timeline:
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
 
     # -- editing -----------------------------------------------------------
-
-    def advanced(self, overlap: int = 0) -> "Timeline":  # noqa: D401
-        """The same timeline, its window moved to the next piece.
-
-        H3 generates 5-15 seconds at a time, so a longer edit is rendered in windows.
-        Advancing rather than splitting keeps one document: one global prompt, one shot
-        list, one set of reference numbers.
-
-        `overlap` starts the next window slightly inside the previous one. The first
-        frame of a window is a reconstruction of its guide rather than the guide itself,
-        so re-rendering a frame or two gives an editor something to cut on.
-        """
-        start, end = self.window
-        size = end - start
-        nxt = max(0, end - max(0, overlap))
-        return replace(self, start=nxt, end=min(self.total, nxt + size))
-
-    @property
-    def exhausted(self) -> bool:
-        """True when the window has reached the end of the piece."""
-        return self.window[0] >= self.total
 
     def with_references(self, references: list[Reference]) -> "Timeline":
         """A copy whose wired inputs are `references`.
