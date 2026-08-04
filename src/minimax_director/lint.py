@@ -115,3 +115,7 @@ def _check_content(timeline: Timeline) -> Iterator[Issue]:
     for cue in timeline.cues:
         if not cue.prompt.strip():
             yield Issue("warning", f"The audio cue at frame {cue.start} has no text.")
+
+    for move in timeline.moves:
+        if not move.text():
+            yield Issue("warning", f"The camera move at frame {move.start} is empty.")

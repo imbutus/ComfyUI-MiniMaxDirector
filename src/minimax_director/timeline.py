@@ -97,6 +97,32 @@ class Cue:
         return self.start + self.length
 
 
+@dataclass(frozen=True, slots=True)
+class Move:
+    """A span on the camera track.
+
+    Camera work is separate from the shot it happens in: a push-in can start midway
+    through a shot, and two moves can share one description of the scene. Keeping it on
+    its own track is also what makes it editable as a track rather than a dropdown.
+    """
+
+    start: int
+    length: int
+    camera: str = ""
+    prompt: str = ""
+
+    @property
+    def end(self) -> int:
+        return self.start + self.length
+
+    def text(self) -> str:
+        prose = CAMERA_PROSE.get(self.camera, self.camera).strip()
+        body = self.prompt.strip()
+        if prose and body:
+            return f"{prose} {body}"
+        return prose or body
+
+
 @dataclass(slots=True)
 class Timeline:
     """The whole document."""
@@ -104,6 +130,7 @@ class Timeline:
     global_prompt: str = ""
     shots: list[Shot] = field(default_factory=list)
     cues: list[Cue] = field(default_factory=list)
+    moves: list[Move] = field(default_factory=list)
     references: list[Reference] = field(default_factory=list)
     dialect: str = "timeline"
     fps: int = lattice.FPS
@@ -113,7 +140,7 @@ class Timeline:
     @property
     def span(self) -> int:
         """Last frame covered by any track. Zero for an empty timeline."""
-        ends = [item.end for item in (*self.shots, *self.cues)]
+        ends = [item.end for item in (*self.shots, *self.cues, *self.moves)]
         return max(ends, default=0)
 
     @property
@@ -126,6 +153,9 @@ class Timeline:
 
     def ordered_cues(self) -> list[Cue]:
         return sorted(self.cues, key=lambda cue: (cue.start, cue.length))
+
+    def ordered_moves(self) -> list[Move]:
+        return sorted(self.moves, key=lambda move: (move.start, move.length))
 
     def refs_of(self, kind: RefKind) -> list[Reference]:
         return sorted(
@@ -140,6 +170,8 @@ class Timeline:
             yield shot.prompt
         for cue in self.cues:
             yield cue.prompt
+        for move in self.moves:
+            yield move.prompt
 
     # -- serialisation -----------------------------------------------------
 
@@ -163,6 +195,15 @@ class Timeline:
                     prompt=str(item.get("prompt", "")),
                 )
                 for item in data.get("cues", [])
+            ],
+            moves=[
+                Move(
+                    start=int(item.get("start", 0)),
+                    length=int(item.get("length", 0)),
+                    camera=str(item.get("camera", "")),
+                    prompt=str(item.get("prompt", "")),
+                )
+                for item in data.get("moves", [])
             ],
             references=[
                 Reference(
@@ -202,6 +243,15 @@ class Timeline:
             "cues": [
                 {"start": cue.start, "length": cue.length, "prompt": cue.prompt}
                 for cue in self.cues
+            ],
+            "moves": [
+                {
+                    "start": move.start,
+                    "length": move.length,
+                    "camera": move.camera,
+                    "prompt": move.prompt,
+                }
+                for move in self.moves
             ],
             "references": [
                 {"kind": ref.kind, "index": ref.index, "label": ref.label}

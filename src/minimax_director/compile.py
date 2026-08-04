@@ -49,6 +49,10 @@ def compile_timeline(timeline: Timeline) -> Compiled:
     if shots:
         blocks.append(shots)
 
+    moves = _render_moves(timeline)
+    if moves:
+        blocks.append(moves)
+
     cues = _render_cues(timeline)
     if cues:
         blocks.append(cues)
@@ -74,6 +78,22 @@ def _render_shots(timeline: Timeline) -> str:
 
     lines = [f"{_span(shot.start, shot.end, timeline.fps)} {shot.text()}" for shot in shots]
     return "Timeline:\n" + "\n".join(lines)
+
+
+def _render_moves(timeline: Timeline) -> str:
+    """The camera track, as its own block.
+
+    Camera work is emitted separately rather than folded into the shot lines because a
+    move can straddle a cut, and flattening it into one shot would silently pick a side.
+    """
+    moves = [move for move in timeline.ordered_moves() if move.text()]
+    if not moves:
+        return ""
+
+    lines = [
+        f"{_span(move.start, move.end, timeline.fps)} {move.text()}" for move in moves
+    ]
+    return "Camera:\n" + "\n".join(lines)
 
 
 def _render_cues(timeline: Timeline) -> str:

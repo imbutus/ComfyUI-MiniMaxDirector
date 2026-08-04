@@ -107,3 +107,32 @@ def test_a_fifty_shot_timeline_stays_on_the_lattice():
     compiled = compile_timeline(build(shots=shots))
     assert compiled.length % 17 == 5
     assert compiled.length >= 600
+
+
+def test_camera_moves_get_their_own_block():
+    timeline = build(moves=[{"start": 0, "length": 24, "camera": "dolly_in"}])
+    assert "Camera:\n[0s-1s] The camera dollies slowly in." in compile_timeline(timeline).prompt
+
+
+def test_a_move_combines_its_camera_and_its_note():
+    timeline = build(moves=[{"start": 0, "length": 24, "camera": "orbit", "prompt": "around the sign"}])
+    assert "The camera orbits the subject. around the sign" in compile_timeline(timeline).prompt
+
+
+def test_moves_extend_the_clip_like_any_other_track():
+    timeline = build(shots=[], moves=[{"start": 0, "length": 60, "camera": "pan_left"}])
+    assert compile_timeline(timeline).length == 73
+
+
+def test_empty_moves_are_dropped():
+    timeline = build(moves=[{"start": 0, "length": 24, "camera": "", "prompt": "  "}])
+    assert "Camera:" not in compile_timeline(timeline).prompt
+
+
+def test_blocks_are_ordered_shots_camera_then_audio():
+    timeline = build(
+        moves=[{"start": 0, "length": 24, "camera": "orbit"}],
+        cues=[{"start": 0, "length": 24, "prompt": "rain"}],
+    )
+    prompt = compile_timeline(timeline).prompt
+    assert prompt.index("Timeline:") < prompt.index("Camera:") < prompt.index("Audio:")
