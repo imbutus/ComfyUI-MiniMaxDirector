@@ -1,9 +1,13 @@
-# MiniMaxDirector
+# MiniMaxDirector — LTXDirector for MiniMax H3
 
-A timeline director for the [MiniMax H3](https://github.com/comfyanonymous/ComfyUI) video
-model in ComfyUI. Lay out shots and audio cues on a track, and it compiles them into the
-single structured prompt H3 actually reads — then hands the model its conditioning and a
-clip length the sampler will accept.
+**LTXDirector for MiniMax H3**: a timeline director for the
+[MiniMax H3](https://github.com/comfyanonymous/ComfyUI) video model in ComfyUI. Lay out
+shots, camera moves and audio cues on a track, and it compiles them into the single
+structured prompt H3 actually reads — then hands the model its conditioning and a clip
+length the sampler will accept.
+
+If you have used LTXDirector with LTX-Video and want the same way of working with MiniMax
+H3, this is it.
 
 MIT licensed. No dependencies beyond ComfyUI itself.
 
