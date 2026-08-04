@@ -149,3 +149,28 @@ def test_duration_zero_means_let_the_content_decide():
 
 def test_a_short_duration_still_lands_on_the_lattice():
     assert compile_timeline(build(duration=30)).length % 17 == 5
+
+
+def test_a_render_window_crops_and_rebases_the_prompt():
+    timeline = build(start=24, end=60)
+    compiled = compile_timeline(timeline)
+    assert "Wide establishing shot" not in compiled.prompt  # ends at 24, outside
+    assert "[0s-1.5s] Close on <Picture 1>" in compiled.prompt  # rebased to zero
+    assert compiled.length == 39  # 36 frames snapped up
+
+
+def test_a_window_clips_a_shot_that_straddles_its_edge():
+    timeline = build(start=12, end=36)
+    compiled = compile_timeline(timeline)
+    assert "[0s-0.5s]" in compiled.prompt  # first shot, cropped to 12 frames
+    assert compiled.length == 39
+
+
+def test_no_window_leaves_the_prompt_untouched():
+    assert compile_timeline(build(start=0, end=0)).prompt == compile_timeline(build()).prompt
+
+
+def test_the_window_length_is_always_on_the_lattice():
+    for start in range(0, 40, 7):
+        for end in range(start + 5, start + 60, 11):
+            assert compile_timeline(build(start=start, end=end)).length % 17 == 5

@@ -38,7 +38,12 @@ class Compiled:
 
 
 def compile_timeline(timeline: Timeline) -> Compiled:
-    """Render `timeline` to a prompt and a valid frame count."""
+    """Render `timeline` to a prompt and a valid frame count.
+
+    The render window is applied first, so timestamps in the prompt are relative to the
+    clip H3 is about to make, not to the timeline the author is editing.
+    """
+    timeline = timeline.clipped()
     blocks: list[str] = []
 
     preamble = timeline.global_prompt.strip()
