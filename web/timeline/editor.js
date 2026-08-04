@@ -401,6 +401,7 @@ export class TimelineEditor {
       this.marquee = {
         x0: event.clientX, y0: event.clientY,
         additive: event.shiftKey || event.metaKey || event.ctrlKey,
+        base: event.shiftKey || event.metaKey || event.ctrlKey ? [...this.selected] : [],
         moved: false,
       };
       this.box = document.createElement("div");
@@ -453,6 +454,7 @@ export class TimelineEditor {
     const rect = this.box.getBoundingClientRect();
     const moved = this.marquee.moved;
     const additive = this.marquee.additive;
+    const base = this.marquee.base;
     this.marqueeOrigin = [this.marquee.x0, this.marquee.y0];
 
     this.box.remove();
@@ -469,7 +471,18 @@ export class TimelineEditor {
       return;
     }
 
-    const hits = additive ? [...this.selected] : [];
+    this.selected = this.hitsIn(rect, additive ? base : []);
+    this.applySelection();
+  }
+
+  /**
+   * Every segment the rectangle touches, on top of `base`.
+   *
+   * Both rectangles come from `getBoundingClientRect`, so this compares screen space to
+   * screen space and needs no zoom correction.
+   */
+  hitsIn(rect, base) {
+    const hits = [...base];
     for (const node of this.canvas.querySelectorAll(".mmd-seg")) {
       const seg = node.getBoundingClientRect();
       const overlaps = seg.left < rect.right && rect.left < seg.right
@@ -479,8 +492,7 @@ export class TimelineEditor {
       const index = Number(node.dataset.index);
       if (!hits.some((h) => h.track === track && h.index === index)) hits.push({ track, index });
     }
-    this.selected = hits;
-    this.applySelection();
+    return hits;
   }
 
   /**
@@ -492,6 +504,12 @@ export class TimelineEditor {
    * justify a re-render.
    */
   applySelection() {
+    this.markSelection();
+    this.renderPanel(this.read());
+  }
+
+  /** Just the highlight. Cheap enough to run on every pointer move. */
+  markSelection() {
     for (const node of this.canvas.querySelectorAll(".mmd-seg.mmd-sel")) {
       node.classList.remove("mmd-sel");
     }
@@ -500,7 +518,6 @@ export class TimelineEditor {
         .querySelector(`[data-track="${track}"] [data-index="${index}"]`)
         ?.classList.add("mmd-sel");
     }
-    this.renderPanel(this.read());
   }
 
   /**
@@ -571,6 +588,14 @@ export class TimelineEditor {
       Object.assign(this.box.style, {
         left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`,
       });
+
+      // Selection follows the rectangle live: segments light up as it covers them and
+      // go dark again as it leaves. Waiting for mouseup means dragging blind.
+      this.selected = this.hitsIn(this.box.getBoundingClientRect(), this.marquee.base);
+      this.markSelection();
+      this.range.textContent = this.selected.length
+        ? `${this.selected.length} selected`
+        : "nothing in the box yet";
       return;
     }
 
@@ -675,16 +700,30 @@ export class TimelineEditor {
       widget.callback?.(raw);
     };
 
-    const setFrames = (field, key) => {
-      this.settings.querySelector(field).onchange = (e) => {
-        const next = this.read();
-        next[key] = Math.max(0, Math.round(Number(e.target.value) * FPS));
-        this.commit(next);
-      };
+    // start / end / duration describe two facts, so editing any one resolves the
+    // others rather than letting them drift apart.
+    const frames = (input) => Math.max(0, Math.round(Number(input.value) * FPS));
+
+    this.settings.querySelector(".s-start").onchange = (e) => {
+      const next = this.read();
+      const [, finish] = renderWindow(next);
+      next.start = frames(e.target);
+      // Hold the end still; the duration absorbs the move, as an in-point should.
+      next.duration = Math.max(0, finish - next.start);
+      this.commit(next);
     };
-    setFrames(".s-duration", "duration");
-    setFrames(".s-start", "start");
-    setFrames(".s-end", "end");
+
+    this.settings.querySelector(".s-end").onchange = (e) => {
+      const next = this.read();
+      next.duration = Math.max(0, frames(e.target) - Math.max(0, next.start || 0));
+      this.commit(next);
+    };
+
+    this.settings.querySelector(".s-duration").onchange = (e) => {
+      const next = this.read();
+      next.duration = frames(e.target);
+      this.commit(next);
+    };
     this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);

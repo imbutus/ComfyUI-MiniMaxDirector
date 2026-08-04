@@ -93,18 +93,26 @@ export function span(timeline) {
   return ends.length ? Math.max(...ends) : 0;
 }
 
-/** The half-open frame range that will be rendered. Mirrors `Timeline.window`. */
-export function renderWindow(timeline) {
-  const finish = timeline.end || timeline.duration || span(timeline);
+/** Clip length: an explicit duration, else the content past `start`, snapped to the
+ *  lattice. Mirrors `Timeline.length` in timeline.py -- these must never disagree. */
+export function length(timeline) {
   const start = Math.max(0, timeline.start || 0);
-  return [start, Math.max(start, finish)];
+  return snapUp(duration(timeline) || Math.max(0, span(timeline) - start));
 }
 
-/** Clip length: the render window, snapped to the lattice.
- *  Mirrors `Timeline.length` in timeline.py -- these two must never disagree. */
-export function length(timeline) {
-  const [from, to] = renderWindow(timeline);
-  return snapUp(to - from);
+/** An explicit duration, accepting a legacy `end` as a way of stating one.
+ *  Mirrors `_duration` in timeline.py. */
+export function duration(timeline) {
+  if (timeline.duration) return timeline.duration;
+  if (timeline.end) return Math.max(0, timeline.end - Math.max(0, timeline.start || 0));
+  return 0;
+}
+
+/** The half-open frame range that will be rendered. Mirrors `Timeline.window`.
+ *  The end is derived, never stored, so start/end/duration cannot contradict. */
+export function renderWindow(timeline) {
+  const start = Math.max(0, timeline.start || 0);
+  return [start, start + length(timeline)];
 }
 
 /** Append an item to a track, starting where that track currently ends. */
