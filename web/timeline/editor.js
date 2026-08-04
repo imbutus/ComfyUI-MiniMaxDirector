@@ -18,6 +18,14 @@ import {
 
 const EDGE = 7;
 const ZOOM_STEP = 1.35;
+const HISTORY_LIMIT = 100;
+const TYPING_PAUSE = 500;
+
+/** The dragged track as it was when the gesture started. */
+function restoreDragged(timeline, drag) {
+  return timeline[drag.track].map((item, index) =>
+    index === drag.index ? { ...item, start: drag.start, length: drag.length } : item);
+}
 
 export class TimelineEditor {
   /**
@@ -36,6 +44,13 @@ export class TimelineEditor {
     this.zoom = 1;
     this.playhead = 0;
     this.playing = null;
+
+    // Undo state. Snapshots are JSON strings of the whole document -- small, trivially
+    // comparable, and immune to any aliasing bug a structural copy could introduce.
+    this.history = [];
+    this.future = [];
+    this.typing = null;
+    this.active = false;
 
     this.root = document.createElement("div");
     this.root.className = "mmd";
@@ -128,8 +143,22 @@ export class TimelineEditor {
     // Having a selection is what scopes it. Clicking anywhere outside clears that below,
     // so we never swallow a Delete meant for the graph.
     document.addEventListener("keydown", (event) => {
-      if (!this.selection) return;
+      // Fields keep their native text undo and character deletion.
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+
+      // Cmd+Z on macOS, Ctrl+Z elsewhere; Shift (or Ctrl+Y) redoes. Scoped to the
+      // editor having been touched last, so ComfyUI keeps its own graph undo.
+      const chord = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (this.active && chord && (key === "z" || key === "y")) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (key === "y" || event.shiftKey) this.redo();
+        else this.undo();
+        return;
+      }
+
+      if (!this.selection) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
@@ -144,7 +173,8 @@ export class TimelineEditor {
 
     // A click outside the editor gives the keyboard back to ComfyUI.
     document.addEventListener("pointerdown", (event) => {
-      if (this.selection && !this.root.contains(event.target)) {
+      this.active = this.root.contains(event.target);
+      if (!this.active && this.selection) {
         this.selection = null;
         this.applySelection();
       }
@@ -166,12 +196,14 @@ export class TimelineEditor {
       const next = this.read();
       const item = items(next, this.selection.track)[this.selection.index];
       if (!item) return;
+      this.snapshotTyping();
       item.prompt = this.segPrompt.value;
       this.write(next);
       this.refreshLabel(item);
     });
 
     this.global.addEventListener("input", () => {
+      this.snapshotTyping();
       const next = this.read();
       next.global_prompt = this.global.value;
       this.write(next);
@@ -179,7 +211,54 @@ export class TimelineEditor {
   }
 
   commit(timeline) {
+    this.snapshot();
     this.write(timeline);
+    this.render();
+  }
+
+  /**
+   * Record the document as it stands, before a change is written.
+   *
+   * Called ahead of every mutation, so the stack holds states the user actually saw.
+   * A new action clears the redo branch, which is what every editor does.
+   */
+  snapshot() {
+    const current = JSON.stringify(this.read());
+    if (this.history[this.history.length - 1] === current) return;
+    this.history.push(current);
+    if (this.history.length > HISTORY_LIMIT) this.history.shift();
+    this.future.length = 0;
+  }
+
+  /**
+   * Snapshot once per burst of typing.
+   *
+   * Text is written through on every keystroke so the tracks stay live, but one undo
+   * step per character would be useless. The first keystroke of a burst records the
+   * state before it; the rest ride along until the typist pauses.
+   */
+  snapshotTyping() {
+    if (!this.typing) this.snapshot();
+    clearTimeout(this.typing);
+    this.typing = setTimeout(() => { this.typing = null; }, TYPING_PAUSE);
+  }
+
+  undo() {
+    if (!this.history.length) return;
+    this.future.push(JSON.stringify(this.read()));
+    this.restore(this.history.pop());
+  }
+
+  redo() {
+    if (!this.future.length) return;
+    this.history.push(JSON.stringify(this.read()));
+    this.restore(this.future.pop());
+  }
+
+  restore(json) {
+    this.typing = null;
+    this.selection = null;
+    this.write(JSON.parse(json));
     this.render();
   }
 
@@ -348,6 +427,7 @@ export class TimelineEditor {
     };
 
     box.addEventListener("input", () => {
+      this.snapshotTyping();
       const next = this.read();
       const target = items(next, track)[index];
       if (!target) return;
@@ -376,6 +456,13 @@ export class TimelineEditor {
     const item = items(timeline, this.drag.track)[this.drag.index];
     if (!item) return;
 
+    if (!this.drag.recorded) {
+      // The gesture's whole travel is one step: snapshot the state it began from.
+      this.history.push(JSON.stringify({ ...timeline, [this.drag.track]: restoreDragged(timeline, this.drag) }));
+      this.future.length = 0;
+      this.drag.recorded = true;
+    }
+
     if (this.drag.mode === "body") {
       reshape(item, { start: this.drag.start + frames });
     } else if (this.drag.mode === "start") {
@@ -384,7 +471,8 @@ export class TimelineEditor {
     } else {
       reshape(item, { length: this.drag.length + frames });
     }
-    this.commit(timeline);
+    this.write(timeline);
+    this.render();
   }
 
   // -- rendering -----------------------------------------------------------
