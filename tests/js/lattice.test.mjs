@@ -8,7 +8,7 @@
  *   node tests/js/lattice.test.mjs
  */
 
-import { snapUp, PHASE, STRIDE, FPS, length, renderWindow } from "../../web/timeline/model.js";
+import { snapUp, PHASE, STRIDE, FPS, length, renderWindow, total } from "../../web/timeline/model.js";
 
 let failures = 0;
 const check = (name, got, want) => {
@@ -35,14 +35,14 @@ for (let frames = 0; frames < 600; frames++) {
 }
 
 check("48 frames rounds up, not down", snapUp(48), 56);
-// `end` is an input alias for a duration; the stored end is always derived.
-check("legacy end reads as duration", length({ start: 24, end: 72, shots: [], moves: [], cues: [] }), 56);
-check("window range", renderWindow({ start: 24, end: 72 }).join(","), "24,80");
-check("end is start plus length", (() => {
-  const t = { start: 40, duration: 30, shots: [], moves: [], cues: [] };
-  const [a, b] = renderWindow(t);
-  return b - a === length(t) && a === 40;
-})(), true);
+// The window lives inside the piece; both ends clamp to the duration.
+const piece = { duration: 124, shots: [], moves: [], cues: [] };
+check("window inside the piece", renderWindow({ ...piece, start: 24, end: 90 }).join(","), "24,90");
+check("window clamped to the end", renderWindow({ ...piece, start: 24, end: 400 }).join(","), "24,124");
+check("start clamped too", renderWindow({ ...piece, start: 400, end: 500 }).join(","), "124,124");
+check("zero end means the end of the piece", renderWindow({ ...piece, start: 24 }).join(","), "24,124");
+check("length is the window snapped", length({ ...piece, start: 24, end: 90 }), 73);
+check("duration is the whole piece", total({ ...piece, start: 24, end: 90 }), 124);
 
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log("lattice.test.mjs: all checks passed");

@@ -93,26 +93,25 @@ export function span(timeline) {
   return ends.length ? Math.max(...ends) : 0;
 }
 
-/** Clip length: an explicit duration, else the content past `start`, snapped to the
- *  lattice. Mirrors `Timeline.length` in timeline.py -- these must never disagree. */
-export function length(timeline) {
-  const start = Math.max(0, timeline.start || 0);
-  return snapUp(duration(timeline) || Math.max(0, span(timeline) - start));
+/** Length of the whole piece: an explicit duration, else the content.
+ *  Mirrors `Timeline.total`. */
+export function total(timeline) {
+  return timeline.duration || span(timeline);
 }
 
-/** An explicit duration, accepting a legacy `end` as a way of stating one.
- *  Mirrors `_duration` in timeline.py. */
-export function duration(timeline) {
-  if (timeline.duration) return timeline.duration;
-  if (timeline.end) return Math.max(0, timeline.end - Math.max(0, timeline.start || 0));
-  return 0;
-}
-
-/** The half-open frame range that will be rendered. Mirrors `Timeline.window`.
- *  The end is derived, never stored, so start/end/duration cannot contradict. */
+/** The half-open frame range that will be rendered, clamped inside the piece.
+ *  Mirrors `Timeline.window` -- the window lives *within* the duration. */
 export function renderWindow(timeline) {
-  const start = Math.max(0, timeline.start || 0);
-  return [start, start + length(timeline)];
+  const whole = total(timeline);
+  const start = Math.max(0, Math.min(timeline.start || 0, whole));
+  const end = timeline.end || whole;
+  return [start, Math.max(start, Math.min(end, whole))];
+}
+
+/** Clip length: the window, snapped to the lattice. Mirrors `Timeline.length`. */
+export function length(timeline) {
+  const [from, to] = renderWindow(timeline);
+  return snapUp(to - from);
 }
 
 /** Every clip length H3 accepts, up to its maximum. Mirrors `lattice.ladder`. */

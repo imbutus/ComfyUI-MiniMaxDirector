@@ -67,6 +67,12 @@ const CSS = `
 .mmd-track { position:relative; height:62px; margin-bottom:6px; margin-top:4px;
   background:#1c1f26; border-top:1px solid #22262e; border-bottom:1px solid #22262e; }
 
+.mmd-window { position:absolute; top:0; bottom:0; z-index:1; pointer-events:none;
+  background:rgba(110,168,196,.10); border-left:1px solid #6ea8c4;
+  border-right:1px solid #6ea8c4; }
+/* Only worth marking when it is not the whole piece. */
+.mmd-window:not(.mmd-partial) { background:transparent; border-color:transparent; }
+
 .mmd-end { position:absolute; top:0; bottom:0; width:1px; z-index:4;
   border-left:1px dashed #4b5563; pointer-events:none; }
 

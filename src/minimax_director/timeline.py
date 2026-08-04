@@ -42,19 +42,6 @@ vocabulary this file happens not to know yet.
 """
 
 
-def _duration(data: dict[str, Any]) -> int:
-    """Read a duration, accepting an `end` as the way to express one.
-
-    `end` is not stored -- it is derived from start and duration -- but a document or a
-    UI may still speak in terms of it.
-    """
-    duration = int(data.get("duration", 0))
-    if duration:
-        return duration
-    end = int(data.get("end", 0))
-    return max(0, end - int(data.get("start", 0))) if end else 0
-
-
 @dataclass(frozen=True, slots=True)
 class Reference:
     """One wired input, addressable from prose as `<Picture 1>`, `<Audio 2>`, ...
@@ -150,7 +137,9 @@ class Timeline:
     duration: int = 0
     """Explicit clip length in frames. Zero means "as long as the content needs"."""
     start: int = 0
-    """First frame of the render window."""
+    """First frame of the render window, inside the clip."""
+    end: int = 0
+    """Last frame of the render window. Zero means "to the end of the clip"."""
 
     # -- derived -----------------------------------------------------------
 
@@ -161,25 +150,31 @@ class Timeline:
         return max(ends, default=0)
 
     @property
+    def total(self) -> int:
+        """Length of the whole piece: an explicit duration, else what the content needs.
+
+        This is the timeline the author is editing, not the clip about to be rendered.
+        """
+        return self.duration or self.span
+
+    @property
     def window(self) -> tuple[int, int]:
         """The half-open frame range that will actually be rendered.
 
-        Only `start` and `duration` are stored. The end is derived, so the three numbers
-        a director reads -- start, end, duration -- can never contradict each other:
-        `end == start + length` by construction, not by everyone remembering to update
-        the third field.
+        The window lives *inside* the piece: both ends are clamped to `total`, so it can
+        never describe frames the timeline does not have. A zero `end` means "to the end
+        of the piece", which is what a fresh document wants.
         """
-        start = max(0, self.start)
-        return start, start + self.length
+        total = self.total
+        start = max(0, min(self.start, total))
+        end = self.end or total
+        return start, max(start, min(end, total))
 
     @property
     def length(self) -> int:
-        """The clip length H3 will be asked for.
-
-        Zero duration follows the content. Either way it lands on the lattice, which is
-        why the end can sit slightly past the last shot.
-        """
-        return lattice.snap_up(self.duration or max(0, self.span - max(0, self.start)))
+        """The clip length H3 will be asked for: the window, snapped to the lattice."""
+        start, end = self.window
+        return lattice.snap_up(end - start)
 
     def clipped(self) -> "Timeline":
         """This timeline as the window sees it: cropped, and rebased to frame zero.
@@ -207,6 +202,7 @@ class Timeline:
             cues=crop(self.cues, lambda c, a, b: replace(c, start=a, length=b)),
             moves=crop(self.moves, lambda m, a, b: replace(m, start=a, length=b)),
             start=0,
+            end=0,
             duration=finish - start,
         )
 
@@ -276,8 +272,9 @@ class Timeline:
                 for item in data.get("references", [])
             ],
             dialect=str(data.get("dialect", "timeline")),
-            duration=_duration(data),
+            duration=int(data.get("duration", 0)),
             start=int(data.get("start", 0)),
+            end=int(data.get("end", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
 
@@ -296,6 +293,7 @@ class Timeline:
             "dialect": self.dialect,
             "duration": self.duration,
             "start": self.start,
+            "end": self.end,
             "global_prompt": self.global_prompt,
             "shots": [
                 {
@@ -330,7 +328,7 @@ class Timeline:
 
     # -- editing -----------------------------------------------------------
 
-    def advanced(self, overlap: int = 0) -> "Timeline":
+    def advanced(self, overlap: int = 0) -> "Timeline":  # noqa: D401
         """The same timeline, its window moved to the next piece.
 
         H3 generates 5-15 seconds at a time, so a longer edit is rendered in windows.
@@ -341,13 +339,15 @@ class Timeline:
         frame of a window is a reconstruction of its guide rather than the guide itself,
         so re-rendering a frame or two gives an editor something to cut on.
         """
-        _, finish = self.window
-        return replace(self, start=max(0, finish - max(0, overlap)))
+        start, end = self.window
+        size = end - start
+        nxt = max(0, end - max(0, overlap))
+        return replace(self, start=nxt, end=min(self.total, nxt + size))
 
     @property
     def exhausted(self) -> bool:
-        """True when the window has passed the end of the content."""
-        return self.window[0] >= self.span
+        """True when the window has reached the end of the piece."""
+        return self.window[0] >= self.total
 
     def with_references(self, references: list[Reference]) -> "Timeline":
         """A copy whose wired inputs are `references`.

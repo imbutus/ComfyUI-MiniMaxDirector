@@ -138,7 +138,7 @@ def test_blocks_are_ordered_shots_camera_then_audio():
     assert prompt.index("Timeline:") < prompt.index("Camera:") < prompt.index("Audio:")
 
 
-def test_an_explicit_duration_overrides_the_content_length():
+def test_an_explicit_duration_sets_the_length_of_the_piece():
     timeline = build(duration=200)
     assert compile_timeline(timeline).length == 209  # 200 snapped up onto the lattice
 
@@ -176,62 +176,62 @@ def test_the_window_length_is_always_on_the_lattice():
             assert compile_timeline(build(start=start, end=end)).length % 17 == 5
 
 
-def test_end_is_always_start_plus_length():
-    for start in (0, 12, 40):
-        for duration in (0, 30, 124):
-            timeline = build(start=start, duration=duration)
-            first, last = timeline.window
-            assert last - first == timeline.length
-            assert first == start
+def test_the_window_lives_inside_the_piece():
+    """start and end are a range within the clip, never outside it."""
+    timeline = build(duration=124, start=200, end=400)
+    assert timeline.window == (124, 124)   # clamped to the end of the piece
+    timeline = build(duration=124, start=24, end=90)
+    assert timeline.window == (24, 90)
+    assert timeline.length == 73           # 66 frames snapped up
 
 
-def test_an_end_in_the_document_is_read_as_a_duration():
-    from_end = Timeline.from_dict({"start": 24, "end": 72, "shots": []})
-    assert from_end.duration == 48
-    assert from_end.window == (24, 24 + 56)  # 48 snapped up to 56
+def test_a_zero_end_means_the_end_of_the_piece():
+    timeline = build(duration=124, start=24, end=0)
+    assert timeline.window == (24, 124)
 
 
-def test_duration_wins_when_both_are_given():
-    both = Timeline.from_dict({"start": 0, "end": 200, "duration": 48, "shots": []})
-    assert both.duration == 48
+def test_duration_is_the_whole_piece_not_the_window():
+    timeline = build(duration=248, start=0, end=124)
+    assert timeline.total == 248      # the piece
+    assert timeline.length == 124     # what gets rendered
 
 
-def test_end_is_not_stored():
-    assert "end" not in build(start=10, duration=60).to_dict()
+def test_the_window_is_stored():
+    stored = build(start=10, end=60, duration=124).to_dict()
+    assert stored["start"] == 10 and stored["end"] == 60 and stored["duration"] == 124
 
 
-def test_advancing_moves_the_window_to_the_next_piece():
-    timeline = build(duration=124)          # a 124-frame window from zero
+def test_advancing_moves_the_window_along_the_piece():
+    timeline = build(duration=372, end=124)   # a 372-frame piece, first window 0..124
     following = timeline.advanced()
     assert timeline.window == (0, 124)
-    assert following.window == (124, 248)
-    assert following.duration == 124        # the window keeps its size
+    assert following.window == (124, 248)     # same size, one window later
 
 
 def test_overlap_starts_the_next_window_inside_the_previous_one():
-    following = build(duration=124).advanced(overlap=6)
-    assert following.start == 118
+    following = build(duration=372, end=124).advanced(overlap=6)
+    assert following.window == (118, 242)
 
 
 def test_advancing_preserves_the_document():
-    timeline = build(duration=124)
+    timeline = build(duration=372, end=124)
     following = timeline.advanced()
     assert following.shots == timeline.shots
     assert following.global_prompt == timeline.global_prompt
 
 
-def test_exhausted_reports_when_the_content_has_run_out():
-    shots = [{"start": 0, "length": 300, "prompt": "long"}]
-    timeline = build(shots=shots, duration=124)
-    assert not timeline.exhausted                       # 0..124
-    assert not timeline.advanced().exhausted            # 124..248
-    assert not timeline.advanced().advanced().exhausted  # 248..372, still inside 300
-    assert timeline.advanced().advanced().advanced().exhausted  # starts at 372
+def test_exhausted_reports_when_the_window_reaches_the_end():
+    timeline = build(shots=[{"start": 0, "length": 300, "prompt": "long"}], end=124)
+    assert timeline.total == 300
+    assert not timeline.exhausted                        # 0..124
+    assert not timeline.advanced().exhausted             # 124..248
+    assert not timeline.advanced().advanced().exhausted  # 248..300, the short tail
+    assert timeline.advanced().advanced().advanced().exhausted
 
 
 def test_windows_tile_the_whole_timeline():
     shots = [{"start": 0, "length": 400, "prompt": "long"}]
-    timeline = build(shots=shots, duration=124)
+    timeline = build(shots=shots, end=124)
     covered, guard = [], 0
     while not timeline.exhausted and guard < 20:
         covered.append(timeline.window)
@@ -239,4 +239,4 @@ def test_windows_tile_the_whole_timeline():
         guard += 1
     assert covered[0][0] == 0
     assert all(b[0] == a[1] for a, b in zip(covered, covered[1:]))  # no gaps
-    assert covered[-1][1] >= 400
+    assert covered[-1][1] == 400  # the last window stops at the end of the piece

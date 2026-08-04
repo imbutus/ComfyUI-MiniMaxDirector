@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterator
 
+from . import lattice
 from .timeline import Timeline
 
 TOKEN = re.compile(r"<(Picture|Audio|Video)\s+(\d+)>", re.IGNORECASE)
@@ -94,18 +95,37 @@ def _check_coverage(timeline: Timeline) -> Iterator[Issue]:
         if shot.start < 0:
             yield Issue("error", f"A shot starts before frame zero ({shot.start}).")
 
-    if timeline.duration and timeline.start + timeline.duration < timeline.span:
+    if timeline.duration and timeline.duration < timeline.span:
         yield Issue(
             "warning",
             f"The clip is fixed at {timeline.duration} frames but the tracks run to "
             f"{timeline.span}; the tail will be cut.",
         )
 
-    tail = timeline.length - shots[-1].end
-    if tail > 0:
+    start, end = timeline.window
+    if start >= timeline.total:
+        yield Issue(
+            "error",
+            f"The window starts at frame {start}, at or after the end of the clip "
+            f"({timeline.total}); there is nothing in it to render.",
+        )
+        return
+
+    # Two different empties, worth telling apart: a clip longer than its content, and a
+    # window rounded up to a legal length.
+    unused = timeline.total - timeline.span
+    if unused > 0:
         yield Issue(
             "warning",
-            f"The clip is padded by {tail} frames to reach a valid length; the last "
+            f"The clip runs {unused} frames ({unused / lattice.FPS:.2f}s) past the last "
+            f"shot; nothing is described for that tail.",
+        )
+
+    padding = timeline.length - (end - start)
+    if padding > 0:
+        yield Issue(
+            "warning",
+            f"The window is padded by {padding} frames to reach a valid length; the last "
             f"shot will be held.",
         )
 

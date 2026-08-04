@@ -106,8 +106,17 @@ H3's trained range is roughly 5-15 seconds, so anything longer is generated in w
 Splitting the timeline into separate workflows would work, but then the global prompt,
 the shot list and the reference numbering exist in several places and drift apart.
 
-Instead the document stays whole and carries a window (`start` plus `duration`).
-`Timeline.advanced()` moves that window to the next piece, and `MiniMaxDirectorChain`
+The document therefore separates two ideas that are easy to conflate:
+
+- **`duration`** — how long the whole piece is. What you are editing.
+- **`start` / `end`** — which slice of it this run renders. Always clamped inside
+  `duration`, so a window can never describe frames the timeline does not have.
+
+Only the *window* has to land on the 17-frame lattice, because only the window is
+generated. That is why the settings row never rewrites a typed duration: it reports the
+rendered length separately instead.
+
+`Timeline.advanced()` moves the window along the piece, and `MiniMaxDirectorChain`
 does the same at graph level while also handing back the previous window's final frame:
 
 ```
