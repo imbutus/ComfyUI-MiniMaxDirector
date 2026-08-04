@@ -335,12 +335,34 @@ export class TimelineEditor {
 
     const track = TRACK_FOR_MEDIA[kind];
     const timeline = this.read();
+    const firstImage = kind === "image"
+      && !items(timeline, track).some((entry) => entry.media?.kind === "image");
     const target =
       this.selection?.track === track ? this.selection.index : add(timeline, track, 2);
     const item = items(timeline, track)[target];
     item.media = record;
     this.selection = { track, index: target };
     this.commit(timeline);
+
+    // The first reference image sets the generation size, but only under "match" --
+    // that mode scales references to the generation's pixel area, so a mismatched
+    // aspect ratio is squandered on letterboxing. Under "max" the reference keeps its
+    // own resolution and the generation size is an independent decision.
+    if (firstImage && this.widgets.ref_image_size?.value === "match") {
+      const size = await media.dimensions(record);
+      if (size) this.adoptSize(media.fitGeneration(size));
+    }
+  }
+
+  /** Point the node's width/height widgets at a size, and show it. */
+  adoptSize({ width, height }) {
+    for (const [name, value] of [["width", width], ["height", height]]) {
+      const widget = this.widgets[name];
+      if (!widget) continue;
+      widget.value = value;
+      widget.callback?.(value);
+    }
+    this.render();
   }
 
   deleteSelected() {

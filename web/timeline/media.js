@@ -59,6 +59,32 @@ export function url(media) {
   );
 }
 
+/** The file's own pixel dimensions, once the browser has loaded it. */
+export function dimensions(record) {
+  return new Promise((resolve) => {
+    const src = url(record);
+    if (!src) return resolve(null);
+    const probe = new Image();
+    probe.onload = () => resolve({ width: probe.naturalWidth, height: probe.naturalHeight });
+    probe.onerror = () => resolve(null);
+    probe.src = src;
+  });
+}
+
+/**
+ * Generation size that matches a reference image.
+ *
+ * The aspect ratio is taken from the image, but the pixel count is capped: a phone photo
+ * would otherwise ask for a 4000x3000 generation, which is not a framing decision, it is
+ * an out-of-memory error. Both sides land on multiples of 32, which is the step the H3
+ * node declares.
+ */
+export function fitGeneration(size, budget = 1344 * 768) {
+  const round32 = (n) => Math.max(32, Math.round(n / 32) * 32);
+  const scale = Math.min(1, Math.sqrt(budget / (size.width * size.height)));
+  return { width: round32(size.width * scale), height: round32(size.height * scale) };
+}
+
 /**
  * Build the visual for a segment's media.
  *
