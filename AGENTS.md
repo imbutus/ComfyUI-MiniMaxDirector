@@ -93,7 +93,13 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 
 - **Frames are authoritative.** Seconds are derived at compile time only.
 - `duration` 0 means "as long as the content needs". The rendered length is
-  `snap_up(duration or span)`.
+  `snap_up(duration or span)`. A new timeline starts at **124** rather than 0, so the
+  clip is a fixed thing you arrange segments inside from the first click.
+- **The duration bounds dragging, and typing bounds the duration.** A drag stops at the
+  end of the clip -- a gesture aims at a place on screen. A typed length or a new segment
+  stretches the clip instead, because refusing them leaves no way to lengthen a block
+  except editing the duration first and the block second. `bounds()` is the drag limit,
+  `neighbours()` the typed one; neither permits an overlap.
 - `references` is rebuilt from what is actually connected before compiling; the stored
   copy is never trusted.
 - Unknown keys survive a round trip through the editor.
@@ -169,6 +175,13 @@ no weights, in about 0.2 seconds.
 5. **Selection is a class toggle, not a re-render.** Re-rendering on pointerdown replaces
    the element mid-gesture and a double-click never lands.
 6. **Tensors are not booleans.** `any(list_of_tensors)` raises; test `is not None`.
+7. **The segment panel rebuilds only when its shape changes.** `panelShape` guards it.
+   Rebuilding on every render tears out the focused input, ComfyUI hands focus back to
+   the canvas, and the next Delete is no longer aimed at a field -- so it deletes a
+   block instead of a character. The failure looks nothing like its cause.
+8. **A number input reads as `""` while half-typed.** `"2."` is not a number yet.
+   Treating that as `0` clamps to one frame and writes the result back over what is
+   being typed. Ignore values until they parse.
 
 ## Calling into ComfyUI
 
