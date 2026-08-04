@@ -13,7 +13,11 @@ import { TimelineEditor } from "./timeline/editor.js";
 
 const NODE = "MiniMaxDirector";
 const STATE_WIDGET = "timeline";
+
 const MIN_HEIGHT = 420;
+/** Matches LTXDirector, whose editor sets `size[0] = 1375` and saves at 1380x1000.
+ *  A director is a workspace, not a form -- at form size the tracks are unreadable. */
+const DEFAULT_SIZE = [1380, 1000];
 
 app.registerExtension({
   name: "imbutus.MiniMaxDirector",
@@ -54,9 +58,12 @@ function attach(node) {
   });
   widget.serializeValue = () => undefined;
 
-  // A node sized for three tracks plus the inspector; still resizable by hand.
-  const width = Math.max(node.size?.[0] ?? 0, 620);
-  node.setSize([width, Math.max(node.size?.[1] ?? 0, node.computeSize()[1])]);
+  // Open at workspace size. A saved graph overwrites this afterwards, so a node the
+  // user has resized keeps its own dimensions.
+  node.setSize([
+    Math.max(node.size?.[0] ?? 0, DEFAULT_SIZE[0]),
+    Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
+  ]);
 
   // The first render needs a laid-out element to measure, so wait one frame.
   requestAnimationFrame(() => editor.render());

@@ -185,8 +185,8 @@
         40
       ],
       "size": [
-        680,
-        780
+        1380,
+        1000
       ],
       "flags": {},
       "order": 5,
@@ -264,7 +264,7 @@
       "type": "RandomNoise",
       "pos": [
         500,
-        880
+        1080
       ],
       "size": [
         300,
@@ -297,7 +297,7 @@
       "type": "KSamplerSelect",
       "pos": [
         500,
-        1000
+        1200
       ],
       "size": [
         300,
@@ -329,7 +329,7 @@
       "type": "BasicScheduler",
       "pos": [
         500,
-        1100
+        1300
       ],
       "size": [
         300,
@@ -368,7 +368,7 @@
       "id": 10,
       "type": "BasicGuider",
       "pos": [
-        1240,
+        1940,
         40
       ],
       "size": [
@@ -408,7 +408,7 @@
       "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        1240,
+        1940,
         160
       ],
       "size": [
@@ -470,7 +470,7 @@
       "id": 12,
       "type": "VAEDecode",
       "pos": [
-        1240,
+        1940,
         350
       ],
       "size": [
@@ -510,7 +510,7 @@
       "id": 13,
       "type": "VAEDecodeAudio",
       "pos": [
-        1240,
+        1940,
         470
       ],
       "size": [
@@ -550,7 +550,7 @@
       "id": 14,
       "type": "CreateVideo",
       "pos": [
-        1240,
+        1940,
         590
       ],
       "size": [
@@ -594,7 +594,7 @@
       "id": 15,
       "type": "SaveVideo",
       "pos": [
-        1240,
+        1940,
         740
       ],
       "size": [
@@ -625,7 +625,7 @@
       "id": 16,
       "type": "MarkdownNote",
       "pos": [
-        1620,
+        2320,
         40
       ],
       "size": [
