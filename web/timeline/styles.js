@@ -4,6 +4,11 @@
  * A DOM widget renders outside ComfyUI's canvas, so it needs its own styling. Colours
  * are hard-wired rather than inherited: ComfyUI themes vary, and a timeline whose track
  * colours drift with the theme stops being readable at a glance.
+ *
+ * Every class is prefixed `mmd-`, and that is load-bearing rather than tidiness.
+ * ComfyUI ships utility classes, and a plain `.fixed` here inherited its
+ * `position: fixed` -- the element left the flow and printed on top of its own label.
+ * A descendant selector does not save you: it only wins for properties it declares.
  */
 
 const CSS = `
@@ -15,7 +20,7 @@ const CSS = `
 .mmd-bar button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
   border-radius:5px; padding:5px 11px; cursor:pointer; font:inherit; }
 .mmd-bar button:hover { background:#39404e; }
-.mmd-bar button.danger { background:#3a2422; border-color:#5c332d; }
+.mmd-bar button.mmd-danger { background:#3a2422; border-color:#5c332d; }
 .mmd-bar .mmd-grow { flex:1; }
 .mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
@@ -37,6 +42,9 @@ const CSS = `
 .mmd-track { position:relative; height:62px; margin-bottom:6px; margin-top:4px;
   background:#1c1f26; border-top:1px solid #22262e; border-bottom:1px solid #22262e; }
 
+.mmd-end { position:absolute; top:0; bottom:0; width:1px; z-index:4;
+  border-left:1px dashed #4b5563; pointer-events:none; }
+
 .mmd-playhead { position:absolute; top:0; bottom:0; width:2px; background:#e2564b;
   pointer-events:none; z-index:5; }
 .mmd-playhead::before { content:""; position:absolute; top:0; left:-4px;
@@ -46,42 +54,46 @@ const CSS = `
 .mmd-seg { position:absolute; top:3px; bottom:3px; border-radius:4px; cursor:grab;
   overflow:hidden; box-sizing:border-box; user-select:none;
   border:1px solid rgba(0,0,0,.35); }
-.mmd-seg.sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
-.mmd-seg .cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
+.mmd-seg.mmd-sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
+.mmd-seg .mmd-cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.85); pointer-events:none; }
-.mmd-seg .chip { position:absolute; left:0; bottom:0; padding:1px 5px; font-size:9px;
+.mmd-seg .mmd-chip { position:absolute; left:0; bottom:0; padding:1px 5px; font-size:9px;
   background:rgba(0,0,0,.62); color:#d7dbe2; border-top-right-radius:4px;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   pointer-events:none; }
-.mmd-seg .grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
-.mmd-seg .grip.l { left:0; } .mmd-seg .grip.r { right:0; }
+.mmd-seg .mmd-grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
+.mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
   object-fit:cover; pointer-events:none; }
-.mmd-seg.has-media .cap { top:auto; bottom:16px; }
+.mmd-seg.mmd-has-media .mmd-cap { top:auto; bottom:16px; }
 
 .mmd-track[data-track="shots"] .mmd-seg { background:#2f6d8f; }
 .mmd-track[data-track="moves"] .mmd-seg { background:#414958; }
 .mmd-track[data-track="cues"]  .mmd-seg { background:#5d4a22; }
-.mmd-track .mmd-seg.has-media { background:#0d1014; }
+.mmd-track .mmd-seg.mmd-has-media { background:#0d1014; }
 
 .mmd-seg .mmd-inline { position:absolute; inset:2px; z-index:6; resize:none;
   background:#0f1216; color:#f3f4f6; border:1px solid #6ea8c4; border-radius:3px;
   padding:4px 6px; font:inherit; outline:none; }
+
+.mmd-marquee { position:absolute; z-index:7; pointer-events:none;
+  border:1px solid #8ab4d8; background:rgba(138,180,216,.16); border-radius:2px; }
 
 /* settings row ----------------------------------------------------------- */
 .mmd-settings { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   flex:0 0 auto; padding:5px 8px; background:#181c23; border:1px solid #2c313c;
   border-radius:6px; }
 .mmd-settings label { display:flex; align-items:center; gap:5px; color:#9ca3af;
-  font-size:11px; white-space:nowrap; flex:0 0 auto; }
+  font-size:11px; white-space:nowrap; flex:0 0 auto; min-width:max-content; }
+.mmd-settings label > * { flex:0 0 auto; }
 .mmd-settings input, .mmd-settings select { width:72px; flex:0 0 auto;
   background:#1c1f26;
   color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 5px;
   font:inherit; }
 .mmd-settings select { width:96px; }
-.mmd-settings .unit, .mmd-settings .fixed { color:#e5e7eb; }
-.mmd-settings .hint { color:#6b7280; font-size:11px; }
+.mmd-settings .mmd-unit, .mmd-settings .mmd-value { color:#e5e7eb; }
+.mmd-settings .mmd-hint { color:#6b7280; font-size:11px; }
 .mmd-settings .mmd-grow { flex:1; }
 
 /* transport -------------------------------------------------------------- */

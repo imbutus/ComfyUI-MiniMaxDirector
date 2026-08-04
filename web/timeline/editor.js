@@ -13,19 +13,15 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
   CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, formatSeconds, items, length, remove,
-  reshape, toSeconds, FPS,
+  renderWindow, reshape, toSeconds, FPS,
 } from "./model.js";
 
 const EDGE = 7;
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
+const TAIL = 34;
 const TYPING_PAUSE = 500;
 
-/** The dragged track as it was when the gesture started. */
-function restoreDragged(timeline, drag) {
-  return timeline[drag.track].map((item, index) =>
-    index === drag.index ? { ...item, start: drag.start, length: drag.length } : item);
-}
 
 export class TimelineEditor {
   /**
@@ -39,8 +35,9 @@ export class TimelineEditor {
     this.read = read;
     this.write = write;
     this.widgets = widgets;
-    this.selection = null;
+    this.selected = [];
     this.drag = null;
+    this.marquee = null;
     this.zoom = 1;
     this.playhead = 0;
     this.playing = null;
@@ -64,7 +61,7 @@ export class TimelineEditor {
         <button data-media="audio">♪ Add Audio</button>
         <button data-media="video">▭ Add Video</button>
         <button data-add="moves">⟲ Add Camera</button>
-        <button class="danger" data-del="1">🗑 Delete</button>
+        <button class="mmd-danger" data-del="1">🗑 Delete</button>
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
       </div>
@@ -79,6 +76,7 @@ export class TimelineEditor {
           <div class="mmd-canvas">
             <div class="mmd-ruler"></div>
             ${TRACKS.map((t) => `<div class="mmd-track" data-track="${t.key}"></div>`).join("")}
+            <div class="mmd-end"></div>
             <div class="mmd-playhead"></div>
           </div>
         </div>
@@ -110,6 +108,7 @@ export class TimelineEditor {
     this.canvas = this.root.querySelector(".mmd-canvas");
     this.ruler = this.root.querySelector(".mmd-ruler");
     this.head = this.root.querySelector(".mmd-playhead");
+    this.end = this.root.querySelector(".mmd-end");
     this.readout = this.root.querySelector(".mmd-len");
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
@@ -119,6 +118,25 @@ export class TimelineEditor {
     this.global = this.root.querySelector(".mmd-global");
 
     this.bind();
+  }
+
+  /**
+   * The single selected segment, or null when zero or many are selected.
+   *
+   * Most of the editor cares about "the one being edited", while marquee selection
+   * needs a list. Keeping this pair means the panel, the inline editor and the drag
+   * code stay written in terms of one segment.
+   */
+  get selection() {
+    return this.selected.length === 1 ? this.selected[0] : null;
+  }
+
+  set selection(value) {
+    this.selected = value ? [value] : [];
+  }
+
+  isSelected(track, index) {
+    return this.selected.some((s) => s.track === track && s.index === index);
   }
 
   bind() {
@@ -158,7 +176,7 @@ export class TimelineEditor {
         return;
       }
 
-      if (!this.selection) return;
+      if (!this.selected.length) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
@@ -166,7 +184,7 @@ export class TimelineEditor {
         this.deleteSelected();
       } else if (event.key === "Escape") {
         event.stopPropagation();
-        this.selection = null;
+        this.selected = [];
         this.applySelection();
       }
     }, true);
@@ -174,8 +192,8 @@ export class TimelineEditor {
     // A click outside the editor gives the keyboard back to ComfyUI.
     document.addEventListener("pointerdown", (event) => {
       this.active = this.root.contains(event.target);
-      if (!this.active && this.selection) {
-        this.selection = null;
+      if (!this.active && this.selected.length) {
+        this.selected = [];
         this.applySelection();
       }
     }, true);
@@ -183,7 +201,10 @@ export class TimelineEditor {
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     document.addEventListener("pointermove", (event) => this.move(event));
-    document.addEventListener("pointerup", () => { this.drag = null; });
+    document.addEventListener("pointerup", () => {
+      this.drag = null;
+      if (this.marquee) this.endMarquee();
+    });
 
     this.scrub.addEventListener("input", () => {
       const total = length(this.read());
@@ -293,10 +314,13 @@ export class TimelineEditor {
   }
 
   deleteSelected() {
-    if (!this.selection) return;
+    if (!this.selected.length) return;
     const timeline = this.read();
-    remove(timeline, this.selection.track, this.selection.index);
-    this.selection = null;
+    // Highest index first, so earlier removals cannot shift the ones still to come.
+    for (const { track, index } of [...this.selected].sort((a, b) => b.index - a.index)) {
+      remove(timeline, track, index);
+    }
+    this.selected = [];
     this.commit(timeline);
   }
 
@@ -325,8 +349,15 @@ export class TimelineEditor {
 
   // -- geometry ------------------------------------------------------------
 
+  /**
+   * Pixels the clip itself occupies.
+   *
+   * A tail of empty space is left past the end so the final boundary is visible rather
+   * than flush against the edge of the viewport -- at fit zoom the last segment used to
+   * end exactly on the border, which reads as "cut off" instead of "finished".
+   */
   width() {
-    return Math.max(this.stage.clientWidth - 4, 200) * this.zoom;
+    return Math.max(this.stage.clientWidth - TAIL, 200) * this.zoom;
   }
 
   scale(total) {
@@ -343,12 +374,16 @@ export class TimelineEditor {
     const total = length(this.read());
 
     if (!node) {
-      // Clicking bare track area moves the playhead there, like a video editor.
-      const box = this.canvas.getBoundingClientRect();
-      this.playhead = Math.max(0, Math.min(total, (event.clientX - box.left) / this.scale(total)));
-      this.selection = null;
-      this.renderPlayhead(total);
-      this.applySelection();
+      // Empty space starts a marquee. If the pointer never moves it is just a click,
+      // and `endMarquee` falls back to placing the playhead there.
+      this.marquee = {
+        x0: event.clientX, y0: event.clientY,
+        additive: event.shiftKey || event.metaKey || event.ctrlKey,
+        moved: false,
+      };
+      this.box = document.createElement("div");
+      this.box.className = "mmd-marquee";
+      this.canvas.appendChild(this.box);
       return;
     }
 
@@ -359,15 +394,69 @@ export class TimelineEditor {
     const box = node.getBoundingClientRect();
     const offset = event.clientX - box.left;
 
-    this.selection = { track, index };
+    // Grabbing something already in a multi-selection keeps the group and moves it
+    // together; grabbing anything else selects just that one.
+    if (!this.isSelected(track, index)) {
+      if (event.shiftKey || event.metaKey || event.ctrlKey) this.selected.push({ track, index });
+      else this.selected = [{ track, index }];
+    }
+
+    const mode = offset <= EDGE ? "start" : offset >= box.width - EDGE ? "end" : "body";
     this.drag = {
-      track, index,
+      track, index, mode,
       originX: event.clientX,
       scale: this.scale(total),
       start: item.start,
       length: item.length,
-      mode: offset <= EDGE ? "start" : offset >= box.width - EDGE ? "end" : "body",
+      // Resizing only ever applies to the grabbed segment; moving applies to the group.
+      group: mode === "body"
+        ? this.selected.map(({ track: t, index: i }) => {
+            const entry = items(timeline, t)[i];
+            return { track: t, index: i, start: entry.start };
+          })
+        : [],
+      baseline: JSON.stringify(timeline),
+      recorded: false,
     };
+    this.applySelection();
+  }
+
+  /**
+   * Finish a rubber-band drag: select everything the rectangle touched.
+   *
+   * A rectangle that never moved is treated as a plain click -- deselect, and put the
+   * playhead where the pointer went down.
+   */
+  endMarquee() {
+    const rect = this.box.getBoundingClientRect();
+    const moved = this.marquee.moved;
+    const additive = this.marquee.additive;
+
+    this.box.remove();
+    this.box = null;
+    this.marquee = null;
+
+    if (!moved) {
+      const total = length(this.read());
+      const box = this.canvas.getBoundingClientRect();
+      this.playhead = Math.max(0, Math.min(total, (rect.left - box.left) / this.scale(total)));
+      this.selected = [];
+      this.renderPlayhead(total);
+      this.applySelection();
+      return;
+    }
+
+    const hits = additive ? [...this.selected] : [];
+    for (const node of this.canvas.querySelectorAll(".mmd-seg")) {
+      const seg = node.getBoundingClientRect();
+      const overlaps = seg.left < rect.right && rect.left < seg.right
+                    && seg.top < rect.bottom && rect.top < seg.bottom;
+      if (!overlaps) continue;
+      const track = node.parentElement.dataset.track;
+      const index = Number(node.dataset.index);
+      if (!hits.some((h) => h.track === track && h.index === index)) hits.push({ track, index });
+    }
+    this.selected = hits;
     this.applySelection();
   }
 
@@ -380,13 +469,13 @@ export class TimelineEditor {
    * justify a re-render.
    */
   applySelection() {
-    for (const node of this.canvas.querySelectorAll(".mmd-seg.sel")) {
-      node.classList.remove("sel");
+    for (const node of this.canvas.querySelectorAll(".mmd-seg.mmd-sel")) {
+      node.classList.remove("mmd-sel");
     }
-    if (this.selection) {
+    for (const { track, index } of this.selected) {
       this.canvas
-        .querySelector(`[data-track="${this.selection.track}"] [data-index="${this.selection.index}"]`)
-        ?.classList.add("sel");
+        .querySelector(`[data-track="${track}"] [data-index="${index}"]`)
+        ?.classList.add("mmd-sel");
     }
     this.renderPanel(this.read());
   }
@@ -448,6 +537,19 @@ export class TimelineEditor {
   }
 
   move(event) {
+    if (this.marquee) {
+      const box = this.canvas.getBoundingClientRect();
+      const x = Math.min(this.marquee.x0, event.clientX) - box.left;
+      const y = Math.min(this.marquee.y0, event.clientY) - box.top;
+      const w = Math.abs(event.clientX - this.marquee.x0);
+      const h = Math.abs(event.clientY - this.marquee.y0);
+      if (w > 3 || h > 3) this.marquee.moved = true;
+      Object.assign(this.box.style, {
+        left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`,
+      });
+      return;
+    }
+
     if (!this.drag) return;
     const frames = Math.round((event.clientX - this.drag.originX) / this.drag.scale);
     if (frames === 0) return;
@@ -457,14 +559,16 @@ export class TimelineEditor {
     if (!item) return;
 
     if (!this.drag.recorded) {
-      // The gesture's whole travel is one step: snapshot the state it began from.
-      this.history.push(JSON.stringify({ ...timeline, [this.drag.track]: restoreDragged(timeline, this.drag) }));
+      // The gesture's whole travel is one undo step: record the state it began from.
+      this.history.push(this.drag.baseline);
       this.future.length = 0;
       this.drag.recorded = true;
     }
 
     if (this.drag.mode === "body") {
-      reshape(item, { start: this.drag.start + frames });
+      for (const member of this.drag.group) {
+        reshape(items(timeline, member.track)[member.index], { start: member.start + frames });
+      }
     } else if (this.drag.mode === "start") {
       const start = Math.min(this.drag.start + frames, this.drag.start + this.drag.length - 1);
       reshape(item, { start, length: this.drag.length - (start - this.drag.start) });
@@ -482,7 +586,8 @@ export class TimelineEditor {
     const total = length(timeline);
     const scale = this.scale(total);
 
-    this.canvas.style.width = `${this.width()}px`;
+    this.canvas.style.width = `${this.width() + TAIL}px`;
+    this.end.style.left = `${this.width()}px`;
     this.readout.textContent =
       `${total} frames · ${formatSeconds(toSeconds(total))}s · ${total % 17 === 5 ? "valid" : "INVALID"}`;
 
@@ -511,29 +616,32 @@ export class TimelineEditor {
    */
   renderSettings(timeline) {
     const value = (name) => this.widgets[name]?.value;
+    const [from, to] = renderWindow(timeline);
     const secs = (frames) => toSeconds(frames || 0).toFixed(2);
 
+    // The fields show what the clip *is*, not the raw overrides. A blank override reads
+    // as the value it resolves to, so the row always describes the real render.
     this.settings.innerHTML = `
-      <label>start <input class="s-start" type="number" min="0" step="0.1" value="${secs(timeline.start)}"><span class="unit">s</span></label>
-      <label>end <input class="s-end" type="number" min="0" step="0.1" value="${secs(timeline.end)}"><span class="unit">s</span></label>
-      <label>duration <input class="s-duration" type="number" min="0" step="0.1" value="${secs(timeline.duration)}"><span class="unit">s</span></label>
-      <label>frame rate <span class="fixed">${FPS}</span><span class="unit">fps</span></label>
-      <label>width <input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
-      <label>height <input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
-      <label>resize
+      <label><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1" value="${secs(from)}"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">end</span><input class="s-end" type="number" min="0" step="0.1" value="${secs(to)}"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1" value="${secs(length(timeline))}"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps</span></label>
+      <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
+      <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
+      <label><span class="mmd-key">resize</span>
         <select class="s-ref">
           ${["match", "max"].map((o) =>
             `<option value="${o}"${o === value("ref_image_size") ? " selected" : ""}>${o}</option>`).join("")}
         </select>
       </label>
-      <label>dialect
+      <label><span class="mmd-key">dialect</span>
         <select class="s-dialect">
           ${["timeline", "shots"].map((o) =>
             `<option value="${o}"${o === (timeline.dialect || "timeline") ? " selected" : ""}>${o}</option>`).join("")}
         </select>
       </label>
       <span class="mmd-grow"></span>
-      <span class="hint">0 = auto · end 0 = to the end</span>`;
+      <span class="mmd-hint">${timeline.duration || timeline.end ? "explicit window" : "following the content"}</span>`;
 
     const setWidget = (name, raw) => {
       const widget = this.widgets[name];
@@ -585,9 +693,7 @@ export class TimelineEditor {
   segment(track, index, item, scale) {
     const node = document.createElement("div");
     node.className = "mmd-seg";
-    if (this.selection?.track === track && this.selection.index === index) {
-      node.classList.add("sel");
-    }
+    if (this.isSelected(track, index)) node.classList.add("mmd-sel");
     node.dataset.index = index;
     node.style.left = `${item.start * scale}px`;
     node.style.width = `${Math.max(item.length * scale, 14)}px`;
@@ -595,13 +701,13 @@ export class TimelineEditor {
     if (item.media) media.decorate(node, item.media);
 
     const caption = document.createElement("span");
-    caption.className = "cap";
+    caption.className = "mmd-cap";
     caption.textContent = item.prompt?.trim() || item.camera || "";
     node.appendChild(caption);
 
     if (item.media?.filename) {
       const chip = document.createElement("span");
-      chip.className = "chip";
+      chip.className = "mmd-chip";
       chip.textContent = `${item.media.kind.toUpperCase()} · ${item.media.filename}`;
       node.appendChild(chip);
     }
@@ -623,7 +729,9 @@ export class TimelineEditor {
       this.segPrompt.value = "";
       this.segPrompt.disabled = true;
       this.segFields.innerHTML = "";
-      this.range.textContent = "no segment selected";
+      this.range.textContent = this.selected.length
+        ? `${this.selected.length} segments selected`
+        : "no segment selected";
       return;
     }
 
@@ -643,7 +751,7 @@ export class TimelineEditor {
 
     const cameras = track === "cues" ? "" : `
       <label>camera
-        <select class="camera">
+        <select class="mmd-f-camera">
           ${CAMERAS.map((name) =>
             `<option value="${name}"${name === (item.camera || "") ? " selected" : ""}>${name || "—"}</option>`
           ).join("")}
@@ -651,10 +759,10 @@ export class TimelineEditor {
       </label>`;
 
     this.segFields.innerHTML = `
-      <label>start <input class="start" type="number" min="0" value="${item.start}"></label>
-      <label>frames <input class="len" type="number" min="1" value="${item.length}"></label>
+      <label>start <input class="mmd-f-start" type="number" min="0" value="${item.start}"></label>
+      <label>frames <input class="mmd-f-len" type="number" min="1" value="${item.length}"></label>
       ${cameras}
-      ${item.media ? '<button class="unlink">detach media</button>' : ""}`;
+      ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
 
     const patch = (change) => {
       const next = this.read();
@@ -662,10 +770,10 @@ export class TimelineEditor {
       this.commit(next);
     };
 
-    this.segFields.querySelector(".start").onchange = (e) => patch({ start: Math.max(0, +e.target.value) });
-    this.segFields.querySelector(".len").onchange = (e) => patch({ length: Math.max(1, +e.target.value) });
-    this.segFields.querySelector(".camera")?.addEventListener("change", (e) => patch({ camera: e.target.value }));
-    this.segFields.querySelector(".unlink")?.addEventListener("click", () => {
+    this.segFields.querySelector(".mmd-f-start").onchange = (e) => patch({ start: Math.max(0, +e.target.value) });
+    this.segFields.querySelector(".mmd-f-len").onchange = (e) => patch({ length: Math.max(1, +e.target.value) });
+    this.segFields.querySelector(".mmd-f-camera")?.addEventListener("change", (e) => patch({ camera: e.target.value }));
+    this.segFields.querySelector(".mmd-f-unlink")?.addEventListener("click", () => {
       const next = this.read();
       delete items(next, track)[index].media;
       this.commit(next);

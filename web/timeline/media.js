@@ -71,7 +71,7 @@ export function decorate(node, media) {
   const src = url(media);
   if (!src) return;
 
-  node.classList.add("has-media");
+  node.classList.add("mmd-has-media");
 
   if (media.kind === "image") {
     node.style.backgroundImage = `url("${src}")`;
