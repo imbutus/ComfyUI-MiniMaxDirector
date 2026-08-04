@@ -350,6 +350,28 @@ export class TimelineEditor {
   // -- geometry ------------------------------------------------------------
 
   /**
+   * How much the graph is zoomed, as seen by this widget.
+   *
+   * ComfyUI renders DOM widgets inside a CSS-transformed container, so
+   * `getBoundingClientRect` returns *screen* pixels while `style.left` is written in
+   * the element's own unscaled pixels. Mixing the two puts everything off by the zoom
+   * factor -- a marquee drawn up and to the left of the pointer, drags that move the
+   * wrong distance.
+   */
+  factor() {
+    const rect = this.canvas.getBoundingClientRect();
+    const width = this.canvas.offsetWidth;
+    return rect.width > 0 && width > 0 ? rect.width / width : 1;
+  }
+
+  /** A client point in the canvas's own coordinates. */
+  toLocal(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect();
+    const factor = this.factor();
+    return [(clientX - rect.left) / factor, (clientY - rect.top) / factor];
+  }
+
+  /**
    * Pixels the clip itself occupies.
    *
    * A tail of empty space is left past the end so the final boundary is visible rather
@@ -392,7 +414,7 @@ export class TimelineEditor {
     const timeline = this.read();
     const item = items(timeline, track)[index];
     const box = node.getBoundingClientRect();
-    const offset = event.clientX - box.left;
+    const offset = (event.clientX - box.left) / this.factor();
 
     // Grabbing something already in a multi-selection keeps the group and moves it
     // together; grabbing anything else selects just that one.
@@ -431,6 +453,7 @@ export class TimelineEditor {
     const rect = this.box.getBoundingClientRect();
     const moved = this.marquee.moved;
     const additive = this.marquee.additive;
+    this.marqueeOrigin = [this.marquee.x0, this.marquee.y0];
 
     this.box.remove();
     this.box = null;
@@ -438,8 +461,8 @@ export class TimelineEditor {
 
     if (!moved) {
       const total = length(this.read());
-      const box = this.canvas.getBoundingClientRect();
-      this.playhead = Math.max(0, Math.min(total, (rect.left - box.left) / this.scale(total)));
+      const [x] = this.toLocal(this.marqueeOrigin[0], this.marqueeOrigin[1]);
+      this.playhead = Math.max(0, Math.min(total, x / this.scale(total)));
       this.selected = [];
       this.renderPlayhead(total);
       this.applySelection();
@@ -538,11 +561,12 @@ export class TimelineEditor {
 
   move(event) {
     if (this.marquee) {
-      const box = this.canvas.getBoundingClientRect();
-      const x = Math.min(this.marquee.x0, event.clientX) - box.left;
-      const y = Math.min(this.marquee.y0, event.clientY) - box.top;
-      const w = Math.abs(event.clientX - this.marquee.x0);
-      const h = Math.abs(event.clientY - this.marquee.y0);
+      const [ax, ay] = this.toLocal(this.marquee.x0, this.marquee.y0);
+      const [bx, by] = this.toLocal(event.clientX, event.clientY);
+      const x = Math.min(ax, bx);
+      const y = Math.min(ay, by);
+      const w = Math.abs(bx - ax);
+      const h = Math.abs(by - ay);
       if (w > 3 || h > 3) this.marquee.moved = true;
       Object.assign(this.box.style, {
         left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`,
@@ -551,7 +575,8 @@ export class TimelineEditor {
     }
 
     if (!this.drag) return;
-    const frames = Math.round((event.clientX - this.drag.originX) / this.drag.scale);
+    const frames = Math.round(
+      ((event.clientX - this.drag.originX) / this.factor()) / this.drag.scale);
     if (frames === 0) return;
 
     const timeline = this.read();
