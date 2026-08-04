@@ -435,8 +435,14 @@ export class TimelineEditor {
   }
 
   /** Pixels per frame across the whole piece, not just the window.
-   *  The tracks show everything you have edited; the window is drawn on top of it. */
+   *  The tracks show everything you have edited; the window is drawn on top of it.
+   *
+   *  A gesture in progress keeps the scale it started with. The drag maths are fixed at
+   *  pointerdown, and with no explicit duration the extent follows the content -- so
+   *  resizing the last segment would otherwise shrink the extent, grow the scale, and
+   *  slide the edge out from under the cursor as you drag it. */
   scale() {
+    if (this.drag) return this.drag.scale;
     return this.width() / Math.max(this.extent(), 1);
   }
 
