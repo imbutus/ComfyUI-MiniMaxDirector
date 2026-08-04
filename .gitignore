@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+.DS_Store
+.idea/
+.vscode/
+
+# Working notes, scratch workflows and mock run logs — local only.
+notes/
+*.jsonl
