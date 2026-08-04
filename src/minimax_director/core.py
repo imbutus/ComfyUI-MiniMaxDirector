@@ -48,6 +48,20 @@ def accepted(node: type) -> set[str]:
     return names
 
 
+def unwrap(output: Any) -> tuple:
+    """Normalise a node's return value to a plain tuple.
+
+    The H3 nodes use ComfyUI's V3 schema and return a `NodeOutput`, which carries its
+    values on `.result`. V1 nodes return a tuple already. Unpacking a `NodeOutput`
+    directly happens to work through its `__getitem__`, but only by accident, and it
+    would break the moment a node also attached UI output.
+    """
+    result = getattr(output, "result", None)
+    if result is not None:
+        return tuple(result)
+    return tuple(output)
+
+
 def call(name: str, **kwargs: Any) -> tuple:
     """Invoke a core node, passing only the arguments it declares.
 
@@ -62,4 +76,4 @@ def call(name: str, **kwargs: Any) -> tuple:
         for key, value in kwargs.items()
         if value is not None and key in allowed
     }
-    return getattr(node(), node.FUNCTION)(**payload)
+    return unwrap(getattr(node(), node.FUNCTION)(**payload))
