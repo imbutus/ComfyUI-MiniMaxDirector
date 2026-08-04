@@ -72,6 +72,7 @@ export class TimelineEditor {
     this.widgets = widgets;
     this.selected = [];
     this.drag = null;
+    this.panelShape = null;
     this.marquee = null;
     this.zoom = 1;
     this.playhead = 0;
@@ -958,6 +959,7 @@ export class TimelineEditor {
       this.segPrompt.value = "";
       this.segPrompt.disabled = true;
       this.segFields.innerHTML = "";
+      this.panelShape = null;
       this.range.textContent = this.selected.length
         ? `${this.selected.length} segments selected`
         : "no segment selected";
@@ -987,25 +989,116 @@ export class TimelineEditor {
         </select>
       </label>`;
 
-    this.segFields.innerHTML = `
-      <label>start <input class="mmd-f-start" type="number" min="0" value="${item.start}"></label>
-      <label>frames <input class="mmd-f-len" type="number" min="1" value="${item.length}"></label>
-      ${cameras}
-      ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
-
     const patch = (change) => {
       const next = this.read();
       Object.assign(items(next, track)[index], change);
       this.commit(next);
     };
 
-    this.segFields.querySelector(".mmd-f-start").onchange = (e) => patch({ start: Math.max(0, +e.target.value) });
-    this.segFields.querySelector(".mmd-f-len").onchange = (e) => patch({ length: Math.max(1, +e.target.value) });
-    this.segFields.querySelector(".mmd-f-camera")?.addEventListener("change", (e) => patch({ camera: e.target.value }));
-    this.segFields.querySelector(".mmd-f-unlink")?.addEventListener("click", () => {
+    // Written on every keystroke so the block moves as you type, but one undo step per
+    // burst rather than per character -- the same bargain the prompt boxes make.
+    //
+    // A typed number also grows the clip when it has to. Dragging stays inside the
+    // duration because a gesture is aimed at a place on screen, but typing a length is
+    // a statement of intent, and refusing it leaves no way to make a segment longer
+    // than the clip except editing the duration first and the block second.
+    const patchLive = (change) => {
+      this.snapshotTyping();
       const next = this.read();
-      delete items(next, track)[index].media;
-      this.commit(next);
-    });
+      const target = items(next, track)[index];
+      Object.assign(target, change);
+      const end = target.start + target.length;
+      if (end > ceiling(next)) next.duration = end;
+      this.write(next);
+      this.render();
+    };
+
+    // Rebuilding the markup on every render would destroy whatever is being typed, so
+    // it happens only when the panel is actually a different shape. Everything else is
+    // an in-place value update below.
+    const shape = `${track}:${index}:${item.media ? 1 : 0}`;
+    if (this.panelShape !== shape) {
+      this.panelShape = shape;
+      this.segFields.innerHTML = `
+        <label>start <input class="mmd-f-start" type="number" min="0" step="1"></label>
+        <label>seconds <input class="mmd-f-secs" type="number" min="0.04" step="0.01"></label>
+        <label>frames <input class="mmd-f-len" type="number" min="1" step="1"></label>
+        ${cameras}
+        ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
+
+      const secsEl = this.segFields.querySelector(".mmd-f-secs");
+      const lenEl = this.segFields.querySelector(".mmd-f-len");
+
+      // Seconds and frames are two views of one number. Whichever you are not typing
+      // into follows immediately; the document only ever stores frames.
+      // The same ceiling the drag obeys: typing a length may not push past the clip
+      // either, or the two ways of editing would disagree about what is legal.
+      const setLength = (frames) => {
+        const now = this.read();
+        const here = items(now, track)[index] || item;
+        // Neighbours still bound it -- two segments cannot describe the same frames --
+        // but the end of the clip does not, because the clip follows what you type.
+        const room = neighbours(now, track, index)[1] - here.start;
+        const wanted = Math.round(frames);
+        const n = Math.max(1, Math.min(wanted, room));
+
+        // The field under the cursor is normally left alone, so typing is not fought.
+        // A refused number is the exception: showing what was typed while the timeline
+        // holds something else means the two boxes disagree, and one of them is lying.
+        const refused = n !== wanted;
+        if (refused || secsEl !== document.activeElement) {
+          secsEl.value = toSeconds(n).toFixed(2);
+        }
+        if (refused || lenEl !== document.activeElement) lenEl.value = n;
+        patchLive({ length: n });
+      };
+
+      // A number input reports "" for anything half-typed -- "2." is not a number yet.
+      // Treating that as zero clamped the block to one frame and then wrote the result
+      // back over the field, so "2.5" came out as "0.045".
+      const typed = (el) => (el.value.trim() === "" ? null : Number(el.value));
+
+      secsEl.addEventListener("input", () => {
+        const value = typed(secsEl);
+        if (value !== null && Number.isFinite(value)) setLength(value * FPS);
+      });
+      lenEl.addEventListener("input", () => {
+        const value = typed(lenEl);
+        if (value !== null && Number.isFinite(value)) setLength(value);
+      });
+      this.segFields.querySelector(".mmd-f-start")
+        .addEventListener("input", (e) => {
+          if (e.target.value.trim() === "") return;
+          const wanted = Math.round(Number(e.target.value));
+          if (!Number.isFinite(wanted)) return;
+
+          const now = this.read();
+          const here = items(now, track)[index] || item;
+          const [floor, roof] = neighbours(now, track, index);
+          const top = Math.max(floor, roof - here.length);
+          const start = Math.max(floor, Math.min(wanted, top));
+          if (start !== wanted) e.target.value = start;
+          patchLive({ start });
+        });
+      this.segFields.querySelector(".mmd-f-camera")
+        ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
+      this.segFields.querySelector(".mmd-f-unlink")
+        ?.addEventListener("click", () => {
+          const next = this.read();
+          delete items(next, track)[index].media;
+          this.panelShape = null;
+          this.commit(next);
+        });
+    }
+
+    // Never write into the field under the cursor -- that is what eats keystrokes.
+    const put = (selector, value) => {
+      const el = this.segFields.querySelector(selector);
+      if (el && el !== document.activeElement) el.value = value;
+    };
+    put(".mmd-f-start", item.start);
+    put(".mmd-f-secs", toSeconds(item.length).toFixed(2));
+    put(".mmd-f-len", item.length);
+    put(".mmd-f-camera", item.camera || "");
   }
 }
