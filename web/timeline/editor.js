@@ -657,6 +657,25 @@ export class TimelineEditor {
   }
 
   /**
+   * What the last edit did, in words.
+   *
+   * H3 only accepts lengths on the 17-frame grid, so a typed duration is rounded up.
+   * Without saying so, entering 5s and getting 5.17s back reads as the field refusing
+   * to save -- the number typed and the number shown differ for a reason the UI never
+   * mentioned.
+   */
+  snapNote(timeline) {
+    const actual = length(timeline);
+    if (this.asked && this.asked.frames && this.asked.frames !== actual) {
+      return `${(this.asked.frames / FPS).toFixed(2)}s → ${(actual / FPS).toFixed(2)}s ·`
+           + ` rounded up to ${actual} frames (17n+5)`;
+    }
+    return timeline.duration
+      ? `${actual} frames · fixed`
+      : `${actual} frames · following the content`;
+  }
+
+  /**
    * The clip-level settings, in one compact row.
    *
    * ComfyUI gives every widget the full width of the node. At 1380px that turns four
@@ -674,7 +693,7 @@ export class TimelineEditor {
     this.settings.innerHTML = `
       <label><span class="mmd-key">start</span><input class="s-start" type="number" min="0" step="0.1" value="${secs(from)}"><span class="mmd-unit">s</span></label>
       <label><span class="mmd-key">end</span><input class="s-end" type="number" min="0" step="0.1" value="${secs(to)}"><span class="mmd-unit">s</span></label>
-      <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1" value="${secs(length(timeline))}"><span class="mmd-unit">s</span></label>
+      <label><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1" value="${secs(length(timeline))}"><span class="mmd-unit">s</span><span class="mmd-unit">${length(timeline)}f</span></label>
       <label><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps</span></label>
       <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32" value="${value("width") ?? 1344}"></label>
       <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32" value="${value("height") ?? 768}"></label>
@@ -691,7 +710,7 @@ export class TimelineEditor {
         </select>
       </label>
       <span class="mmd-grow"></span>
-      <span class="mmd-hint">${timeline.duration || timeline.end ? "explicit window" : "following the content"}</span>`;
+      <span class="mmd-hint">${this.snapNote(timeline)}</span>`;
 
     const setWidget = (name, raw) => {
       const widget = this.widgets[name];
@@ -702,7 +721,11 @@ export class TimelineEditor {
 
     // start / end / duration describe two facts, so editing any one resolves the
     // others rather than letting them drift apart.
-    const frames = (input) => Math.max(0, Math.round(Number(input.value) * FPS));
+    const frames = (input) => {
+      const asked = Math.max(0, Math.round(Number(input.value) * FPS));
+      this.asked = { field: input.className, frames: asked };
+      return asked;
+    };
 
     this.settings.querySelector(".s-start").onchange = (e) => {
       const next = this.read();

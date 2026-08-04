@@ -1,22 +1,45 @@
 {
   "id": "minimax-director-example",
   "revision": 0,
-  "last_node_id": 16,
+  "last_node_id": 17,
   "last_link_id": 19,
   "nodes": [
     {
       "id": 1,
-      "type": "UNETLoader",
+      "type": "MarkdownNote",
       "pos": [
         40,
         40
       ],
       "size": [
         400,
-        82
+        320
       ],
       "flags": {},
       "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "widgets_values": [
+        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Wire an image to `ref_image` and refer to it as `<Picture 1>` in the shot text.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "UNETLoader",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        400,
+        82
+      ],
+      "flags": {},
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -39,18 +62,18 @@
       ]
     },
     {
-      "id": 2,
+      "id": 3,
       "type": "CLIPLoader",
       "pos": [
         40,
-        170
+        530
       ],
       "size": [
         400,
         106
       ],
       "flags": {},
-      "order": 1,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -73,18 +96,18 @@
       ]
     },
     {
-      "id": 3,
+      "id": 4,
       "type": "VAELoader",
       "pos": [
         40,
-        320
+        680
       ],
       "size": [
         400,
         58
       ],
       "flags": {},
-      "order": 2,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -106,18 +129,18 @@
       ]
     },
     {
-      "id": 4,
+      "id": 5,
       "type": "VAELoader",
       "pos": [
         40,
-        420
+        780
       ],
       "size": [
         400,
         58
       ],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -139,18 +162,18 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "type": "LoadImage",
       "pos": [
         40,
-        520
+        880
       ],
       "size": [
         400,
         314
       ],
       "flags": {},
-      "order": 4,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -178,7 +201,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "type": "MiniMaxDirector",
       "pos": [
         500,
@@ -189,7 +212,7 @@
         1000
       ],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -260,7 +283,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "type": "RandomNoise",
       "pos": [
         500,
@@ -271,7 +294,7 @@
         82
       ],
       "flags": {},
-      "order": 6,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -293,7 +316,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "type": "KSamplerSelect",
       "pos": [
         500,
@@ -304,7 +327,7 @@
         58
       ],
       "flags": {},
-      "order": 7,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -325,7 +348,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "type": "BasicScheduler",
       "pos": [
         500,
@@ -336,7 +359,7 @@
         106
       ],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -365,7 +388,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 11,
       "type": "BasicGuider",
       "pos": [
         1940,
@@ -376,7 +399,7 @@
         78
       ],
       "flags": {},
-      "order": 9,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
@@ -405,7 +428,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "type": "SamplerCustomAdvanced",
       "pos": [
         1940,
@@ -416,7 +439,7 @@
         150
       ],
       "flags": {},
-      "order": 10,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
@@ -467,7 +490,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "type": "VAEDecode",
       "pos": [
         1940,
@@ -478,7 +501,7 @@
         78
       ],
       "flags": {},
-      "order": 11,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -507,7 +530,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "type": "VAEDecodeAudio",
       "pos": [
         1940,
@@ -518,7 +541,7 @@
         78
       ],
       "flags": {},
-      "order": 12,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -547,7 +570,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "type": "CreateVideo",
       "pos": [
         1940,
@@ -558,7 +581,7 @@
         106
       ],
       "flags": {},
-      "order": 13,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -591,7 +614,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "type": "SaveVideo",
       "pos": [
         1940,
@@ -602,7 +625,7 @@
         130
       ],
       "flags": {},
-      "order": 14,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -620,181 +643,158 @@
         "auto",
         "auto"
       ]
-    },
-    {
-      "id": 16,
-      "type": "MarkdownNote",
-      "pos": [
-        2320,
-        40
-      ],
-      "size": [
-        520,
-        300
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {},
-      "widgets_values": [
-        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Wire an image to `ref_image` and refer to it as `<Picture 1>` in the shot text.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
     }
   ],
   "links": [
     [
       1,
-      2,
+      3,
       0,
-      6,
+      7,
       0,
       "CLIP"
     ],
     [
       2,
-      3,
+      4,
       0,
-      6,
+      7,
       1,
       "VAE"
     ],
     [
       3,
-      4,
+      5,
       0,
-      6,
+      7,
       2,
       "VAE"
     ],
     [
       4,
-      5,
-      0,
       6,
+      0,
+      7,
       3,
       "IMAGE"
     ],
     [
       5,
-      1,
+      2,
       0,
-      9,
+      10,
       0,
       "MODEL"
     ],
     [
       6,
-      1,
+      2,
       0,
-      10,
+      11,
       0,
       "MODEL"
     ],
     [
       7,
-      6,
+      7,
       0,
-      10,
+      11,
       1,
       "CONDITIONING"
     ],
     [
       8,
-      7,
+      8,
       0,
-      11,
+      12,
       0,
       "NOISE"
     ],
     [
       9,
-      10,
-      0,
       11,
+      0,
+      12,
       1,
       "GUIDER"
     ],
     [
       10,
-      8,
+      9,
       0,
-      11,
+      12,
       2,
       "SAMPLER"
     ],
     [
       11,
-      9,
+      10,
       0,
-      11,
+      12,
       3,
       "SIGMAS"
     ],
     [
       12,
-      6,
+      7,
       1,
-      11,
+      12,
       4,
       "LATENT"
     ],
     [
       13,
-      11,
-      0,
       12,
+      0,
+      13,
       0,
       "LATENT"
     ],
     [
       14,
-      3,
+      4,
       0,
-      12,
+      13,
       1,
       "VAE"
     ],
     [
       15,
-      11,
+      12,
       0,
-      13,
+      14,
       0,
       "LATENT"
     ],
     [
       16,
-      4,
+      5,
       0,
-      13,
+      14,
       1,
       "VAE"
     ],
     [
       17,
-      12,
+      13,
       0,
-      14,
+      15,
       0,
       "IMAGE"
     ],
     [
       18,
-      13,
-      0,
       14,
+      0,
+      15,
       1,
       "AUDIO"
     ],
     [
       19,
-      14,
-      0,
       15,
+      0,
+      16,
       0,
       "VIDEO"
     ]
