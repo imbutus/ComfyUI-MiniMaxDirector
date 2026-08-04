@@ -195,8 +195,11 @@ export class TimelineEditor {
     // Having a selection is what scopes it. Clicking anywhere outside clears that below,
     // so we never swallow a Delete meant for the graph.
     document.addEventListener("keydown", (event) => {
-      // Fields keep their native text undo and character deletion.
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+      // Fields keep their native text undo and character deletion. Both the event's
+      // target and whatever actually holds focus are checked: a keystroke aimed at a
+      // field can be reported against an ancestor, and one Delete swallowed here is a
+      // deleted block instead of a deleted character.
+      if (isEditable(event.target) || isEditable(document.activeElement)) return;
 
       // Cmd+Z on macOS, Ctrl+Z elsewhere; Shift (or Ctrl+Y) redoes. Scoped to the
       // editor having been touched last, so ComfyUI keeps its own graph undo.
@@ -725,7 +728,40 @@ export class TimelineEditor {
 
   // -- rendering -----------------------------------------------------------
 
+  /**
+   * Put the caret back where it was.
+   *
+   * Writing the document makes ComfyUI redraw the node, and that pulls focus out to the
+   * canvas -- mid-word, with no warning. The visible damage is not the lost caret: it is
+   * that the next Delete is no longer aimed at a field, so the document-level handler
+   * takes it and removes a block instead of a character.
+   */
+  keepFocus(run) {
+    const el = document.activeElement;
+    if (!(isEditable(el) && this.root.contains(el))) return run();
+
+    let range = null;
+    try { range = [el.selectionStart, el.selectionEnd]; } catch { /* number inputs */ }
+    run();
+
+    const restore = () => {
+      if (document.activeElement === el || !this.root.contains(el)) return;
+      el.focus();
+      if (range && range[0] !== null) {
+        try { el.setSelectionRange(range[0], range[1]); } catch { /* not selectable */ }
+      }
+    };
+    restore();
+    // ComfyUI may take the focus back a frame later, once it redraws the node.
+    requestAnimationFrame(restore);
+  }
+
   render() {
+    if (!this.rendering) {
+      this.rendering = true;
+      try { return this.keepFocus(() => this.render()); }
+      finally { this.rendering = false; }
+    }
     const timeline = this.read();
     const extent = this.extent();
     const rendered = length(timeline);

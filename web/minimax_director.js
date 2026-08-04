@@ -65,6 +65,10 @@ function attach(node) {
     settings,
   );
 
+  // Reachable from the node for tests and for poking at a live graph in the console.
+  // The editor holds no state of its own, so nothing here can drift from the document.
+  node.timelineEditor = editor;
+
   const widget = node.addDOMWidget(STATE_WIDGET + "_editor", "minimax_director", editor.root, {
     getMinHeight: () => MIN_HEIGHT,
     hideOnZoom: false,
