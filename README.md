@@ -64,19 +64,23 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest
 ```
 
-For the graph itself, there is a mock layer that registers stand-in loaders, samplers and
-H3 nodes **under the real core node names**, so an unmodified production workflow runs end
-to end on CPU and writes a real (meaningless) mp4:
+For the graph itself, point `COMFYUI_PATH` at a ComfyUI checkout and the graph tests run a
+real prompt through ComfyUI's own validator and executor — no server, no GPU, no model
+files:
 
 ```
-MINIMAX_DIRECTOR_MOCK=1 \
-MINIMAX_DIRECTOR_MOCK_LOG=/tmp/h3.jsonl \
-python main.py --cpu
+COMFYUI_PATH=~/dev/ComfyUI $COMFYUI_PATH/.venv/bin/python -m pytest tests/graph
 ```
 
-Every prompt handed to H3 is appended to that log, which makes the one question that
-matters — *what string reached the text encoder?* — directly assertable without renting
-anything.
+The weight-bearing nodes are stubbed; `CreateVideo` and `SaveVideo` are not, so the run
+ends with an actual mp4 on disk. The stubs record every prompt handed to H3, which makes
+the one question that matters — *what string reached the text encoder?* — directly
+assertable without renting anything.
+
+The stubs live in `tests/`, not in the package, and they have to: ComfyUI snapshots its
+built-in node names before loading custom nodes and refuses to let a pack replace any of
+them (`nodes.py`, `base_node_names` passed as `ignore`). A test process has no such
+restriction, because it owns the registry.
 
 ## Layout
 
@@ -87,8 +91,10 @@ src/minimax_director/
   timeline.py            the timeline document and its JSON
   compile.py             timeline -> prompt
   lint.py                checks that run before sampling
+  references.py          reference ordinals, in H3's presentation order
   core.py                adapter over ComfyUI's built-in H3 nodes
-  nodes/                 the classes ComfyUI registers, plus the mock layer
+  nodes/                 the classes ComfyUI registers
 web/                     the timeline widget: plain ES modules, no build step
 tests/                   pure-Python tests and golden prompts
+tests/graph/             in-process ComfyUI execution with the weights stubbed
 ```

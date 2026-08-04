@@ -67,14 +67,27 @@ This costs one dictionary lookup and buys two things: we never restate upstream'
 conditioning logic, and an upstream rename produces `CoreNodeMissing: … needs ComfyUI
 0.30.0 or newer` instead of a `TypeError` from inside somebody else's call stack.
 
-## Mocks
+## Stubs, and why they are not in the package
 
-`nodes/mocks.py` registers stand-ins under the *real* core node names when
-`MINIMAX_DIRECTOR_MOCK=1`. Registering under the real names is the whole trick: the
-production workflow JSON needs no edit, so the thing under test is the thing that ships.
+The obvious design — ship mock nodes registered under the real core node names, so the
+production workflow runs unmodified — **does not work**, and it is worth writing down why
+so nobody tries it again.
 
-The mock H3 nodes append every prompt they receive to `MINIMAX_DIRECTOR_MOCK_LOG`. Since
-the product is a prompt, that log is the assertion surface for graph-level tests.
+`nodes.init_external_custom_nodes` snapshots `base_node_names = set(NODE_CLASS_MAPPINGS)`
+*before* loading custom nodes and passes it to `load_custom_node` as `ignore`. The
+registration line is `if name not in ignore: NODE_CLASS_MAPPINGS[name] = node_cls`, so a
+custom node pack cannot replace a built-in. Worse, the failure is quiet:
+`NODE_DISPLAY_NAME_MAPPINGS.update()` has no such guard, so the UI happily shows
+"UNETLoader (mock)" while running the real class.
+
+So the stubs live in `tests/graph/stubs.py`, and `tests/graph/harness.py` imports
+ComfyUI in-process, calls `init_extra_nodes()`, and then patches the registry itself —
+legitimate, because the test process owns it. It drives `execution.validate_prompt` and
+`execution.PromptExecutor` directly, so the graph is checked by ComfyUI's own validator.
+
+`CreateVideo` and `SaveVideo` are deliberately *not* stubbed. A passing run leaves a real
+h264+aac mp4 on disk whose duration is `length / 24` — the frame lattice, observable from
+outside the whole system.
 
 ## The editor
 
