@@ -12,8 +12,8 @@
         40
       ],
       "size": [
-        400,
-        320
+        420,
+        900
       ],
       "flags": {},
       "order": 0,
@@ -24,15 +24,15 @@
       "color": "#432",
       "bgcolor": "#653",
       "widgets_values": [
-        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Drop an image on a shot with **Add Image**; it becomes `<Picture 1>` automatically.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n"
+        "## MiniMaxDirector\n\nLay out shots on the **Director** node's timeline; it compiles them into the single\nstructured prompt MiniMax H3 reads, and snaps the clip to a length H3 accepts\n(`length % 17 == 5` at 24 fps).\n\n- `prompt` and `report` outputs show exactly what was built and what the linter thinks.\n- Drop an image on a shot with **Add Image**; it becomes `<Picture 1>` automatically.\n- Models: the H3 bundle (ref2va unet, Qwen3-VL text encoder, video + audio VAEs).\n\n### The three prompt buttons\n\n| Button | Track | Makes |\n|---|---|---|\n| Add Video Prompt | MAIN | what happens on screen |\n| Add Sound Prompt | AUDIO | what is heard -- H3 generates it, no file |\n| Add Camera Prompt | CAMERA | how the camera moves |\n\n**Add Image / Add Audio / Add Video** attach a real file instead, and the prose is given\na `<Picture n>` / `<Audio n>` / `<Video n>` token pointing at it.\n\n### Camera modes\n\nEach mode contributes one sentence to the `Camera:` block. H3 reads prose, not enum\nvalues, so this is the exact wording it receives:\n\n| Mode | Sentence sent to the model |\n|---|---|\n| `—` | *(nothing -- the note alone is used)* |\n| `static` | The camera holds still. |\n| `dolly_in` | The camera dollies slowly in. |\n| `dolly_out` | The camera pulls slowly back. |\n| `pan_left` | The camera pans left. |\n| `pan_right` | The camera pans right. |\n| `tilt_up` | The camera tilts up. |\n| `tilt_down` | The camera tilts down. |\n| `orbit` | The camera orbits the subject. |\n| `handheld` | Loose handheld movement. |\n| `crash_zoom` | A fast crash zoom snaps in. |\n\nA note typed into a camera segment is appended after that sentence, so\n`dolly_in` + \"closing on the apple\" becomes *The camera dollies slowly in. closing on the\napple*.\n\nCamera work is its own block rather than folded into the shot line, because a move can\nstraddle a cut -- and merging them would silently pick a side.\n"
       ]
     },
     {
       "id": 2,
       "type": "UNETLoader",
       "pos": [
-        40,
-        400
+        480,
+        40
       ],
       "size": [
         400,
@@ -65,8 +65,8 @@
       "id": 3,
       "type": "CLIPLoader",
       "pos": [
-        40,
-        530
+        480,
+        162
       ],
       "size": [
         400,
@@ -99,8 +99,8 @@
       "id": 4,
       "type": "VAELoader",
       "pos": [
-        40,
-        680
+        480,
+        308
       ],
       "size": [
         400,
@@ -132,8 +132,8 @@
       "id": 5,
       "type": "VAELoader",
       "pos": [
-        40,
-        780
+        480,
+        406
       ],
       "size": [
         400,
@@ -165,12 +165,12 @@
       "id": 6,
       "type": "MiniMaxDirector",
       "pos": [
-        500,
+        940,
         40
       ],
       "size": [
         1380,
-        1000
+        713
       ],
       "flags": {},
       "order": 5,
@@ -242,8 +242,8 @@
       "id": 7,
       "type": "RandomNoise",
       "pos": [
-        500,
-        1080
+        940,
+        800
       ],
       "size": [
         300,
@@ -275,8 +275,8 @@
       "id": 8,
       "type": "KSamplerSelect",
       "pos": [
-        500,
-        1200
+        940,
+        922
       ],
       "size": [
         300,
@@ -307,8 +307,8 @@
       "id": 9,
       "type": "BasicScheduler",
       "pos": [
-        500,
-        1300
+        940,
+        1020
       ],
       "size": [
         300,
@@ -347,7 +347,7 @@
       "id": 10,
       "type": "BasicGuider",
       "pos": [
-        1940,
+        2380,
         40
       ],
       "size": [
@@ -387,8 +387,8 @@
       "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        1940,
-        160
+        2380,
+        158
       ],
       "size": [
         280,
@@ -449,8 +449,8 @@
       "id": 12,
       "type": "VAEDecode",
       "pos": [
-        1940,
-        350
+        2380,
+        348
       ],
       "size": [
         280,
@@ -489,8 +489,8 @@
       "id": 13,
       "type": "VAEDecodeAudio",
       "pos": [
-        1940,
-        470
+        2380,
+        466
       ],
       "size": [
         280,
@@ -529,8 +529,8 @@
       "id": 14,
       "type": "CreateVideo",
       "pos": [
-        1940,
-        590
+        2380,
+        584
       ],
       "size": [
         280,
@@ -573,8 +573,8 @@
       "id": 15,
       "type": "SaveVideo",
       "pos": [
-        1940,
-        740
+        2380,
+        730
       ],
       "size": [
         340,
@@ -753,7 +753,7 @@
     "ds": {
       "scale": 0.73,
       "offset": [
-        -410,
+        50,
         50
       ]
     }
