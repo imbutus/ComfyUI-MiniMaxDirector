@@ -92,12 +92,12 @@ export class TimelineEditor {
     this.root.tabIndex = 0;
     this.root.innerHTML = `
       <div class="mmd-bar">
-        <button data-media="image">${ICON.image} Add Image</button>
         <button data-add="shots" title="Describe what happens over a span -- no file needed">${ICON.text} Add Video Prompt</button>
         <button data-add="cues" title="Describe a sound over a span -- H3 generates it, no file needed">${ICON.sound} Add Sound Prompt</button>
+        <button data-add="moves" title="A camera move over a span, from the vocabulary plus a note -- no file needed">${ICON.camera} Add Camera Prompt</button>
+        <button data-media="image">${ICON.image} Add Image</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
-        <button data-add="moves" title="A camera move over a span, from the vocabulary plus a note -- no file needed">${ICON.camera} Add Camera Prompt</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
