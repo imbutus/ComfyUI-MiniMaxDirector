@@ -87,6 +87,7 @@ function attach(node) {
   ]);
 
   growWithPrompts(node, editor);
+  fitAfterLoad(node, editor);
 
   // The first render needs a laid-out element to measure, so wait one frame.
   requestAnimationFrame(() => {
@@ -105,16 +106,36 @@ function attach(node) {
  * prompt boxes are their text. Left at a fixed node height the difference shows up as
  * dead grey space, and the size to open at stops being a guess only when it is measured.
  */
-function fitNode(node, editor) {
+function fitNode(node, editor, { growOnly = false } = {}) {
   const style = getComputedStyle(editor.root);
   const gap = parseFloat(style.rowGap) || 0;
   const kids = [...editor.root.children];
   const needed = kids.reduce((sum, el) => sum + el.offsetHeight, 0) + gap * (kids.length - 1);
 
   const delta = Math.round(needed - editor.root.clientHeight);
-  if (Math.abs(delta) < 2) return;
+  if (Math.abs(delta) < 2 || (growOnly && delta < 0)) return;
   node.setSize([node.size[0], Math.max(MIN_HEIGHT, node.size[1] + delta)]);
   node.graph?.setDirtyCanvas(true, true);
+}
+
+/**
+ * A saved graph restores its own node size, which lands *after* the editor mounted and
+ * measured itself. A graph saved before the editor grew a field therefore reopens too
+ * short, with the last prompt box hanging through the bottom of the node.
+ *
+ * Growing only: a node someone deliberately made taller keeps its height, and one that
+ * is too short for its own content stops being too short.
+ */
+function fitAfterLoad(node, editor) {
+  const configured = node.onConfigure;
+  node.onConfigure = function (info) {
+    const result = configured?.apply(this, arguments);
+    requestAnimationFrame(() => {
+      fitNode(node, editor, { growOnly: true });
+      requestAnimationFrame(() => fitNode(node, editor, { growOnly: true }));
+    });
+    return result;
+  };
 }
 
 /**
