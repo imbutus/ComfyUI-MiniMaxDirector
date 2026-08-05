@@ -93,7 +93,7 @@ export class TimelineEditor {
     this.root.innerHTML = `
       <div class="mmd-bar">
         <button data-media="image">${ICON.image} Add Image</button>
-        <button data-add="shots">${ICON.text} Add Text</button>
+        <button data-add="shots" title="Describe what happens over a span -- no file needed">${ICON.text} Add Video Prompt</button>
         <button data-add="cues" title="Describe a sound over a span -- H3 generates it, no file needed">${ICON.sound} Add Sound Prompt</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
