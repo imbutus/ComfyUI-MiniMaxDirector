@@ -17,3 +17,6 @@ notes/
 
 # Bench rigs and throwaway workflows: things meant for one machine, not for the project.
 local/
+
+# What `comfy node publish` packs up and uploads — rebuilt on every publish.
+node.zip
