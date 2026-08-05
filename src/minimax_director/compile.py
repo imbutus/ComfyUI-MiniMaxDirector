@@ -4,26 +4,39 @@ This module is the heart of the project and deliberately the dullest part of it:
 tensors, no ComfyUI imports, no I/O. A timeline in, a string out, deterministically.
 That is what makes the whole director testable on a laptop with no GPU and no weights.
 
-The output shape follows the official H3 templates. A global preamble establishes style
-and the constant parts of the scene, then a shot list carries the changes:
+The output follows MiniMax's own `VIDEO_PROMPT_WRITING_GUIDE_base_en.md`, which specifies
+three fields rather than a set of labelled blocks:
 
-    Vaporwave title sequence look: pink and blue gradient palette, ...
+    integrated_multimodal_description: [Shot 1] Live-action, cinematic, a red apple ...
+    The camera pushes in with small amplitude at slow speed. [Shot 2] At 00:01.708, the
+    camera cuts to a blue cube ...
 
-    Timeline:
-    [0s-1s] VHS static opens the frame, the title appears with RGB split.
-    [1s-2.5s] Hard cut to a plaster bust, the camera dollies slowly in.
+    overall_soundscape: One clear bell chime, then silence.
 
-Wired inputs are addressed inline as `<Picture 1>` / `<Audio 1>`; slot numbers come
-from the graph, so the prose and the wiring cannot disagree.
+    non_diegetic_music: N/A
+
+Three things about that shape are not obvious and were learned the expensive way:
+
+* **Shots, camera and sound live in one field.** An earlier version of this compiler
+  emitted `Timeline:`, `Camera:` and `Audio:` as separate blocks. Measured against real
+  weights on 2026-08-05, the shot list was obeyed and the other two were not -- the model
+  pushed in on a segment that asked to hold still, and put the loudest sound in the clip
+  on a video cut rather than where the cue asked for it. Those labels are ours, not H3's.
+* **The first shot carries no timestamp**; later shots open with a strictly increasing
+  cut time in `MM:SS.mmm`.
+* **Audio splits in two.** `overall_soundscape` is what the characters can hear;
+  `non_diegetic_music` is the score only the audience hears, and is `N/A` when absent.
+
+Wired inputs are addressed inline as `<Picture 1>` / `<Audio 1>`; slot numbers come from
+the graph, so the prose and the wiring cannot disagree.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import lattice
-from . import attachments
-from .timeline import Timeline
+from . import attachments, lattice
+from .timeline import Move, Shot, Timeline
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,30 +53,104 @@ class Compiled:
 
 def compile_timeline(timeline: Timeline) -> Compiled:
     """Render `timeline` to a prompt and a valid frame count."""
-    blocks: list[str] = []
-
-    preamble = timeline.global_prompt.strip()
-    if preamble:
-        blocks.append(preamble)
-
-    shots = _render_shots(timeline)
-    if shots:
-        blocks.append(shots)
-
-    moves = _render_moves(timeline)
-    if moves:
-        blocks.append(moves)
-
-    cues = _render_cues(timeline)
-    if cues:
-        blocks.append(cues)
-
+    render = _render_legacy if timeline.dialect == "legacy" else _render_official
     length = timeline.length
     return Compiled(
-        prompt="\n\n".join(blocks),
+        prompt=render(timeline),
         length=length,
         duration=lattice.to_seconds(length),
     )
+
+
+# -- the documented format ---------------------------------------------------
+
+
+def _render_official(timeline: Timeline) -> str:
+    fields = [f"integrated_multimodal_description: {_description(timeline)}"]
+    fields.append(f"overall_soundscape: {_soundscape(timeline) or 'N/A'}")
+    fields.append(f"non_diegetic_music: {timeline.music.strip() or 'N/A'}")
+    return "\n\n".join(fields)
+
+
+def _description(timeline: Timeline) -> str:
+    """The main body: every shot in playback order, camera work written into it."""
+    tokens = attachments.tokens_by_segment(timeline)
+    shots = timeline.ordered_shots()
+    moves = timeline.ordered_moves()
+
+    parts: list[str] = []
+    preamble = timeline.global_prompt.strip()
+
+    for number, shot in enumerate(shots, start=1):
+        body = _with_tokens(shot.text(), tokens.get(("shots", shot.start), []))
+        camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
+
+        if number == 1:
+            # The guide puts style and initial composition at the head of Shot 1, and
+            # gives that shot no timestamp.
+            opening = f"{preamble} {body}".strip() if preamble else body
+            parts.append(f"[Shot 1] {opening}".rstrip())
+        else:
+            # The author's words go in verbatim. Lowercasing the opening word would read
+            # better after "cuts to", but "A single apple" and "Anna turns" are the same
+            # shape to any rule, and quietly renaming a character is the worse mistake.
+            cut = _timecode(shot.start, timeline.fps)
+            parts.append(f"[Shot {number}] At {cut}, the camera cuts to {body}")
+
+        if camera:
+            parts[-1] = f"{_sentence(parts[-1])} {camera}"
+
+    if not parts:
+        # No shots, but the author may still have written a style or camera work; a
+        # prompt with an empty body would be silently ignored.
+        leftover = " ".join(move.text() for move in moves if move.text())
+        opening = " ".join(part for part in (preamble, leftover) if part)
+        return f"[Shot 1] {opening}".rstrip() if opening else ""
+
+    orphans = [
+        move.text() for move in moves if move.text() and not _lands_in(move, shots)
+    ]
+    if orphans:
+        parts[-1] = f"{_sentence(parts[-1])} {' '.join(orphans)}"
+
+    return " ".join(parts)
+
+
+def _soundscape(timeline: Timeline) -> str:
+    """Every cue as one paragraph.
+
+    The guide asks for 1-4 sentences summarising the whole video, with no timing: this
+    field describes what is heard, not when. Cue spans are still meaningful in the editor
+    -- they say which part of the clip an author had in mind -- but they are deliberately
+    not emitted, because a timestamp here is a timestamp the model has no field for.
+    """
+    tokens = attachments.tokens_by_segment(timeline)
+    lines = [
+        _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), []))
+        for cue in timeline.ordered_cues()
+    ]
+    return " ".join(_sentence(line) for line in lines if line)
+
+
+def _moves_in(moves: list[Move], shot: Shot) -> list[Move]:
+    """Camera work that overlaps this shot, so it is written inside it."""
+    return [move for move in moves if move.start < shot.end and move.end > shot.start]
+
+
+def _lands_in(move: Move, shots: list[Shot]) -> bool:
+    return any(move.start < shot.end and move.end > shot.start for shot in shots)
+
+
+def _timecode(frame: int, fps: int) -> str:
+    """`00:03.500` -- the cut-time format the guide specifies."""
+    seconds = frame / fps
+    return f"{int(seconds // 60):02d}:{seconds % 60:06.3f}"
+
+
+def _sentence(text: str) -> str:
+    """Close a fragment so the next one does not run into it."""
+    stripped = text.rstrip()
+    return stripped if stripped.endswith((".", "!", "?", ":", ";")) else f"{stripped}."
 
 
 def _with_tokens(text: str, tokens: list[str]) -> str:
@@ -81,59 +168,55 @@ def _with_tokens(text: str, tokens: list[str]) -> str:
     return f"{text} {joined}" if text else joined
 
 
-def _render_shots(timeline: Timeline) -> str:
+# -- the shape this project used before the guide was read -------------------
+
+
+def _render_legacy(timeline: Timeline) -> str:
+    """Labelled blocks: `Timeline:` / `Camera:` / `Audio:`.
+
+    Kept so the two can be compared on one GPU run. The shot list here does work; the
+    camera and audio blocks measurably do not.
+    """
+    blocks: list[str] = []
+
+    preamble = timeline.global_prompt.strip()
+    if preamble:
+        blocks.append(preamble)
+
     tokens = attachments.tokens_by_segment(timeline)
-    entries = [
+
+    shots = [
         (shot, _with_tokens(shot.text(), tokens.get(("shots", shot.start), [])))
         for shot in timeline.ordered_shots()
     ]
-    entries = [(shot, text) for shot, text in entries if text]
-    if not entries:
-        return ""
+    shots = [(shot, text) for shot, text in shots if text]
+    if shots:
+        lines = [
+            f"{_span(shot.start, shot.end, timeline.fps)} {text}" for shot, text in shots
+        ]
+        blocks.append("Timeline:\n" + "\n".join(lines))
 
-    if timeline.dialect == "shots":
-        return "\n".join(
-            f"SHOT {number}: {text}" for number, (_, text) in enumerate(entries, start=1)
-        )
-
-    lines = [
-        f"{_span(shot.start, shot.end, timeline.fps)} {text}" for shot, text in entries
-    ]
-    return "Timeline:\n" + "\n".join(lines)
-
-
-def _render_moves(timeline: Timeline) -> str:
-    """The camera track, as its own block.
-
-    Camera work is emitted separately rather than folded into the shot lines because a
-    move can straddle a cut, and flattening it into one shot would silently pick a side.
-    """
     moves = [move for move in timeline.ordered_moves() if move.text()]
-    if not moves:
-        return ""
+    if moves:
+        lines = [
+            f"{_span(move.start, move.end, timeline.fps)} {move.text()}" for move in moves
+        ]
+        blocks.append("Camera:\n" + "\n".join(lines))
 
-    lines = [
-        f"{_span(move.start, move.end, timeline.fps)} {move.text()}" for move in moves
-    ]
-    return "Camera:\n" + "\n".join(lines)
-
-
-def _render_cues(timeline: Timeline) -> str:
-    tokens = attachments.tokens_by_segment(timeline)
-    entries = [
+    cues = [
         (cue, _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), [])))
         for cue in timeline.ordered_cues()
     ]
-    entries = [(cue, text) for cue, text in entries if text]
-    if not entries:
-        return ""
+    cues = [(cue, text) for cue, text in cues if text]
+    if cues:
+        lines = [f"{_span(cue.start, cue.end, timeline.fps)} {text}" for cue, text in cues]
+        blocks.append("Audio:\n" + "\n".join(lines))
 
-    lines = [f"{_span(cue.start, cue.end, timeline.fps)} {text}" for cue, text in entries]
-    return "Audio:\n" + "\n".join(lines)
+    return "\n\n".join(blocks)
 
 
 def _span(start: int, end: int, fps: int) -> str:
-    """`[1s-2.5s]`, the bracket form used by the official templates."""
+    """`[1s-2.5s]`, the bracket form the legacy blocks used."""
     first = lattice.format_seconds(start / fps)
     last = lattice.format_seconds(end / fps)
     return f"[{first}s-{last}s]"

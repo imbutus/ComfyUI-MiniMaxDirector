@@ -26,7 +26,7 @@ MAX_AUDIOS = 3
 DEFAULT_TIMELINE = """{
   "version": 1,
   "fps": 24,
-  "dialect": "timeline",
+  "dialect": "official",
   "duration": 124,
   "global_prompt": "",
   "shots": [],

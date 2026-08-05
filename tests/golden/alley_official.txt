@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Neon-lit alley after rain, cyan and magenta signage, 35mm grain. Wide shot of the alley, puddles holding the sign reflections. The camera pushes in with small amplitude at slow speed. [Shot 2] At 00:01.000, the camera cuts to Close on <Picture 1>, rain beading on the collar.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A

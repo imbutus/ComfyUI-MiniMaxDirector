@@ -18,21 +18,25 @@ from . import lattice
 
 RefKind = Literal["picture", "audio", "video"]
 
-DIALECTS = ("timeline", "shots")
-"""How the shot list is rendered. Both appear in the official H3 templates:
-`timeline` emits `[0s-1s] ...` lines, `shots` emits `SHOT 1: ...` lines."""
+DIALECTS = ("official", "legacy")
+"""Which prompt shape the compiler emits.
+
+`official` follows MiniMax's own writing guide: one `integrated_multimodal_description`
+carrying the shots with camera work written into them, plus `overall_soundscape` and
+`non_diegetic_music`. `legacy` is this project's original `Timeline:` / `Camera:` /
+`Audio:` blocks, kept only so the two can be compared on one GPU run."""
 
 CAMERA_PROSE: dict[str, str] = {
-    "static": "The camera holds still.",
-    "dolly_in": "The camera dollies slowly in.",
-    "dolly_out": "The camera pulls slowly back.",
+    "static": "The camera holds a static shot.",
+    "dolly_in": "The camera pushes in with small amplitude at slow speed.",
+    "dolly_out": "The camera pulls out with small amplitude at slow speed.",
     "pan_left": "The camera pans left.",
     "pan_right": "The camera pans right.",
     "tilt_up": "The camera tilts up.",
     "tilt_down": "The camera tilts down.",
-    "orbit": "The camera orbits the subject.",
-    "handheld": "Loose handheld movement.",
-    "crash_zoom": "A fast crash zoom snaps in.",
+    "orbit": "The camera moves in an arc around the subject.",
+    "handheld": "The camera shakes slightly.",
+    "crash_zoom": "The camera zooms in with large amplitude at fast speed.",
 }
 """Camera verbs the editor offers, and the sentence each one contributes.
 
@@ -139,7 +143,12 @@ class Timeline:
     cues: list[Cue] = field(default_factory=list)
     moves: list[Move] = field(default_factory=list)
     references: list[Reference] = field(default_factory=list)
-    dialect: str = "timeline"
+    music: str = ""
+    """`non_diegetic_music`: score only the audience hears. Empty compiles to `N/A`.
+
+    The model's guide separates this from everything the characters can hear, and asks
+    for instrumentation, tempo and dynamics rather than mood words."""
+    dialect: str = "official"
     fps: int = lattice.FPS
     duration: int = 0
     """Explicit clip length in frames. Zero means "as long as the content needs"."""
@@ -192,6 +201,7 @@ class Timeline:
     def from_dict(cls, data: dict[str, Any]) -> "Timeline":
         return cls(
             global_prompt=str(data.get("global_prompt", "")),
+            music=str(data.get("music", "")),
             shots=[
                 Shot(
                     start=int(item.get("start", 0)),
@@ -228,7 +238,7 @@ class Timeline:
                 )
                 for item in data.get("references", [])
             ],
-            dialect=str(data.get("dialect", "timeline")),
+            dialect=str(data.get("dialect", "official")),
             duration=int(data.get("duration", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
@@ -248,6 +258,7 @@ class Timeline:
             "dialect": self.dialect,
             "duration": self.duration,
             "global_prompt": self.global_prompt,
+            "music": self.music,
             "shots": [
                 {
                     "start": shot.start,

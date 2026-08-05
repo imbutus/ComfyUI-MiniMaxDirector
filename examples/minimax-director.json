@@ -233,7 +233,7 @@
         "Node name for S&R": "MiniMaxDirector"
       },
       "widgets_values": [
-        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"timeline\",\n  \"duration\": 124,\n  \"global_prompt\": \"\",\n  \"shots\": [],\n  \"moves\": [],\n  \"cues\": [],\n  \"references\": []\n}",
+        "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"dialect\": \"official\",\n  \"duration\": 124,\n  \"global_prompt\": \"\",\n  \"shots\": [],\n  \"moves\": [],\n  \"cues\": [],\n  \"references\": [],\n  \"music\": \"\"\n}",
         1344,
         768,
         "match"

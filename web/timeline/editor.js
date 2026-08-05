@@ -138,6 +138,11 @@ export class TimelineEditor {
       <div class="mmd-prompt">
         <label>GLOBAL PROMPT</label>
         <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
+      </div>
+
+      <div class="mmd-prompt">
+        <label title="non_diegetic_music: score only the audience hears. Instrumentation, tempo and dynamics -- not mood words. Left empty it compiles to N/A.">MUSIC (audience only)</label>
+        <textarea class="mmd-music" placeholder="Sparse piano notes at a slow tempo, joined by low strings that fade out"></textarea>
       </div>`;
 
     this.settings = this.root.querySelector(".mmd-settings");
@@ -153,6 +158,7 @@ export class TimelineEditor {
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.global = this.root.querySelector(".mmd-global");
+    this.music = this.root.querySelector(".mmd-music");
 
     this.bind();
   }
@@ -267,6 +273,13 @@ export class TimelineEditor {
       this.snapshotTyping();
       const next = this.read();
       next.global_prompt = this.global.value;
+      this.write(next);
+    });
+
+    this.music.addEventListener("input", () => {
+      this.snapshotTyping();
+      const next = this.read();
+      next.music = this.music.value;
       this.write(next);
     });
   }
@@ -856,7 +869,7 @@ export class TimelineEditor {
     set(".s-width", widget("width") ?? 1344);
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
-    set(".s-dialect", timeline.dialect || "timeline");
+    set(".s-dialect", timeline.dialect || "official");
 
     // The lattice appears here and nowhere else. A typed duration is left alone; this
     // says what will actually be generated, which is where the 17-frame grid bites.
@@ -877,7 +890,7 @@ export class TimelineEditor {
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <label><span class="mmd-key">dialect</span>
-        <select class="s-dialect">${["timeline", "shots"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
+        <select class="s-dialect" title="official follows MiniMax's own prompt guide; legacy is this pack's original labelled blocks">${["official", "legacy"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <span class="mmd-grow"></span>
       <span class="mmd-renders"></span>
@@ -955,7 +968,8 @@ export class TimelineEditor {
   }
 
   renderPanel(timeline) {
-    this.global.value = timeline.global_prompt || "";
+    if (document.activeElement !== this.global) this.global.value = timeline.global_prompt || "";
+    if (document.activeElement !== this.music) this.music.value = timeline.music || "";
 
     if (!this.selection) {
       this.segPrompt.value = "";

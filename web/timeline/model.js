@@ -58,8 +58,9 @@ export function emptyTimeline() {
   return {
     version: 1,
     fps: FPS,
-    dialect: "timeline",
+    dialect: "official",
     global_prompt: "",
+    music: "",
     shots: [],
     moves: [],
     cues: [],

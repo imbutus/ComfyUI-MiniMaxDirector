@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 TIMELINE = {
     "global_prompt": "Neon-lit alley after rain, cyan and magenta signage, 35mm grain.",
-    "dialect": "timeline",
+    "dialect": "official",
     "shots": [
         {"start": 0, "length": 24, "prompt": "Wide shot of the alley.", "camera": "dolly_in"},
         {"start": 24, "length": 36, "prompt": "Close on the collar, rain beading."},
@@ -109,10 +109,14 @@ def test_text_to_video_is_chosen_when_no_reference_is_wired(run):
 
 
 def test_the_compiled_prompt_reaches_the_encoder(run):
+    """The string the encoder receives is the whole product, so it is asserted whole."""
     prompt = h3_call(run)["prompt"]
-    assert prompt.startswith("Neon-lit alley after rain")
-    assert "Timeline:\n[0s-1s] Wide shot of the alley. The camera dollies slowly in." in prompt
-    assert "Audio:\n[0s-2s] Distant siren, then rain on metal." in prompt
+    assert prompt.startswith(
+        "integrated_multimodal_description: [Shot 1] Neon-lit alley after rain")
+    assert "Wide shot of the alley. The camera pushes in with small amplitude" in prompt
+    assert "[Shot 2] At 00:01.000, the camera cuts to Close on the collar" in prompt
+    assert "\n\noverall_soundscape: Distant siren, then rain on metal." in prompt
+    assert "\n\nnon_diegetic_music: N/A" in prompt
 
 
 def test_the_length_is_on_the_lattice(run):
@@ -130,7 +134,7 @@ def test_the_geometry_survives_the_round_trip(run):
 
 MEDIA_TIMELINE = {
     "global_prompt": "Neon-lit alley after rain.",
-    "dialect": "timeline",
+    "dialect": "official",
     "shots": [
         {"start": 0, "length": 48, "prompt": "The alley",
          "media": {"kind": "image", "filename": "example.png", "subfolder": ""}},

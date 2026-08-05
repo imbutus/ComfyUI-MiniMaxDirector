@@ -154,52 +154,61 @@ Limits, from the model: **9 images, 3 videos, 3 video soundtracks, 3 standalone 
 
 ## Camera moves
 
-Each mode contributes one sentence. H3 reads prose, not enum values:
+Each mode contributes one sentence, in the vocabulary MiniMax documents (`Push In`,
+`Pan Left`, `Arc Shot`, `Static Shot`, with `with small/large amplitude` and
+`at slow/fast speed`). H3 reads prose, not enum values:
 
 | Mode | Sentence sent |
 |---|---|
 | `—` | *nothing — your note alone is used* |
-| `static` | The camera holds still. |
-| `dolly_in` | The camera dollies slowly in. |
-| `dolly_out` | The camera pulls slowly back. |
+| `static` | The camera holds a static shot. |
+| `dolly_in` | The camera pushes in with small amplitude at slow speed. |
+| `dolly_out` | The camera pulls out with small amplitude at slow speed. |
 | `pan_left` | The camera pans left. |
 | `pan_right` | The camera pans right. |
 | `tilt_up` | The camera tilts up. |
 | `tilt_down` | The camera tilts down. |
-| `orbit` | The camera orbits the subject. |
-| `handheld` | Loose handheld movement. |
-| `crash_zoom` | A fast crash zoom snaps in. |
+| `orbit` | The camera moves in an arc around the subject. |
+| `handheld` | The camera shakes slightly. |
+| `crash_zoom` | The camera zooms in with large amplitude at fast speed. |
 
 A note is appended after the sentence: `dolly_in` + *"closing on the apple"* becomes
 *"The camera dollies slowly in. closing on the apple"*.
 
-Camera work is its own block rather than folded into the shot line, because a move can
-straddle a cut — merging them would silently pick a side.
+A camera block is written into whichever shots it overlaps. It stays a separate track in
+the editor because a move can straddle a cut, but the prompt puts the sentence inside the
+shot, which is where the model reads it.
 
 ---
 
-## Dialects
+## What the compiler writes
 
-Two ways of writing the shot list, chosen with the **dialect** dropdown:
-
-**`timeline`** — timestamps:
-
-```
-Timeline:
-[0s-1.7s] Wide shot of the alley, puddles holding the sign reflections.
-[1.7s-3.4s] Close on <Picture 1>, rain beading on the collar.
-```
-
-**`shots`** — ordinals:
+MiniMax publishes the prompt format in
+[`VIDEO_PROMPT_WRITING_GUIDE_base_en.md`](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md).
+It is three fields, not a set of labelled blocks, and this is what you get:
 
 ```
-SHOT 1: Wide shot of the alley, puddles holding the sign reflections.
-SHOT 2: Close on <Picture 1>, rain beading on the collar.
+integrated_multimodal_description: [Shot 1] Locked-off studio shot. A single red apple
+sits alone on the table. <Picture 1>. The camera pushes in with small amplitude at slow
+speed. [Shot 2] At 00:01.708, the camera cuts to A single blue cube sits alone on the
+table. <Picture 2>.
+
+overall_soundscape: One clear bell chime, then silence.
+
+non_diegetic_music: Sparse piano notes at a slow tempo.
 ```
 
-`timeline` is measured and works: a three-shot list came out in the right order with the
-right cuts. `shots` has not been compared against it with the same seed — if you run that
-test, the result is worth sharing.
+Three consequences worth knowing:
+
+- **Camera work is written inside its shot**, not in a section of its own.
+- **The first shot has no timestamp**; later ones open with their cut time.
+- **Audio has two fields.** `overall_soundscape` is everything the characters can hear;
+  the MUSIC box is `non_diegetic_music`, the score only the audience hears, and compiles
+  to `N/A` when empty.
+
+The **dialect** dropdown chooses `official` (the above) or `legacy` — this pack's original
+`Timeline:` / `Camera:` / `Audio:` blocks. Legacy exists only so the two can be compared;
+its camera and audio blocks are measurably ignored by the model.
 
 ---
 
@@ -262,6 +271,11 @@ Tested against real weights on 2026-08-05, one clip:
   for quiet room tone contained the loudest moment in the clip, timed to the picture cut
   rather than to the cue. Audio is generated, but directing it per span did not work.
 
-Still untested: whether the `shots` dialect beats `timeline`, whether
-`ref_image_size: match` behaves as its tooltip says, and behaviour outside the trained
-length range. `AGENTS.md` keeps the current version of that list.
+Both failures were traced to the prompt format: the compiler was emitting `Camera:` and
+`Audio:` blocks, which are this project's invention and not labels H3 is trained on. It
+now emits MiniMax's documented three-field format instead. **That fix has not itself been
+tested on a GPU** — it is reasoned from the official guide, not measured.
+
+Still untested: the new format, whether `ref_image_size: match` behaves as its tooltip
+says, and behaviour outside the trained length range. `AGENTS.md` keeps the current
+version of that list.
