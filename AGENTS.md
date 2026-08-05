@@ -215,7 +215,8 @@ that the following pairs land in the same commit.
 
 | When you change | Also update |
 |---|---|
-| a node's inputs, outputs or name | the module map and the two-core-nodes table here; `README.md` node table |
+| a node's inputs, outputs or name | the module map and the two-core-nodes table here; `README.md` node table; `docs/GUIDE.md` |
+| anything a user can see or press | `docs/GUIDE.md` — buttons, panel fields, tracks, the camera table |
 | the timeline JSON schema | the document section here; `docs/ARCHITECTURE.md` |
 | the lattice, fps, or any model limit | the constraints table here; `README.md`; **both** `lattice.py` and `web/timeline/model.js` |
 | reference ordering or token rules | the numbering section here; `tests/test_references.py`, `tests/test_attachments.py` |

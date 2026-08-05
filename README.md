@@ -102,12 +102,15 @@ built-in node names before loading custom nodes and refuses to let a pack replac
 them (`nodes.py`, `base_node_names` passed as `ignore`). A test process has no such
 restriction, because it owns the registry.
 
-## For contributors and coding agents
+## Documentation
 
-`AGENTS.md` is the dense version: the full data flow, the document schema, the reference
-numbering rules, the invariants that break silently, and an explicit list of what has
-never been verified against real weights. `docs/ARCHITECTURE.md` covers why the design is
-shaped the way it is.
+- **[docs/GUIDE.md](docs/GUIDE.md)** — how to use it: the tracks and buttons, the duration
+  rules, reference tokens, the camera vocabulary, the frame lattice, and what to check
+  when the output looks wrong. Start here.
+- **[AGENTS.md](AGENTS.md)** — the same ground for a model reading the code cold: data
+  flow, document schema, numbering rules, the invariants that break silently, and what
+  has never been verified against real weights.
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — why the design is shaped this way.
 
 ## Layout
 
