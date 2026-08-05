@@ -50,14 +50,18 @@ const CSS = `
 .mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
 /* stage: fixed label column + scrolling track area ------------------------ */
-.mmd-stage { flex:1 1 auto; min-height:150px; display:flex;
+/* The stage is exactly as tall as its tracks. Letting it absorb the leftover height
+   left a field of empty grey under the last track, and made the prompt boxes fight the
+   timeline for room instead of the node simply being the size it needs. */
+.mmd-stage { flex:0 0 auto; display:flex;
   background:#15181e; border:1px solid #2c313c; border-radius:6px; overflow:hidden; }
 .mmd-labels { flex:0 0 92px; padding-top:21px; border-right:1px solid #2c313c;
   background:#181c23; }
 .mmd-label { height:62px; margin-bottom:6px; display:flex; align-items:center;
   justify-content:center; font-size:10px; letter-spacing:.09em; color:#8b93a1; }
-.mmd-scroll { flex:1 1 auto; overflow-x:auto; overflow-y:hidden; position:relative; }
-.mmd-canvas { position:relative; height:100%; min-width:100%; }
+.mmd-scroll { flex:1 1 auto; overflow-x:auto; overflow-y:hidden; position:relative;
+  min-width:0; }
+.mmd-canvas { position:relative; min-width:100%; padding-bottom:4px; }
 
 .mmd-ruler { position:relative; height:17px; border-bottom:1px solid #262b34; }
 .mmd-ruler span { position:absolute; top:0; font-size:9px; color:#6b7280;

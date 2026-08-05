@@ -86,6 +86,58 @@ function attach(node) {
     Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
   ]);
 
+  growWithPrompts(node, editor);
+
   // The first render needs a laid-out element to measure, so wait one frame.
-  requestAnimationFrame(() => editor.render());
+  requestAnimationFrame(() => {
+    editor.render();
+    // Twice: the first pass resizes the node, and the widget's own height only follows
+    // on the frame after that, so the second pass settles the remainder.
+    fitNode(node, editor);
+    requestAnimationFrame(() => fitNode(node, editor));
+  });
+}
+
+/**
+ * Make the node exactly as tall as the editor wants to be.
+ *
+ * Every part of the editor now has a height of its own -- the stage is its tracks, the
+ * prompt boxes are their text. Left at a fixed node height the difference shows up as
+ * dead grey space, and the size to open at stops being a guess only when it is measured.
+ */
+function fitNode(node, editor) {
+  const style = getComputedStyle(editor.root);
+  const gap = parseFloat(style.rowGap) || 0;
+  const kids = [...editor.root.children];
+  const needed = kids.reduce((sum, el) => sum + el.offsetHeight, 0) + gap * (kids.length - 1);
+
+  const delta = Math.round(needed - editor.root.clientHeight);
+  if (Math.abs(delta) < 2) return;
+  node.setSize([node.size[0], Math.max(MIN_HEIGHT, node.size[1] + delta)]);
+  node.graph?.setDirtyCanvas(true, true);
+}
+
+/**
+ * Dragging a prompt box taller makes the node taller.
+ *
+ * The widget gets a fixed slice of the node, so a textarea that grows inside it takes
+ * that height from the timeline -- you pull the prompt box down and the tracks shrink to
+ * pay for it. Passing the change on to the node keeps everything else the size it was.
+ *
+ * `offsetHeight` rather than a bounding rect: the widget sits inside a CSS transform, so
+ * a rect is in screen pixels while the node's size is in graph units.
+ */
+function growWithPrompts(node, editor) {
+  for (const box of editor.root.querySelectorAll("textarea")) {
+    let last = box.offsetHeight;
+    new ResizeObserver(() => {
+      const now = box.offsetHeight;
+      const delta = now - last;
+      // Sub-pixel churn from layout is not a resize; only a real drag moves it.
+      if (Math.abs(delta) < 1) return;
+      last = now;
+      node.setSize([node.size[0], node.size[1] + delta]);
+      node.graph?.setDirtyCanvas(true, true);
+    }).observe(box);
+  }
 }
