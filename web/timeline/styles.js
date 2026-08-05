@@ -168,6 +168,7 @@ const CSS = `
 .mmd-prompt { flex:0 0 auto; display:flex; flex-direction:column; gap:3px;
   border:1px solid #2c313c; border-radius:6px; padding:6px 8px; background:#15181e; }
 .mmd-prompt > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-prompt > label .mmd-hint { letter-spacing:0; color:#6b7280; }
 .mmd-prompt textarea { min-height:44px; resize:vertical; background:transparent;
   color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
 .mmd-prompt textarea:disabled { color:#6b7280; }
