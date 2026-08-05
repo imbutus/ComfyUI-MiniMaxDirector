@@ -228,13 +228,45 @@ If a GPU run answers one of the open questions, that answer belongs here in the 
 sitting. The value of the list is that it is honest about its own edges; a stale entry
 destroys that in a way a missing entry does not.
 
+## Measured against real weights — 2026-08-05
+
+One clip, 832x480, 124 frames, `timeline` dialect: three shots with a reference image
+each (apple / cube / bottle), three camera moves, two audio cues.
+
+**Confirmed.** The premise holds — H3 reads the shot list and obeys it.
+
+- Output was exactly 124 frames at 24 fps, 5.167s. The lattice arithmetic is right
+  end to end.
+- The three subjects appeared **in the written order**, with exactly two cuts, each
+  matching its attached reference image.
+- One pass produced h264 **and** AAC stereo from the one latent. The channels genuinely
+  differ (difference signal 18 dB below the content), though the image is narrow.
+- Cut 2 landed at 3.375s against 3.417s asked for -- one frame early.
+
+**Partly.** Cut 1 landed at 2.083s against 1.708s asked for: **9 frames late**. So
+segment boundaries are approximate, not exact. Do not promise frame-accurate cuts.
+
+**Not honoured: per-segment camera.** `dolly_in` on shot 1 did push in (subject grew
+2.15x), but `static` on shot 3 pushed in as well -- and was in fact the *most* active
+segment of the three (5.3% mean frame-to-frame change, against 2.3% for the segment that
+asked for a dolly). `pan_right` on shot 2 produced no consistent horizontal drift. The
+`Camera:` block reads as one overall mood rather than a per-span instruction.
+
+**Not honoured: audio cues.** Cue 1 asked for "one clear bell chime, then silence" over
+0-1.71s and produced 0.35s of digital silence followed by quiet broadband hum, with no
+transient anywhere. Cue 2 asked for "quiet room tone, no music" over 1.71-5.17s and
+contains the loudest event in the clip, a broadband burst to 15 kHz at 2.07s -- within
+0.02s of the **video cut** at 2.083s. The model appears to score the picture rather than
+read the `Audio:` block.
+
 ## What has never been verified
 
-Nothing in this repository has run against real H3 weights. Specifically unknown:
-
-- whether H3 honours `[0s-1s]` timestamps, `SHOT 1:` ordinals, or neither;
+- **Which dialect wins.** Only one clip was generated, so `[0s-1s]` timestamps versus
+  `SHOT 1:` ordinals is still open. The timestamp form is known to work; whether ordinals
+  work better is not.
 - whether `ref_image_size: match` behaves as its tooltip describes;
-- how the model behaves outside its trained length range.
+- how the model behaves outside its trained length range;
+- whether audio direction lands at all, or only ever tracks the picture.
 
-Treat any claim about *output quality* as untested. Claims about *interfaces* — node
-signatures, the lattice, reference ordering — are read from the source.
+Claims about *interfaces* -- node signatures, the lattice, reference ordering -- are read
+from the source.

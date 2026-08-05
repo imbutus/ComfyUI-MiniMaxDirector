@@ -197,9 +197,9 @@ SHOT 1: Wide shot of the alley, puddles holding the sign reflections.
 SHOT 2: Close on <Picture 1>, rain beading on the collar.
 ```
 
-**Which one H3 actually honours has not been measured.** Nothing in this repository has
-run against real weights. If you test both with the same seed, that result is worth
-sharing — it is the one open question that changes what this node should default to.
+`timeline` is measured and works: a three-shot list came out in the right order with the
+right cuts. `shots` has not been compared against it with the same seed — if you run that
+test, the result is worth sharing.
 
 ---
 
@@ -247,12 +247,21 @@ Type the length instead — typing grows the clip; dragging does not.
 
 ---
 
-## What has never been tested
+## What is measured, and what is not
 
-Nothing here has run against real H3 weights. Interfaces — node signatures, the lattice,
-reference numbering — are read from ComfyUI's source and are reliable. Anything about
-**output quality** is untested, including whether H3 honours the timestamps, whether
-`ref_image_size: match` behaves as its tooltip says, and how the model behaves outside
-its trained length range.
+Tested against real weights on 2026-08-05, one clip:
 
-`AGENTS.md` keeps the current version of that list.
+- **Shot order works.** Three shots with a reference image each came out in the written
+  order, with the right subject in each.
+- **Cuts are approximate.** One boundary landed a frame early, the other nine frames
+  late. Do not plan on frame-accurate cuts.
+- **Per-segment camera does not work.** A segment asking for `static` pushed in anyway,
+  and moved more than the segment that asked for a dolly. Treat the camera track as a
+  hint about the whole clip, not a per-span instruction.
+- **Audio cues did not land.** A cue asking for a bell chime produced hum; a cue asking
+  for quiet room tone contained the loudest moment in the clip, timed to the picture cut
+  rather than to the cue. Audio is generated, but directing it per span did not work.
+
+Still untested: whether the `shots` dialect beats `timeline`, whether
+`ref_image_size: match` behaves as its tooltip says, and behaviour outside the trained
+length range. `AGENTS.md` keeps the current version of that list.
