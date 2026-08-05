@@ -73,10 +73,11 @@ def _render_official(timeline: Timeline) -> str:
 
 
 def _description(timeline: Timeline) -> str:
-    """The main body: every shot in playback order, camera work written into it."""
+    """The main body: every shot in playback order, camera and sound written into it."""
     tokens = attachments.tokens_by_segment(timeline)
     shots = timeline.ordered_shots()
     moves = timeline.ordered_moves()
+    cues = timeline.ordered_cues()
 
     parts: list[str] = []
     preamble = timeline.global_prompt.strip()
@@ -84,6 +85,9 @@ def _description(timeline: Timeline) -> str:
     for number, shot in enumerate(shots, start=1):
         body = _with_tokens(shot.text(), tokens.get(("shots", shot.start), []))
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
+        sound = " ".join(
+            _sentence(_cue_text(cue, tokens)) for cue in _cues_in(cues, shot)
+        )
 
         if number == 1:
             # The guide puts style and initial composition at the head of Shot 1, and
@@ -97,12 +101,13 @@ def _description(timeline: Timeline) -> str:
             cut = _timecode(shot.start, timeline.fps)
             parts.append(f"[Shot {number}] At {cut}, the camera cuts to {body}")
 
-        if camera:
-            parts[-1] = f"{_sentence(parts[-1])} {camera}"
+        for addition in (camera, sound):
+            if addition:
+                parts[-1] = f"{_sentence(parts[-1])} {addition}"
 
     if not parts:
-        # No shots, but the author may still have written a style or camera work; a
-        # prompt with an empty body would be silently ignored.
+        # No shots, but the author may still have written a style, camera work or sound;
+        # a prompt with an empty body would be silently ignored.
         leftover = " ".join(move.text() for move in moves if move.text())
         opening = " ".join(part for part in (preamble, leftover) if part)
         return f"[Shot 1] {opening}".rstrip() if opening else ""
@@ -116,18 +121,47 @@ def _description(timeline: Timeline) -> str:
     return " ".join(parts)
 
 
+def _cues_in(cues: list, shot: Shot) -> list:
+    """Sound that belongs to this shot, and only to this shot.
+
+    A cue confined to one shot is a timed event, and the guide puts timed diegetic sound
+    in the shot description -- the part of the prompt the model demonstrably follows.
+    Measured 2026-08-05: a bell chime written only into `overall_soundscape` was produced,
+    but landed on the video cuts rather than in the span that asked for it, because that
+    field carries no timing at all.
+
+    A cue spanning more than one shot is left out: it is ambience, it goes to the
+    soundscape, and repeating it inside every shot it touches would ask for the sound
+    several times over.
+    """
+    return [
+        cue for cue in cues
+        if cue.start < shot.end and cue.end > shot.start
+        and cue.start >= shot.start and cue.end <= shot.end
+    ]
+
+
+def _cue_text(cue, tokens: dict) -> str:
+    return _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), []))
+
+
 def _soundscape(timeline: Timeline) -> str:
-    """Every cue as one paragraph.
+    """Ambience: the cues that are not tied to a single shot.
 
     The guide asks for 1-4 sentences summarising the whole video, with no timing: this
     field describes what is heard, not when. Cue spans are still meaningful in the editor
     -- they say which part of the clip an author had in mind -- but they are deliberately
     not emitted, because a timestamp here is a timestamp the model has no field for.
+
+    A cue that sits inside one shot has already been written into that shot, where timing
+    exists; sending it here as well would ask for the same sound twice.
     """
     tokens = attachments.tokens_by_segment(timeline)
+    shots = timeline.ordered_shots()
     lines = [
-        _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), []))
+        _cue_text(cue, tokens)
         for cue in timeline.ordered_cues()
+        if not any(cue in _cues_in([cue], shot) for shot in shots)
     ]
     return " ".join(_sentence(line) for line in lines if line)
 

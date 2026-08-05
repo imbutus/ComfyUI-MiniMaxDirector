@@ -203,3 +203,43 @@ def test_duration_zero_means_let_the_content_decide():
 
 def test_a_short_duration_still_lands_on_the_lattice():
     assert compile_timeline(build(duration=30)).length % 17 == 5
+
+
+def test_a_cue_inside_one_shot_is_written_into_that_shot():
+    """Timed sound belongs where timing exists.
+
+    Measured 2026-08-05: a bell chime sent only to `overall_soundscape` was produced but
+    landed on the video cuts, because that field carries no timing at all.
+    """
+    timeline = build(
+        shots=[
+            {"start": 0, "length": 24, "prompt": "The apple."},
+            {"start": 24, "length": 24, "prompt": "The cube."},
+        ],
+        cues=[{"start": 0, "length": 24, "prompt": "One clear bell chime."}],
+    )
+    prompt = compile_timeline(timeline).prompt
+    body = prompt.split("overall_soundscape:")[0]
+    assert "The apple. One clear bell chime." in body
+    assert "overall_soundscape: N/A" in prompt
+
+
+def test_a_cue_spanning_several_shots_stays_ambience():
+    timeline = build(
+        shots=[
+            {"start": 0, "length": 24, "prompt": "The apple."},
+            {"start": 24, "length": 24, "prompt": "The cube."},
+        ],
+        cues=[{"start": 0, "length": 48, "prompt": "Quiet room tone."}],
+    )
+    prompt = compile_timeline(timeline).prompt
+    assert "overall_soundscape: Quiet room tone." in prompt
+    assert prompt.split("overall_soundscape:")[0].count("Quiet room tone") == 0
+
+
+def test_a_cue_is_never_asked_for_twice():
+    timeline = build(
+        shots=[{"start": 0, "length": 24, "prompt": "The apple."}],
+        cues=[{"start": 0, "length": 24, "prompt": "One clear bell chime."}],
+    )
+    assert compile_timeline(timeline).prompt.count("One clear bell chime") == 1

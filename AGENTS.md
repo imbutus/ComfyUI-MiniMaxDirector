@@ -253,20 +253,38 @@ asked for a dolly). `pan_right` on shot 2 produced no consistent horizontal drif
 `Camera:` block reads as one overall mood rather than a per-span instruction.
 
 **Not honoured: audio cues.** Cue 1 asked for "one clear bell chime, then silence" over
-0-1.71s and produced 0.35s of digital silence followed by quiet broadband hum, with no
-transient anywhere. Cue 2 asked for "quiet room tone, no music" over 1.71-5.17s and
-contains the loudest event in the clip, a broadband burst to 15 kHz at 2.07s -- within
-0.02s of the **video cut** at 2.083s. The model appears to score the picture rather than
-read the `Audio:` block.
+0-1.71s; the clip's loudest event was a broadband burst at 2.07s, within 0.02s of the
+**video cut** at 2.083s. The model scored the picture rather than read the `Audio:` block.
+
+## Measured again -- 2026-08-05, documented format
+
+Same timeline, `dialect: official`. **The camera fix landed.**
+
+| segment | asked | run 1 | run 2 |
+|---|---|---|---|
+| shot 1 | `dolly_in` | 2.29% | 1.61% -- bbox grows 339->510px, pushing in |
+| shot 2 | `pan_right` | 1.79% | 3.97% -- subject drifts left 479->416px |
+| shot 3 | `static` | 5.29% | **0.23%** -- frozen |
+
+(mean frame-to-frame change; direction verified by bounding box, not just motion.)
+
+Cut 1 also went from 9 frames late to **exact** (1.708s asked, 1.708s measured). Cut 2
+stayed one frame early. Shot order and references were right again.
+
+**Audio: the cue was produced, in the wrong place.** Two bell transients, -93 to -14 dB at
+1.696s and -93 to -4.9 dB at 3.424s -- both on the cuts -- with digital silence through
+the 0-1.71s span that asked for one. So `overall_soundscape` reaches the model and is
+used, but being an untimed field, the model synced the event to the only structure it
+could see. Hence the split above: a cue inside one shot is now written into that shot.
+**That change is unmeasured.**
 
 ## What has never been verified
 
-- **Which dialect wins.** Only one clip was generated, so `[0s-1s]` timestamps versus
-  `SHOT 1:` ordinals is still open. The timestamp form is known to work; whether ordinals
-  work better is not.
+- **Whether a cue written into a shot lands in that shot.** The camera fix of the same
+  shape worked; this one has not been run.
 - whether `ref_image_size: match` behaves as its tooltip describes;
 - how the model behaves outside its trained length range;
-- whether audio direction lands at all, or only ever tracks the picture.
+- whether cut timing can be made exact, or is always approximate to within a few frames.
 
 Claims about *interfaces* -- node signatures, the lattice, reference ordering -- are read
 from the source.
