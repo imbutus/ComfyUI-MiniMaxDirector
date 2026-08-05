@@ -244,7 +244,7 @@
       "type": "RandomNoise",
       "pos": [
         940,
-        800
+        920
       ],
       "size": [
         300,
@@ -277,7 +277,7 @@
       "type": "KSamplerSelect",
       "pos": [
         940,
-        922
+        1042
       ],
       "size": [
         300,
@@ -309,7 +309,7 @@
       "type": "BasicScheduler",
       "pos": [
         940,
-        1020
+        1140
       ],
       "size": [
         300,
