@@ -20,7 +20,7 @@ Repository = "https://github.com/imbutus/ComfyUI-MiniMaxDirector"
 dev = ["pytest>=8"]
 
 [tool.comfy]
-PublisherId = ""  # TODO: from registry.comfy.org — the handle after the @ on your profile.
+PublisherId = "imbutus"
 DisplayName = "MiniMax Director"
 requires-comfyui = ">=0.30.0"  # where the MiniMax H3 nodes landed
 
