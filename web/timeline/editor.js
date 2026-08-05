@@ -97,7 +97,7 @@ export class TimelineEditor {
         <button data-add="cues" title="Describe a sound over a span -- H3 generates it, no file needed">${ICON.sound} Add Sound Prompt</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
-        <button data-add="moves">${ICON.camera} Add Camera</button>
+        <button data-add="moves" title="A camera move over a span, from the vocabulary plus a note -- no file needed">${ICON.camera} Add Camera Prompt</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
