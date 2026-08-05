@@ -989,8 +989,16 @@ export class TimelineEditor {
       return this.renderPanel(timeline);
     }
 
+    // Whether this render is showing a different segment than the last one. The focus
+    // guards below exist so a render mid-keystroke does not eat what is being typed --
+    // but when the selection itself changed, the field is about a different block and
+    // keeping the old text is the bug, not the protection.
+    const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}`;
+
     this.segPrompt.disabled = false;
-    if (document.activeElement !== this.segPrompt) this.segPrompt.value = item.prompt || "";
+    if (changed || document.activeElement !== this.segPrompt) {
+      this.segPrompt.value = item.prompt || "";
+    }
 
     this.range.textContent =
       `Start: ${toSeconds(item.start).toFixed(2)} | End: ${toSeconds(item.end ?? item.start + item.length).toFixed(2)}` +
@@ -1110,10 +1118,12 @@ export class TimelineEditor {
         });
     }
 
-    // Never write into the field under the cursor -- that is what eats keystrokes.
+    // Never write into the field under the cursor -- that is what eats keystrokes. The
+    // exception is a render that switched segments: the field now describes a different
+    // block, so holding the old number is worse than moving the caret.
     const put = (selector, value) => {
       const el = this.segFields.querySelector(selector);
-      if (el && el !== document.activeElement) el.value = value;
+      if (el && (changed || el !== document.activeElement)) el.value = value;
     };
     put(".mmd-f-start", item.start);
     put(".mmd-f-secs", toSeconds(item.length).toFixed(2));
