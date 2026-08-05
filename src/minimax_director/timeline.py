@@ -67,6 +67,10 @@ class Shot:
     length: int
     prompt: str
     camera: str = ""
+    """Legacy. The editor no longer offers this on a shot -- camera work belongs on the
+    CAMERA track, where a move is free to straddle a cut. Documents written before that
+    still carry it, and are still compiled with the sentence appended to the shot's line,
+    so an old graph keeps producing the prompt it always did."""
     media: dict | None = None
     """An attached file: `{"kind": "image", "filename": ..., "subfolder": ...}`."""
 

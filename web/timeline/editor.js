@@ -982,7 +982,10 @@ export class TimelineEditor {
       `Start: ${toSeconds(item.start).toFixed(2)} | End: ${toSeconds(item.end ?? item.start + item.length).toFixed(2)}` +
       ` | Length: ${toSeconds(item.length).toFixed(2)}`;
 
-    const cameras = track === "cues" ? "" : `
+    // Only the CAMERA track. A shot used to carry one too, which meant the same sentence
+    // could be written in two places -- inline on the shot's line, or in the Camera:
+    // block -- with nothing on screen to say which you were getting.
+    const cameras = track !== "moves" ? "" : `
       <label>camera
         <select class="mmd-f-camera">
           ${CAMERAS.map((name) =>

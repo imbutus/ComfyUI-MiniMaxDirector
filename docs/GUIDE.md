@@ -100,7 +100,8 @@ Select it and the panel below shows:
 - **start** — the frame it begins on
 - **seconds** and **frames** — two views of the same length; type in either, the other
   follows. The document stores frames only.
-- **camera** — the move, on CAMERA blocks
+- **camera** — the move; CAMERA blocks only. A shot describes what is on screen, a
+  camera block describes how it is filmed, and a move is free to straddle a cut.
 - **detach media** — removes the file without removing the block
 
 Double-click a block to edit its text in place. Drag its edges to resize, its middle to
