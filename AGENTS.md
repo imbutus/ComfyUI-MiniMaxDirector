@@ -275,13 +275,30 @@ stayed one frame early. Shot order and references were right again.
 1.696s and -93 to -4.9 dB at 3.424s -- both on the cuts -- with digital silence through
 the 0-1.71s span that asked for one. So `overall_soundscape` reaches the model and is
 used, but being an untimed field, the model synced the event to the only structure it
-could see. Hence the split above: a cue inside one shot is now written into that shot.
-**That change is unmeasured.**
+could see. Hence the split above: a cue inside one shot is written into that shot.
+
+## Measured a third time -- 2026-08-05, cue inside the shot
+
+**The audio fix landed.** Same timeline at 158 frames.
+
+```
+one onset, t=0.064s, -80.2 -> -13.9 dB
+all loud content between 0.064s and 0.992s
+nothing at either cut (1.708s, 3.333s)
+```
+
+One bell, at the start, inside the shot that asked for it. Run 2 fired it twice on the
+cuts. Camera held: 1.12% / 5.29% / **0.21%** for dolly_in / pan_right / static, and the
+static shot is pixel-identical across four seconds. Cuts at 1.708s (exact) and 3.333s.
+
+So the rule holds for both faculties the model was ignoring: **anything timed belongs in
+`integrated_multimodal_description`.** Sections of our own invention are not read, and
+untimed fields get synced to the picture.
 
 ## What has never been verified
 
-- **Whether a cue written into a shot lands in that shot.** The camera fix of the same
-  shape worked; this one has not been run.
+- **Whether `non_diegetic_music` does anything.** Never exercised -- every run so far has
+  left the field empty, so its `N/A` output tells us nothing.
 - whether `ref_image_size: match` behaves as its tooltip describes;
 - how the model behaves outside its trained length range;
 - whether cut timing can be made exact, or is always approximate to within a few frames.

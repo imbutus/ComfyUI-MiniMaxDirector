@@ -267,15 +267,16 @@ Tested against real weights on 2026-08-05, one clip:
 - **Per-segment camera does not work.** A segment asking for `static` pushed in anyway,
   and moved more than the segment that asked for a dolly. Treat the camera track as a
   hint about the whole clip, not a per-span instruction.
-- **Audio cues did not land.** A cue asking for a bell chime produced hum; a cue asking
-  for quiet room tone contained the loudest moment in the clip, timed to the picture cut
-  rather than to the cue. Audio is generated, but directing it per span did not work.
+- **Audio cues land when they sit inside one shot.** A cue confined to a single shot is
+  written into that shot and arrives there: a bell asked for in the first 1.7s fired at
+  0.064s and nowhere else. A cue spanning several shots becomes untimed ambience, and the
+  model will place it where it likes -- earlier runs put it on the cuts.
 
 Both failures were traced to the prompt format: the compiler was emitting `Camera:` and
 `Audio:` blocks, which are this project's invention and not labels H3 is trained on. It
 now emits MiniMax's documented three-field format instead. **That fix has not itself been
 tested on a GPU** — it is reasoned from the official guide, not measured.
 
-Still untested: the new format, whether `ref_image_size: match` behaves as its tooltip
-says, and behaviour outside the trained length range. `AGENTS.md` keeps the current
-version of that list.
+Still untested: `non_diegetic_music` (the MUSIC box has been empty in every run so far),
+whether `ref_image_size: match` behaves as its tooltip says, and behaviour outside the
+trained length range. `AGENTS.md` keeps the current version of that list.
