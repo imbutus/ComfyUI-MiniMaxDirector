@@ -749,6 +749,14 @@
   ],
   "groups": [],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.73,
+      "offset": [
+        -410,
+        50
+      ]
+    }
+  },
   "version": 0.4
 }
