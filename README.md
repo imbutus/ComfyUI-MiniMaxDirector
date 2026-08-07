@@ -69,7 +69,7 @@ image-to-video, wire any `picture_*` / `audio_1` / `video_1` and you get referen
 
 ```
 cd ComfyUI/custom_nodes
-git clone https://github.com/<you>/minimax-director.git
+git clone https://github.com/imbutus/ComfyUI-MiniMaxDirector.git
 ```
 
 Restart ComfyUI. Requires ComfyUI 0.30.0 or newer, which is where the MiniMax H3 nodes
