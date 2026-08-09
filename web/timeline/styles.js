@@ -119,10 +119,13 @@ const CSS = `
   pointer-events:none; }
 /* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
    transparent to them so a click there still grabs the block. */
+/* Bottom right, opposite the media chip: the left edge of a block is where its start
+   time is read off the ruler, and a label sitting on it is in the way. */
 .mmd-seg .mmd-cam { pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.72);
-  color:#e5e7eb; }
+  color:#e5e7eb; left:auto; right:0; border-top-right-radius:0;
+  border-top-left-radius:4px; }
 .mmd-seg .mmd-cam:hover { background:#2c313c; color:#fff; }
-.mmd-cam-pick { position:absolute; left:2px; bottom:2px; z-index:5; font:inherit;
+.mmd-cam-pick { position:absolute; right:2px; bottom:2px; z-index:5; font:inherit;
   font-size:11px; max-width:calc(100% - 4px); background:#1c1f26; color:#e5e7eb;
   border:1px solid #3a4150; border-radius:4px; }
 .mmd-seg .mmd-grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
