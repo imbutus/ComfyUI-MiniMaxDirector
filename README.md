@@ -5,6 +5,10 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
+It ships as a whole workflow, not just a node pack: `examples/minimax-director.json` is a
+complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
+and video out. Install it, open it, start writing shots. See **[Install](#install)**.
+
 MIT licensed. No dependencies beyond ComfyUI itself.
 
 ## Where this came from
@@ -56,6 +60,7 @@ frames of padding it added rather than leaving you to discover it in the output.
 | Node | Purpose |
 | --- | --- |
 | `MiniMax Director` | Timeline editor; outputs `positive`, `latent`, the compiled `prompt`, the `length`, and a lint `report`. |
+| `MiniMax Director — Prompt` | Shows the compiled prompt as the timeline is edited, without running anything. Wire the director's `prompt` output to it. |
 | `MiniMax Director — Compile` | The same compile step with no model attached, for reviewing or hand-editing a prompt first. |
 | `MiniMax Director — Length` | Snaps a duration in seconds to a valid frame count. |
 
@@ -67,13 +72,45 @@ image-to-video, wire any `picture_*` / `audio_1` / `video_1` and you get referen
 
 ## Install
 
+Three steps: the nodes, the weights, the workflow. The nodes on their own leave you with a
+timeline and nothing to render it — the graph around them is the product, and it ships here
+as `examples/minimax-director.json`.
+
+Requires ComfyUI 0.30.0 or newer, which is where the MiniMax H3 nodes landed.
+
+**1. The nodes.**
+
 ```
 cd ComfyUI/custom_nodes
 git clone https://github.com/imbutus/ComfyUI-MiniMaxDirector.git
 ```
 
-Restart ComfyUI. Requires ComfyUI 0.30.0 or newer, which is where the MiniMax H3 nodes
-landed.
+Restart ComfyUI.
+
+**2. The weights.** Four files, all from
+[`Comfy-Org/MiniMax-H3`](https://huggingface.co/Comfy-Org/MiniMax-H3). These are the exact
+filenames the example workflow asks for; ComfyUI matches loaders to files by name, so a
+differently named copy shows up as an empty dropdown rather than an error.
+
+| File | Goes in |
+| --- | --- |
+| `minimax_h3_ref2va_pruned_int8_convrot.safetensors` | `models/diffusion_models/` |
+| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | `models/text_encoders/` |
+| `minimax_h3_video_vae_fp16.safetensors` | `models/vae/` |
+| `minimax_h3_audio_vae_fp32.safetensors` | `models/vae/` |
+
+Two VAEs is not a mistake. H3 generates picture and sound together, and they decode
+separately.
+
+**3. The workflow.** Drag `examples/minimax-director.json` onto the ComfyUI canvas, or open
+it from the Workflows sidebar. It wires up:
+
+- **MiniMax Director** — the timeline you work in.
+- **MiniMax Director — Prompt** — the compiled prompt, beside it, updating as you type.
+- the loaders, sampler, both VAE decodes, `CreateVideo` and `SaveVideo` — everything
+  needed to get an mp4 with sound out the other end.
+
+Select a block, describe what happens in it, queue.
 
 ## Development
 
@@ -126,6 +163,7 @@ src/minimax_director/
   core.py                adapter over ComfyUI's built-in H3 nodes
   nodes/                 the classes ComfyUI registers
 web/                     the timeline widget: plain ES modules, no build step
+examples/                the ready-to-run workflow
 tests/                   pure-Python tests and golden prompts
 tests/graph/             in-process ComfyUI execution with the weights stubbed
 AGENTS.md                how it all works, for contributors and coding agents

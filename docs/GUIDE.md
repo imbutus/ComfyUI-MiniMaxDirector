@@ -19,16 +19,12 @@ video is wrong, read that string first — it usually explains itself.
 
 ## Installing
 
-```
-cd ComfyUI/custom_nodes
-git clone https://github.com/imbutus/ComfyUI-MiniMaxDirector.git
-```
+See **[Install in the README](../README.md#install)** — the nodes, the four model files
+with the exact names and directories, and the workflow that wires them together. It is
+kept in one place so the two cannot drift apart.
 
-Restart ComfyUI. Requires **ComfyUI 0.30.0 or newer**, which is where the MiniMax H3
-nodes landed. No pip install, no dependencies.
-
-You also need the H3 model files: the `ref2va` diffusion model, the Qwen3-VL text
-encoder, and **two** VAEs — one for video, one for audio. H3 produces both in one pass.
+The short version: ComfyUI 0.30.0 or newer, no pip install, no dependencies, and **two**
+VAEs rather than one — H3 produces picture and sound in the same pass.
 
 ---
 
