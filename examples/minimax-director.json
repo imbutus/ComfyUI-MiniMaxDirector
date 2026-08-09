@@ -350,7 +350,7 @@
       "id": 10,
       "type": "BasicGuider",
       "pos": [
-        2380,
+        2960,
         40
       ],
       "size": [
@@ -390,7 +390,7 @@
       "id": 11,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        2380,
+        2960,
         158
       ],
       "size": [
@@ -452,7 +452,7 @@
       "id": 12,
       "type": "VAEDecode",
       "pos": [
-        2380,
+        2960,
         348
       ],
       "size": [
@@ -492,7 +492,7 @@
       "id": 13,
       "type": "VAEDecodeAudio",
       "pos": [
-        2380,
+        2960,
         466
       ],
       "size": [
@@ -532,7 +532,7 @@
       "id": 14,
       "type": "CreateVideo",
       "pos": [
-        2380,
+        2960,
         584
       ],
       "size": [
@@ -576,7 +576,7 @@
       "id": 15,
       "type": "SaveVideo",
       "pos": [
-        2380,
+        2960,
         730
       ],
       "size": [
@@ -608,11 +608,11 @@
       "type": "MiniMaxDirectorPrompt",
       "pos": [
         2380,
-        920
+        40
       ],
       "size": [
         520,
-        420
+        806
       ],
       "flags": {},
       "order": 15,
