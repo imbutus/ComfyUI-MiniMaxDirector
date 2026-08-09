@@ -117,6 +117,14 @@ const CSS = `
   background:rgba(0,0,0,.62); color:#d7dbe2; border-top-right-radius:4px;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   pointer-events:none; }
+/* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
+   transparent to them so a click there still grabs the block. */
+.mmd-seg .mmd-cam { pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.72);
+  color:#e5e7eb; }
+.mmd-seg .mmd-cam:hover { background:#2c313c; color:#fff; }
+.mmd-cam-pick { position:absolute; left:2px; bottom:2px; z-index:5; font:inherit;
+  font-size:11px; max-width:calc(100% - 4px); background:#1c1f26; color:#e5e7eb;
+  border:1px solid #3a4150; border-radius:4px; }
 .mmd-seg .mmd-grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
 .mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;

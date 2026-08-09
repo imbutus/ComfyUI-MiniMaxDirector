@@ -266,6 +266,9 @@ export class TimelineEditor {
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
+    this.canvas.addEventListener("click", (event) => {
+      if (event.target.classList.contains("mmd-cam")) this.pickCamera(event);
+    });
     document.addEventListener("pointermove", (event) => this.move(event));
     document.addEventListener("pointerup", () => {
       this.drag = null;
@@ -542,8 +545,10 @@ export class TimelineEditor {
   // -- gestures ------------------------------------------------------------
 
   grab(event) {
-    // An open inline editor owns its own clicks; starting a drag would close it.
-    if (event.target.classList.contains("mmd-inline")) return;
+    // An open inline editor owns its own clicks; starting a drag would close it. The
+    // camera chip and its dropdown are the same bargain: a click there is aimed at the
+    // control, and treating it as the start of a drag makes the move impossible to pick.
+    if (event.target.closest(".mmd-inline, .mmd-cam, .mmd-cam-pick")) return;
 
     const node = event.target.closest(".mmd-seg");
     const total = this.extent();
@@ -683,6 +688,63 @@ export class TimelineEditor {
         .querySelector(`[data-track="${track}"] [data-index="${index}"]`)
         ?.classList.add("mmd-sel");
     }
+  }
+
+  /**
+   * Click the camera chip to choose the move, on the block itself.
+   *
+   * The `select` is created for the click and removed when it closes, rather than living
+   * on the block. Tracks are rebuilt on every render, which would tear an open dropdown
+   * out from under the pointer -- the same reason the inline prompt editor works this
+   * way. Nothing renders between opening and choosing, so the element survives its own
+   * lifetime.
+   */
+  pickCamera(event) {
+    const node = event.target.closest(".mmd-seg");
+    if (!node) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const track = node.parentElement.dataset.track;
+    const index = Number(node.dataset.index);
+    const item = items(this.read(), track)[index];
+    if (!item || track !== "moves") return;
+
+    this.selection = { track, index };
+    node.querySelector(".mmd-cam-pick")?.remove();
+
+    const pick = document.createElement("select");
+    pick.className = "mmd-cam-pick";
+    pick.innerHTML = CAMERAS.map((name) =>
+      `<option value="${name}"${name === (item.camera || "") ? " selected" : ""}>${name || "—"}</option>`
+    ).join("");
+    node.appendChild(pick);
+    pick.focus();
+
+    // Chromium opens the list without a second click; elsewhere the select is focused
+    // and one click away, which is no worse than the control it replaces.
+    pick.showPicker?.();
+
+    let done = false;
+    const close = (camera) => {
+      if (done) return;
+      done = true;
+      pick.remove();
+      if (camera === undefined) return this.render();
+      const next = this.read();
+      const target = items(next, track)[index];
+      if (target) target.camera = camera;
+      this.commit(next);
+    };
+
+    pick.addEventListener("change", () => close(pick.value));
+    pick.addEventListener("blur", () => close());
+    // Keys are stopped here or ComfyUI takes them: Delete would remove the node the
+    // editor is drawn on while its own dropdown is open.
+    pick.addEventListener("keydown", (key) => {
+      key.stopPropagation();
+      if (key.key === "Escape") close();
+    });
   }
 
   /**
@@ -1001,13 +1063,27 @@ export class TimelineEditor {
 
     const caption = document.createElement("span");
     caption.className = "mmd-cap";
-    caption.textContent = item.prompt?.trim() || item.camera || "";
+    // On a camera block the move now has a chip of its own, so falling back to it here
+    // would print the same word twice on one block.
+    caption.textContent = item.prompt?.trim() || (track === "moves" ? "" : item.camera || "");
     node.appendChild(caption);
 
     if (item.media?.filename) {
       const chip = document.createElement("span");
       chip.className = "mmd-chip";
       chip.textContent = `${item.media.kind.toUpperCase()} · ${item.media.filename}`;
+      node.appendChild(chip);
+    }
+
+    // The move itself, on the block that plays it. It was only in the panel below, which
+    // meant reading the timeline told you a camera block was there but never what it did.
+    // A chip rather than the `select`: a 64-frame block is narrow, and a dropdown at that
+    // width shows nothing useful until it is opened anyway.
+    if (track === "moves") {
+      const chip = document.createElement("span");
+      chip.className = "mmd-chip mmd-cam";
+      chip.title = "Click to choose the camera move";
+      chip.textContent = item.camera || "—";
       node.appendChild(chip);
     }
 
