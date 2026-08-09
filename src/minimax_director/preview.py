@@ -1,0 +1,37 @@
+"""Compile a timeline for the editor, without running anything.
+
+The `prompt` output only fills in when the graph runs, so the one string H3 actually
+receives stays invisible while you are writing the timeline. The editor calls this on
+every edit pause instead, which needs a compile that never raises: a timeline being
+typed is briefly malformed, and an exception there would leave the panel stuck on stale
+text with no way to say why.
+"""
+
+from __future__ import annotations
+
+from .compile import compile_timeline
+from .lint import lint
+from .timeline import Timeline
+
+
+def compile_preview(timeline_json: str) -> dict:
+    """Compile `timeline_json` to the fields the editor's prompt panel shows.
+
+    Always returns a dict. A payload that cannot be parsed comes back as
+    `{"ok": False, "error": ...}` rather than raising, because the caller is a
+    keystroke-driven request and half-typed JSON is expected traffic.
+    """
+    try:
+        document = Timeline.from_json(timeline_json)
+        compiled = compile_timeline(document)
+        issues = lint(document)
+    except Exception as error:  # malformed payload; the panel shows the reason
+        return {"ok": False, "error": f"{type(error).__name__}: {error}"}
+
+    return {
+        "ok": True,
+        "prompt": compiled.prompt,
+        "length": compiled.length,
+        "seconds": compiled.duration,
+        "report": "\n".join(str(issue) for issue in issues),
+    }

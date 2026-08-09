@@ -9,6 +9,7 @@
  * sync, and a graph saved without this extension still carries a complete timeline.
  */
 
+import { api } from "../../../scripts/api.js";
 import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
@@ -68,7 +69,12 @@ export class TimelineEditor {
   constructor(read, write, widgets = {}) {
     install();
     this.read = read;
-    this.write = write;
+    // Every persist re-compiles the preview. Wrapping the injected writer here catches
+    // all of them -- typing, dragging, undo -- without a call at each of the ten sites.
+    this.write = (timeline) => {
+      write(timeline);
+      this.schedulePreview();
+    };
     this.widgets = widgets;
     this.selected = [];
     this.drag = null;
@@ -143,6 +149,11 @@ export class TimelineEditor {
       <div class="mmd-prompt">
         <label title="non_diegetic_music: score only the audience hears. Instrumentation, tempo and dynamics -- not mood words. Left empty it compiles to N/A.">GLOBAL MUSIC <span class="mmd-hint">audience only, never the characters</span></label>
         <textarea class="mmd-music" placeholder="Sparse piano notes at a slow tempo, joined by low strings that fade out"></textarea>
+      </div>
+
+      <div class="mmd-prompt">
+        <label title="The single string the model receives, compiled from everything above. Updates as you edit; no sampler runs.">COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span><span class="mmd-compiling"></span></label>
+        <pre class="mmd-compiled" tabindex="0"></pre>
       </div>`;
 
     this.settings = this.root.querySelector(".mmd-settings");
@@ -159,8 +170,11 @@ export class TimelineEditor {
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.global = this.root.querySelector(".mmd-global");
     this.music = this.root.querySelector(".mmd-music");
+    this.compiled = this.root.querySelector(".mmd-compiled");
+    this.compiling = this.root.querySelector(".mmd-compiling");
 
     this.bind();
+    this.schedulePreview();
   }
 
   /**
@@ -288,6 +302,54 @@ export class TimelineEditor {
     this.snapshot();
     this.write(timeline);
     this.render();
+  }
+
+  /**
+   * Re-compile the prompt panel, once the edits stop.
+   *
+   * Debounced because the compiler lives in Python: a request per keystroke would be one
+   * round trip per character, and the answers could land out of order. The trailing edge
+   * is the only one that matters -- what the panel must end up showing is the document
+   * as it stands after typing, not any state on the way there.
+   */
+  schedulePreview() {
+    clearTimeout(this.previewTimer);
+    if (this.compiling) this.compiling.textContent = "updating…";
+    this.previewTimer = setTimeout(() => this.refreshPreview(), 300);
+  }
+
+  async refreshPreview() {
+    // A slow answer to an old document must never overwrite a newer one. Each request
+    // carries a serial; only the newest is allowed to paint.
+    const serial = (this.previewSerial = (this.previewSerial ?? 0) + 1);
+    const timeline = JSON.stringify(this.read());
+
+    let result;
+    try {
+      const response = await api.fetchApi("/minimax_director/compile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeline }),
+      });
+      if (!response.ok) throw new Error(`compile failed: ${response.status}`);
+      result = await response.json();
+    } catch (error) {
+      if (serial !== this.previewSerial) return;
+      this.paintPreview({ ok: false, error: String(error.message ?? error) });
+      return;
+    }
+
+    if (serial !== this.previewSerial) return;
+    this.paintPreview(result);
+  }
+
+  paintPreview(result) {
+    if (!this.compiled) return;
+    this.compiling.textContent = "";
+    this.compiled.classList.toggle("mmd-compiled-bad", !result.ok);
+    this.compiled.textContent = result.ok
+      ? result.prompt
+      : `could not compile: ${result.error}`;
   }
 
   /**

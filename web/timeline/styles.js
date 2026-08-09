@@ -173,6 +173,15 @@ const CSS = `
   color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
 .mmd-prompt textarea:disabled { color:#6b7280; }
 
+/* Read-only, but selectable and scrollable -- a compiled prompt is something you copy
+   out and diff, and a long one must not stretch the node. */
+.mmd-compiled { margin:0; max-height:150px; overflow:auto; white-space:pre-wrap;
+  word-break:break-word; color:#cdd3dd; background:transparent; border:0; outline:none;
+  font:inherit; user-select:text; cursor:text; }
+.mmd-compiled:empty::before { content:"compiling…"; color:#6b7280; }
+.mmd-compiled-bad { color:#d98a8a; }
+.mmd-compiling { float:right; letter-spacing:0; color:#6b7280; text-transform:none; }
+
 .mmd-seg-fields { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
   margin-top:3px; }
 .mmd-seg-fields label { display:flex; align-items:center; gap:4px; color:#9ca3af;
