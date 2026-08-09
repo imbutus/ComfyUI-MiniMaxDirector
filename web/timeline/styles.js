@@ -194,6 +194,10 @@ const CSS = `
   margin-top:3px; }
 .mmd-seg-fields label { display:flex; align-items:center; gap:4px; color:#9ca3af;
   font-size:11px; }
+/* The subject description is a sentence, not a number, so it gets the room to be one. */
+.mmd-seg-fields .mmd-f-wide { flex:1 1 320px; }
+.mmd-seg-fields .mmd-f-wide input { width:100%; }
+.mmd-seg-fields .mmd-f-retention { width:auto; }
 .mmd-seg-fields input, .mmd-seg-fields select { width:88px; background:#1c1f26;
   color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 4px;
   font:inherit; }

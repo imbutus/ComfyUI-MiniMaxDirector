@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import attachments, lattice
-from .timeline import Move, Shot, Timeline
+from .timeline import RETENTIONS, Move, Shot, Timeline
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,13 +53,26 @@ class Compiled:
 
 def compile_timeline(timeline: Timeline) -> Compiled:
     """Render `timeline` to a prompt and a valid frame count."""
-    render = _render_legacy if timeline.dialect == "legacy" else _render_official
+    render = _renderer(timeline)
     length = timeline.length
     return Compiled(
         prompt=render(timeline),
         length=length,
         duration=lattice.to_seconds(length),
     )
+
+
+def _renderer(timeline: Timeline):
+    """Which shape this timeline compiles to.
+
+    Attachments decide it, not the author: anything attached sends the graph to
+    `MiniMaxH3ReferenceToVideo`, and that model wants the six-section full-reference
+    format. The `dialect` field still chooses between the two formats for a timeline with
+    nothing attached, where the question is genuinely open.
+    """
+    if attachments.collect(timeline):
+        return _render_reference
+    return _render_legacy if timeline.dialect == "legacy" else _render_official
 
 
 # -- the documented format ---------------------------------------------------
@@ -70,6 +83,119 @@ def _render_official(timeline: Timeline) -> str:
     fields.append(f"overall_soundscape: {_soundscape(timeline) or 'N/A'}")
     fields.append(f"non_diegetic_music: {timeline.music.strip() or 'N/A'}")
     return "\n\n".join(fields)
+
+
+# -- full-reference format ---------------------------------------------------
+
+
+def _render_reference(timeline: Timeline) -> str:
+    """The six sections H3 asks for when the prompt carries references.
+
+    Only the three new sections are new work: §5.1 of the reference guide says the shot
+    body follows the base guide exactly, so `detailed_description` is the same string
+    `integrated_multimodal_description` would have carried, under a different name.
+
+    One subject per attached file. The guide allows many-to-many -- one subject drawn from
+    several pictures, one picture supplying several subjects -- but the editor attaches
+    files to blocks, so that relationship has nowhere to be authored yet. The common case,
+    *this picture is the raccoon and it stays the raccoon*, is expressible as it stands.
+    """
+    fields = [
+        f"subject_definitions:\n{_subject_definitions(timeline)}",
+        f"summary:\n{_summary(timeline)}",
+        f"retention_analysis:\n{_retention_analysis(timeline)}",
+        f"detailed_description: {_description(timeline)}",
+        f"overall_soundscape: {_soundscape(timeline) or 'N/A'}",
+        f"non_diegetic_music: {timeline.music.strip() or 'N/A'}",
+    ]
+    return "\n\n".join(fields)
+
+
+def _subject_definitions(timeline: Timeline) -> str:
+    """One line per attached file: what its token denotes and what to follow.
+
+    An attachment with nothing written about it still gets a line. A missing definition
+    would leave a token referenced in the body and defined nowhere, which the guide calls
+    out as an error; a thin line at least keeps the document consistent, and `lint` says
+    what is missing.
+    """
+    lines = []
+    for item in attachments.collect(timeline):
+        described = _described(item)
+        lines.append(f"{item.token} is {described}.")
+    return "\n".join(lines)
+
+
+def _summary(timeline: Timeline) -> str:
+    """One paragraph, opening with the bracketed task type.
+
+    `reference generation` is the only type this editor can produce: attachments guide
+    the generation rather than serving as concrete frame anchors, which is what the other
+    types describe. Hard-coded rather than guessed -- naming a task type the timeline
+    cannot actually express would be a worse lie than a narrow one.
+    """
+    tokens = [item.token for item in attachments.collect(timeline)]
+    shots = len(timeline.ordered_shots())
+    scene = timeline.global_prompt.strip().rstrip(".")
+
+    opening = f"[reference generation] A {_count(shots)} clip"
+    if scene:
+        opening += f" of {scene[0].lower()}{scene[1:]}"
+    if tokens:
+        opening += f", generated with reference to {_join(tokens)}"
+    return f"{opening}."
+
+
+def _retention_analysis(timeline: Timeline) -> str:
+    """One line per token: where it appears, how much of it survives, and why."""
+    lines = []
+    for item in attachments.collect(timeline):
+        marker = _retention(item)
+        where = _appears_in(timeline, item)
+        lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
+    return "\n".join(lines)
+
+
+def _described(item) -> str:
+    """What the author said this reference is, or the filename as a last resort."""
+    described = str(item.record.get("description", "")).strip().rstrip(".")
+    if described:
+        return described
+    name = str(item.record.get("filename", "")).strip()
+    return f"the {item.kind} in {name}" if name else f"an unnamed {item.kind} reference"
+
+
+def _retention(item) -> str:
+    marker = str(item.record.get("retention", "")).strip()
+    return marker if marker in RETENTIONS else RETENTIONS[0]
+
+
+def _appears_in(timeline: Timeline, item) -> str:
+    """`(appears in [Shot 2])`, or nothing when the file is not tied to a segment.
+
+    A reference video's own soundtrack has no origin of its own -- it belongs to the video
+    rather than to a block on the timeline -- so it gets no shot list.
+    """
+    if item.origin is None:
+        return ""
+    track, start = item.origin
+    for number, shot in enumerate(timeline.ordered_shots(), start=1):
+        if track == "shots" and shot.start == start:
+            return f" (appears in [Shot {number}])"
+        if track == "cues" and shot.start <= start < shot.end:
+            return f" (heard in [Shot {number}])"
+    return ""
+
+
+def _count(shots: int) -> str:
+    words = {1: "one-shot", 2: "two-shot", 3: "three-shot", 4: "four-shot", 5: "five-shot"}
+    return words.get(shots, f"{shots}-shot")
+
+
+def _join(parts: list[str]) -> str:
+    if len(parts) == 1:
+        return parts[0]
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
 
 
 def _description(timeline: Timeline) -> str:

@@ -29,6 +29,14 @@ export const CAMERAS = [
   "tilt_up", "tilt_down", "orbit", "handheld", "crash_zoom",
 ];
 
+/** How much of a reference survives into the video, for `retention_analysis`.
+ *
+ *  Fixed English values in H3's full-reference output format, not prose -- these four and
+ *  no others. Kept in step with `RETENTIONS` in `timeline.py`, which is what compiles. */
+export const RETENTIONS = [
+  "fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference",
+];
+
 /** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`).
  *
  * The double modulo is not redundant. JavaScript's `%` keeps the sign of the left

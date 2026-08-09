@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterator
 
-from . import lattice
+from . import attachments, lattice
 from .timeline import Timeline
 
 TOKEN = re.compile(r"<(Picture|Audio|Video)\s+(\d+)>", re.IGNORECASE)
@@ -35,8 +35,28 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_references(timeline),
         *_check_coverage(timeline),
         *_check_content(timeline),
+        *_check_subjects(timeline),
     ]
     return sorted(issues, key=lambda issue: issue.level != "error")
+
+
+def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
+    """An attached file with nothing said about it.
+
+    Attachments compile to the full-reference format, where every token gets a line in
+    `subject_definitions` saying what it is and what to keep. Undescribed, that line falls
+    back to the filename -- valid, but it tells the model nothing about what has to stay
+    the same, which is the entire reason the section exists.
+    """
+    for item in attachments.collect(timeline):
+        if str(item.record.get("description", "")).strip():
+            continue
+        name = str(item.record.get("filename", "")) or item.kind
+        yield Issue(
+            "warning",
+            f"{item.token} ({name}) has no description, so nothing tells the model what "
+            f"to keep from it. Describe it on the block that carries it.",
+        )
 
 
 def _check_references(timeline: Timeline) -> Iterator[Issue]:

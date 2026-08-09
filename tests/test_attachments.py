@@ -70,10 +70,15 @@ def test_the_prompt_names_an_attached_file_without_being_asked():
 
 
 def test_a_token_the_author_placed_is_not_repeated():
+    """In the shot body. The reference sections name every token by design -- that is
+    what `subject_definitions` and `retention_analysis` are for -- so the count is taken
+    over the body alone, which is where a duplicate would read as two separate files."""
     timeline = build(shots=[
         {"start": 0, "length": 24, "prompt": "hold <Picture 1> steady", "media": image("a.png")},
     ])
-    assert compile_timeline(timeline).prompt.count("<Picture 1>") == 1
+    prompt = compile_timeline(timeline).prompt
+    body = prompt.split("detailed_description:")[-1].split("overall_soundscape:")[0]
+    assert body.count("<Picture 1>") == 1
 
 
 def test_an_attached_audio_names_itself_in_the_audio_block():

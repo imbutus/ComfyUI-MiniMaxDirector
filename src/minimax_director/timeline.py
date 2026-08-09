@@ -19,12 +19,31 @@ from . import lattice
 RefKind = Literal["picture", "audio", "video"]
 
 DIALECTS = ("official", "legacy")
-"""Which prompt shape the compiler emits.
+"""Which prompt shape the compiler emits for a timeline with nothing attached.
 
 `official` follows MiniMax's own writing guide: one `integrated_multimodal_description`
 carrying the shots with camera work written into them, plus `overall_soundscape` and
 `non_diegetic_music`. `legacy` is this project's original `Timeline:` / `Camera:` /
-`Audio:` blocks, kept only so the two can be compared on one GPU run."""
+`Audio:` blocks, kept only so the two can be compared on one GPU run.
+
+Attaching a file overrides both -- see `REFERENCE_DIALECT`."""
+
+REFERENCE_DIALECT = "reference"
+"""The six-section shape H3 wants when anything is attached.
+
+Not an author's choice, which is why it is not in `DIALECTS`. Attaching a file routes the
+graph to `MiniMaxH3ReferenceToVideo` (`nodes/director.py`), and full-reference mode has
+its own prompt format: `subject_definitions`, `summary`, `retention_analysis`,
+`detailed_description`, `overall_soundscape`, `non_diegetic_music`, in that order
+(`skills/h3-prompt-writing/references/ref-en.txt` in MiniMax's own repo). Letting a combo
+box disagree with the node that receives the prompt is how the two silently drift apart,
+so the compiler reads the attachments instead of asking."""
+
+RETENTIONS = ("fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference")
+"""How much of a reference survives into the target video, for `retention_analysis`.
+
+Fixed English values in the output format, not prose: the guide lists exactly these four
+for visible content. Audio has its own set, which this project does not emit yet."""
 
 CAMERA_PROSE: dict[str, str] = {
     "static": "The camera holds a static shot.",

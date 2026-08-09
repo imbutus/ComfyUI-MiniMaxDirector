@@ -14,8 +14,8 @@ import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds, items, length,
-  neighbours,
+  CAMERAS, RETENTIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
+  items, length, neighbours,
   remove, reshape, span, toSeconds, FPS,
 } from "./model.js";
 
@@ -1124,10 +1124,37 @@ export class TimelineEditor {
         </select>
       </label>`;
 
+    // Only for a block carrying a file. Attaching one puts the clip in full-reference
+    // mode, where the prompt has to say what each reference is and how much of it must
+    // survive -- questions that have no meaning for a block with nothing attached.
+    const subject = !item.media ? "" : `
+      <label class="mmd-f-wide">describes
+        <input class="mmd-f-subject" type="text" placeholder="what this file is, and what must stay the same"
+               value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
+      </label>
+      <label title="How much of this reference survives into the video. Fixed values from MiniMax's own guide.">keep
+        <select class="mmd-f-retention">
+          ${RETENTIONS.map((name) =>
+            `<option value="${name}"${name === (item.media.retention || RETENTIONS[0]) ? " selected" : ""}>${name}</option>`
+          ).join("")}
+        </select>
+      </label>`;
+
     const patch = (change) => {
       const next = this.read();
       Object.assign(items(next, track)[index], change);
       this.commit(next);
+    };
+
+    /** Write onto the attachment record rather than the block itself. */
+    const patchMedia = (change, live = false) => {
+      const next = this.read();
+      const target = items(next, track)[index];
+      if (!target?.media) return;
+      target.media = { ...target.media, ...change };
+      if (!live) return this.commit(next);
+      this.snapshotTyping();
+      this.write(next);
     };
 
     // Written on every keystroke so the block moves as you type, but one undo step per
@@ -1159,6 +1186,7 @@ export class TimelineEditor {
         <label>seconds <input class="mmd-f-secs" type="number" min="0.04" step="0.01"></label>
         <label>frames <input class="mmd-f-len" type="number" min="1" step="1"></label>
         ${cameras}
+        ${subject}
         ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
 
       const secsEl = this.segFields.querySelector(".mmd-f-secs");
@@ -1217,6 +1245,10 @@ export class TimelineEditor {
         });
       this.segFields.querySelector(".mmd-f-camera")
         ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
+      this.segFields.querySelector(".mmd-f-subject")
+        ?.addEventListener("input", (e) => patchMedia({ description: e.target.value }, true));
+      this.segFields.querySelector(".mmd-f-retention")
+        ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
