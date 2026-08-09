@@ -605,14 +605,14 @@
     },
     {
       "id": 17,
-      "type": "PreviewAny",
+      "type": "MiniMaxDirectorPrompt",
       "pos": [
         2380,
         920
       ],
       "size": [
-        420,
-        380
+        520,
+        420
       ],
       "flags": {},
       "order": 15,
@@ -620,20 +620,13 @@
       "inputs": [
         {
           "name": "source",
-          "type": "*",
+          "type": "STRING",
           "link": 19
         }
       ],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "slot_index": 0,
-          "links": []
-        }
-      ],
+      "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "Node name for S&R": "MiniMaxDirectorPrompt"
       },
       "widgets_values": [],
       "title": "prompt — what the model actually receives"

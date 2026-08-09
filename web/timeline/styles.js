@@ -173,15 +173,6 @@ const CSS = `
   color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
 .mmd-prompt textarea:disabled { color:#6b7280; }
 
-/* Read-only, but selectable and scrollable -- a compiled prompt is something you copy
-   out and diff, and a long one must not stretch the node. */
-.mmd-compiled { margin:0; max-height:150px; overflow:auto; white-space:pre-wrap;
-  word-break:break-word; color:#cdd3dd; background:transparent; border:0; outline:none;
-  font:inherit; user-select:text; cursor:text; }
-.mmd-compiled:empty::before { content:"compiling…"; color:#6b7280; }
-.mmd-compiled-bad { color:#d98a8a; }
-.mmd-compiling { float:right; letter-spacing:0; color:#6b7280; text-transform:none; }
-
 .mmd-seg-fields { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
   margin-top:3px; }
 .mmd-seg-fields label { display:flex; align-items:center; gap:4px; color:#9ca3af;
@@ -191,6 +182,23 @@ const CSS = `
   font:inherit; }
 .mmd-seg-fields button { background:#3a2422; color:#f3d3cf; border:1px solid #5c332d;
   border-radius:4px; padding:2px 9px; cursor:pointer; font:inherit; }
+
+/* the prompt node ---------------------------------------------------------- */
+/* Read-only, but selectable and scrollable: a compiled prompt is something you copy out
+   and diff. It scrolls inside its own node rather than growing one, so a long clip
+   cannot push the box past the border and over the graph. */
+.mmd-prompt-view { width:100%; height:100%; overflow:hidden; box-sizing:border-box;
+  display:flex; flex-direction:column; gap:4px; padding:2px;
+  font:12px/1.45 system-ui,sans-serif; }
+.mmd-prompt-view > label { flex:0 0 auto; font-size:9px; letter-spacing:.09em;
+  color:#8b93a1; }
+.mmd-prompt-view > label .mmd-hint { letter-spacing:0; color:#6b7280; }
+.mmd-prompt-text { flex:1 1 auto; margin:0; overflow:auto; white-space:pre-wrap;
+  word-break:break-word; color:#cdd3dd; background:#15181e; border:1px solid #2c313c;
+  border-radius:6px; padding:7px 9px; outline:none; font:inherit; user-select:text;
+  cursor:text; }
+.mmd-prompt-text:empty::before { content:"waiting for a timeline…"; color:#6b7280; }
+.mmd-prompt-bad { color:#d98a8a; }
 `;
 
 export function install() {

@@ -8,7 +8,7 @@ spare, which is what the core H3 node does and what leaves room for the editor.
 
 from __future__ import annotations
 
-from comfy_api.latest import ComfyExtension, io
+from comfy_api.latest import ComfyExtension, io, ui
 
 from .. import attachments, core, lattice, references
 from ..compile import compile_timeline
@@ -239,6 +239,36 @@ class MiniMaxDirectorCompile(io.ComfyNode):
         )
 
 
+class MiniMaxDirectorPrompt(io.ComfyNode):
+    """Show the compiled prompt, updating as the timeline is edited.
+
+    `PreviewAny` would display the same string, but only after a run: it fills from
+    execution results, so while you are writing the timeline the box sits empty -- which
+    is exactly when you want to read what the model is being told.
+
+    This node exists so the editor has somewhere to put its own answer. Wire the
+    director's `prompt` output to `source` and the web extension paints it here on every
+    edit pause, compiled by the same code the graph would run. Executing the graph fills
+    it the ordinary way, so the node is honest with the extension missing.
+    """
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorPrompt",
+            display_name="MiniMax Director — Prompt",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[io.String.Input("source", force_input=True)],
+            outputs=[],
+            is_output_node=True,
+        )
+
+    @classmethod
+    def execute(cls, source) -> io.NodeOutput:
+        return io.NodeOutput(ui=ui.PreviewText(source or ""))
+
+
 class MiniMaxDirectorLength(io.ComfyNode):
     """Snap a duration in seconds to a length H3 accepts."""
 
@@ -264,7 +294,12 @@ class MiniMaxDirectorLength(io.ComfyNode):
         return io.NodeOutput(length, lattice.to_seconds(length))
 
 
-NODES = [MiniMaxDirector, MiniMaxDirectorCompile, MiniMaxDirectorLength]
+NODES = [
+    MiniMaxDirector,
+    MiniMaxDirectorCompile,
+    MiniMaxDirectorPrompt,
+    MiniMaxDirectorLength,
+]
 
 
 class MiniMaxDirectorExtension(ComfyExtension):

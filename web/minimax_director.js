@@ -10,10 +10,15 @@
 import { app } from "../../scripts/app.js";
 import { parse, serialize } from "./timeline/model.js";
 import { TimelineEditor } from "./timeline/editor.js";
+import { install } from "./timeline/styles.js";
 import { BUILD } from "./build.js";
 
 const NODE = "MiniMaxDirector";
+const PROMPT_NODE = "MiniMaxDirectorPrompt";
 const STATE_WIDGET = "timeline";
+const PROMPT_VIEW = "compiled_prompt";
+/** Wide enough to read a compiled shot without wrapping every few words. */
+const PROMPT_SIZE = [520, 420];
 
 const MIN_HEIGHT = 420;
 /** Matches LTXDirector, whose editor sets `size[0] = 1375` and saves at 1380x1000.
@@ -26,12 +31,13 @@ app.registerExtension({
   name: "imbutus.MiniMaxDirector",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== NODE) return;
+    if (nodeData.name !== NODE && nodeData.name !== PROMPT_NODE) return;
 
+    const mount = nodeData.name === NODE ? attach : attachPromptView;
     const onCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
       onCreated?.apply(this, arguments);
-      attach(this);
+      mount(this);
     };
   },
 });
@@ -69,6 +75,11 @@ function attach(node) {
   // The editor holds no state of its own, so nothing here can drift from the document.
   node.timelineEditor = editor;
 
+  // Every compile goes to the prompt nodes wired downstream. The editor no longer shows
+  // the string itself: it was the tallest thing on the node, and it arrived late enough
+  // to miss the sizing pass and hang out through the bottom.
+  editor.onPreview = (result) => paintPromptViews(node, result);
+
   const widget = node.addDOMWidget(STATE_WIDGET + "_editor", "minimax_director", editor.root, {
     getMinHeight: () => MIN_HEIGHT,
     hideOnZoom: false,
@@ -97,6 +108,88 @@ function attach(node) {
     fitNode(node, editor);
     requestAnimationFrame(() => fitNode(node, editor));
   });
+}
+
+/**
+ * Give a `MiniMaxDirectorPrompt` node a box to show the compiled prompt in.
+ *
+ * The widget is ours rather than the one ComfyUI builds for a text preview, because this
+ * node has to show a string that no run produced. `install()` is called here as well as
+ * by the editor: a graph can hold this node with no director on the canvas yet, and the
+ * stylesheet goes in once either way.
+ */
+function attachPromptView(node) {
+  install();
+
+  const root = document.createElement("div");
+  root.className = "mmd-prompt-view";
+  root.innerHTML = `
+    <label>COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span></label>
+    <pre class="mmd-prompt-text" tabindex="0"></pre>`;
+
+  node.addDOMWidget(PROMPT_VIEW, "minimax_director_prompt", root, {
+    getMinHeight: () => 120,
+    hideOnZoom: false,
+    serialize: false,
+    getValue: () => undefined,
+    setValue: () => {},
+  }).serializeValue = () => undefined;
+
+  node.promptView = root.querySelector(".mmd-prompt-text");
+  node.setSize([
+    Math.max(node.size?.[0] ?? 0, PROMPT_SIZE[0]),
+    Math.max(node.size?.[1] ?? 0, PROMPT_SIZE[1]),
+  ]);
+
+  // A run fills it the ordinary way, so the node still works with the timeline editor
+  // never having compiled anything -- a graph opened and queued without touching it.
+  const executed = node.onExecuted;
+  node.onExecuted = function (message) {
+    executed?.apply(this, arguments);
+    const text = message?.text;
+    if (text?.length) paintPromptView(node, { ok: true, prompt: text.join("") });
+  };
+
+  // Wiring it up mid-session should show the prompt at once rather than on the next
+  // keystroke, so ask whichever director now feeds it for what it last compiled.
+  const connections = node.onConnectionsChange;
+  node.onConnectionsChange = function () {
+    const result = connections?.apply(this, arguments);
+    for (const director of app.graph?._nodes ?? []) {
+      if (director.type !== NODE || !director.timelineEditor) continue;
+      if (!promptViewsOf(director).includes(node)) continue;
+      if (director.timelineEditor.preview) {
+        paintPromptView(node, director.timelineEditor.preview);
+      }
+    }
+    return result;
+  };
+}
+
+/** The prompt nodes wired to `director`, in graph order. */
+function promptViewsOf(director) {
+  const graph = director.graph ?? app.graph;
+  const found = [];
+  for (const output of director.outputs ?? []) {
+    for (const id of output.links ?? []) {
+      const target = graph?.getNodeById?.(graph?.links?.[id]?.target_id);
+      if (target?.promptView && !found.includes(target)) found.push(target);
+    }
+  }
+  return found;
+}
+
+function paintPromptViews(director, result) {
+  for (const node of promptViewsOf(director)) paintPromptView(node, result);
+}
+
+function paintPromptView(node, result) {
+  if (!node.promptView) return;
+  node.promptView.classList.toggle("mmd-prompt-bad", !result.ok);
+  node.promptView.textContent = result.ok
+    ? result.prompt
+    : `could not compile: ${result.error}`;
+  node.graph?.setDirtyCanvas(true, true);
 }
 
 /**

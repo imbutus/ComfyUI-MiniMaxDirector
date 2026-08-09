@@ -149,11 +149,6 @@ export class TimelineEditor {
       <div class="mmd-prompt">
         <label title="non_diegetic_music: score only the audience hears. Instrumentation, tempo and dynamics -- not mood words. Left empty it compiles to N/A.">GLOBAL MUSIC <span class="mmd-hint">audience only, never the characters</span></label>
         <textarea class="mmd-music" placeholder="Sparse piano notes at a slow tempo, joined by low strings that fade out"></textarea>
-      </div>
-
-      <div class="mmd-prompt">
-        <label title="The single string the model receives, compiled from everything above. Updates as you edit; no sampler runs.">COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span><span class="mmd-compiling"></span></label>
-        <pre class="mmd-compiled" tabindex="0"></pre>
       </div>`;
 
     this.settings = this.root.querySelector(".mmd-settings");
@@ -170,8 +165,19 @@ export class TimelineEditor {
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.global = this.root.querySelector(".mmd-global");
     this.music = this.root.querySelector(".mmd-music");
-    this.compiled = this.root.querySelector(".mmd-compiled");
-    this.compiling = this.root.querySelector(".mmd-compiling");
+
+    /**
+     * Where a freshly compiled prompt goes.
+     *
+     * The editor used to render it itself, in a panel below the prompt boxes. That panel
+     * was the tallest thing on the node and it grew *after* the node had been sized --
+     * the compile is a round trip -- so it hung through the bottom of the node and drew
+     * over whatever sat below it on the graph. The compiled string belongs on the node
+     * wired to the `prompt` output, which is where a reader looks for it anyway.
+     *
+     * Set by the host; left null the compile still runs and the answer is simply dropped.
+     */
+    this.onPreview = null;
 
     this.bind();
     this.schedulePreview();
@@ -314,7 +320,6 @@ export class TimelineEditor {
    */
   schedulePreview() {
     clearTimeout(this.previewTimer);
-    if (this.compiling) this.compiling.textContent = "updating…";
     this.previewTimer = setTimeout(() => this.refreshPreview(), 300);
   }
 
@@ -344,12 +349,8 @@ export class TimelineEditor {
   }
 
   paintPreview(result) {
-    if (!this.compiled) return;
-    this.compiling.textContent = "";
-    this.compiled.classList.toggle("mmd-compiled-bad", !result.ok);
-    this.compiled.textContent = result.ok
-      ? result.prompt
-      : `could not compile: ${result.error}`;
+    this.preview = result;
+    this.onPreview?.(result);
   }
 
   /**
