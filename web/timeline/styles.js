@@ -12,8 +12,14 @@
  */
 
 const CSS = `
+/* overflow:hidden here is a backstop, not layout. ComfyUI does not clip a DOM widget to
+   its node, so anything inside that grows taller than the height the node granted is
+   drawn over the graph below -- other nodes and all. The editor is meant to make the node
+   fit its content instead (see fitNode), and when that fails the content should be cut
+   off at the node border rather than land on top of somebody's sampler. */
 .mmd { display:flex; flex-direction:column; gap:7px; width:100%; height:100%;
-  font:12px/1.4 system-ui,sans-serif; color:#e5e7eb; box-sizing:border-box; }
+  overflow:hidden; font:12px/1.4 system-ui,sans-serif; color:#e5e7eb;
+  box-sizing:border-box; }
 
 /* toolbar ---------------------------------------------------------------- */
 .mmd-bar { display:flex; align-items:center; gap:6px; flex:0 0 auto; flex-wrap:wrap; }

@@ -232,22 +232,27 @@ function fitAfterLoad(node, editor) {
 }
 
 /**
- * Dragging a prompt box taller makes the node taller.
+ * A part of the editor that gets taller makes the node taller.
  *
- * The widget gets a fixed slice of the node, so a textarea that grows inside it takes
- * that height from the timeline -- you pull the prompt box down and the tracks shrink to
- * pay for it. Passing the change on to the node keeps everything else the size it was.
+ * The widget gets a fixed slice of the node, so a box that grows inside it takes that
+ * height from the timeline -- you pull a prompt box down and the tracks shrink to pay for
+ * it. Passing the change on to the node keeps everything else the size it was.
+ *
+ * Every direct child is watched, not just the textareas. A textarea is only the case that
+ * came up first; anything that changes height after the node was measured has the same
+ * effect, and the one that did not grow the node hung out through the bottom of it and
+ * drew over the graph below.
  *
  * `offsetHeight` rather than a bounding rect: the widget sits inside a CSS transform, so
  * a rect is in screen pixels while the node's size is in graph units.
  */
 function growWithPrompts(node, editor) {
-  for (const box of editor.root.querySelectorAll("textarea")) {
+  for (const box of editor.root.children) {
     let last = box.offsetHeight;
     new ResizeObserver(() => {
       const now = box.offsetHeight;
       const delta = now - last;
-      // Sub-pixel churn from layout is not a resize; only a real drag moves it.
+      // Sub-pixel churn from layout is not a resize; only a real change moves it.
       if (Math.abs(delta) < 1) return;
       last = now;
       node.setSize([node.size[0], node.size[1] + delta]);
