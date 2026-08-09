@@ -119,15 +119,15 @@ const CSS = `
   pointer-events:none; }
 /* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
    transparent to them so a click there still grabs the block. */
-/* Bottom right, opposite the media chip: the left edge of a block is where its start
-   time is read off the ruler, and a label sitting on it is in the way. */
-.mmd-seg .mmd-cam { pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.72);
-  color:#e5e7eb; left:auto; right:0; border-top-right-radius:0;
-  border-top-left-radius:4px; }
-.mmd-seg .mmd-cam:hover { background:#2c313c; color:#fff; }
-.mmd-cam-pick { position:absolute; right:2px; bottom:2px; z-index:5; font:inherit;
-  font-size:11px; max-width:calc(100% - 4px); background:#1c1f26; color:#e5e7eb;
-  border:1px solid #3a4150; border-radius:4px; }
+/* A real dropdown, always on the block, so the move is both readable and changeable
+   without selecting the block first. Bottom right, opposite the media chip: the left
+   edge is where a block's start time is read off the ruler. */
+.mmd-cam-pick { position:absolute; right:3px; bottom:3px; z-index:5; pointer-events:auto;
+  cursor:pointer; font:inherit; font-size:11px; max-width:calc(100% - 6px);
+  padding:2px 4px; background:#1c1f26; color:#e5e7eb; border:1px solid #4a5262;
+  border-radius:4px; }
+.mmd-cam-pick:hover { border-color:#6b7484; background:#232733; }
+.mmd-cam-pick:focus { outline:none; border-color:#8b93a1; }
 .mmd-seg .mmd-grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
 .mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
