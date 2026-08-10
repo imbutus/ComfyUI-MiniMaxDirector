@@ -317,6 +317,13 @@ def _description(timeline: Timeline) -> str:
             if addition:
                 parts[-1] = f"{_sentence(parts[-1])} {addition}"
 
+        # Close the shot before the next `[Shot n]` opens. A camera note is written as a
+        # continuation of the sentence before it, so it usually arrives without a stop of
+        # its own -- and left open it ran straight into the next shot marker. A shot with
+        # nothing in it is left alone: `[Shot 1].` is punctuation around an absence.
+        if body or camera or sound:
+            parts[-1] = _sentence(parts[-1])
+
     if not parts:
         # No shots, but the author may still have written a style, camera work or sound;
         # a prompt with an empty body would be silently ignored.

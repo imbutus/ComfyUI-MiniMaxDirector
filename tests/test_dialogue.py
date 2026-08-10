@@ -313,3 +313,21 @@ def test_a_clip_of_unknown_length_is_not_second_guessed():
                              "description": "the street"}}],
     })
     assert not any("2-15 seconds" in text for text in messages(timeline))
+
+
+def test_a_shot_is_closed_before_the_next_one_opens():
+    """A camera note is a continuation, so it arrives without a stop of its own."""
+    timeline = Timeline.from_dict({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 62, "prompt": "A table."},
+                  {"start": 62, "length": 62, "prompt": "a chair"}],
+        "moves": [{"start": 0, "length": 62, "camera": "dolly_in",
+                   "prompt": "closing on the croissants"}],
+    })
+    assert "closing on the croissants. [Shot 2]" in compile_timeline(timeline).prompt
+
+
+def test_an_empty_shot_is_not_given_punctuation_around_nothing():
+    timeline = Timeline.from_dict({
+        "shots": [{"start": 0, "length": 24, "prompt": "   "}]})
+    assert "[Shot 1]." not in compile_timeline(timeline).prompt
