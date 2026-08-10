@@ -112,6 +112,15 @@ it from the Workflows sidebar. It wires up:
 
 Select a block, describe what happens in it, queue.
 
+**Faster, optional.** `examples/minimax-director-turbo.json` is the same graph with
+[larryvrh's Turbo LoRA](https://huggingface.co/larryvrh/MiniMax-H3-Turbo-Lora) between the
+model loader and the sampler: 6 steps instead of 20, so a draft costs roughly a fifth of
+the GPU time. It needs one extra file in `models/loras/`
+(`minimax_h3_turbo_v4_step600_ema.safetensors`) and the
+[ComfyUI-MiniMax-H3-Turbo](https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo) nodes.
+Kept as a separate file on purpose: the workflow above depends on nothing but ComfyUI and
+this pack.
+
 ## Development
 
 The parts worth testing need neither a GPU nor a single byte of weights.
