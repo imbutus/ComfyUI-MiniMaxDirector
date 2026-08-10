@@ -1650,7 +1650,7 @@ export class TimelineEditor {
       const value = (key, fallback = "") =>
         String(said[key] ?? fallback).replace(/"/g, "&quot;");
       return `
-      <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">says
+      <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
         <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
       </label>
       <label class="mmd-f-wide" title="Who is speaking and how they sound: age, gender, pitch, timbre, accent, on screen or off. H3 needs this the first time a voice appears.">voice
@@ -1659,7 +1659,7 @@ export class TimelineEditor {
       <label title="S1, or S1,S2 for a group speaking together.">id
         <input class="mmd-f-ids" type="text" value="${value("ids", "S1")}">
       </label>
-      <label title="The verb: says, shouts, whispers.">delivery
+      <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
         <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
       </label>
       <label title="Names the language of the words. The words themselves are never translated.">language
