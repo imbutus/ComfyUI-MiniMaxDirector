@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import attachments, lattice
-from .timeline import RETENTIONS, Move, Shot, Timeline
+from .timeline import FRAME_ROLES, RETENTIONS, ROLE_TASKS, Move, Shot, Timeline
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,15 +51,55 @@ class Compiled:
         return self.prompt
 
 
-def compile_timeline(timeline: Timeline) -> Compiled:
-    """Render `timeline` to a prompt and a valid frame count."""
+def compile_timeline(
+    timeline: Timeline, first_frame: bool = False, last_frame: bool = False,
+) -> Compiled:
+    """Render `timeline` to a prompt and a valid frame count.
+
+    `first_frame` and `last_frame` say whether those inputs are wired on the node. They
+    are not part of the document -- an image dropped on the graph is not a block on the
+    timeline -- but the guide requires the prompt to announce them, so the two facts meet
+    here.
+    """
     render = _renderer(timeline)
     length = timeline.length
+    body = render(timeline)
+    instruction = _alignment(timeline, length, first_frame, last_frame)
     return Compiled(
-        prompt=render(timeline),
+        prompt=f"{instruction}\n\n{body}" if instruction else body,
         length=length,
         duration=lattice.to_seconds(length),
     )
+
+
+def _alignment(timeline: Timeline, length: int, first: bool, last: bool) -> str:
+    """The keyframe-alignment sentence, which the guide makes the prompt's first line.
+
+    Three wordings for three cases, quoted from the base guide rather than paraphrased --
+    they are fixed strings there, and a model trained on a fixed string is not the place
+    to improve on the English. `S.SS` is the effective duration to exactly two decimals,
+    and `N` the index of the real final shot.
+
+    Nothing is emitted for a timeline with references: that path routes to
+    `MiniMaxH3ReferenceToVideo`, which has no keyframe inputs to align to.
+    """
+    if not (first or last) or attachments.collect(timeline):
+        return ""
+
+    shots = len(timeline.ordered_shots()) or 1
+    seconds = f"{lattice.to_seconds(length):.2f}"
+
+    if first and not last:
+        return ("For the target video, at 0.00 seconds into the target video, "
+                "<Picture 1> (from [Shot 1]) is fully referenced.")
+    if last and not first:
+        return ("How the reference pictures align with the target video — "
+                f"<Picture 1> (from [Shot {shots}]) aligns with the {seconds}-second "
+                "mark of the target video.")
+    return ("How the reference pictures align with the target video — "
+            "Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target "
+            f"video; Picture 2 (from Shot {shots}) aligns with the {seconds}-second "
+            "mark of the target video.")
 
 
 def _renderer(timeline: Timeline):
@@ -124,19 +164,47 @@ def _subject_definitions(timeline: Timeline) -> str:
     return "\n".join(lines)
 
 
-def _summary(timeline: Timeline) -> str:
-    """One paragraph, opening with the bracketed task type.
+def _task_types(timeline: Timeline) -> str:
+    """The bracketed prefix: every relationship this timeline actually has, joined by ` + `.
 
-    `reference generation` is the only type this editor can produce: attachments guide
-    the generation rather than serving as concrete frame anchors, which is what the other
-    types describe. Hard-coded rather than guessed -- naming a task type the timeline
-    cannot actually express would be a worse lie than a narrow one.
+    The guide names six types and says to combine them without repeats, so a video the
+    clip continues from *and* keeps the audio of is `[video continuation + audio reuse]`.
+    Reading them off the attachments is the only honest way to write this line: hard-coding
+    `reference generation` told the model to treat a continuation source as loose guidance,
+    which is a wrong instruction rather than a missing one.
+
+    Order is the guide's own, not the order they were discovered, so two timelines with the
+    same relationships produce the same prefix.
     """
+    found: set[str] = set()
+
+    for item in attachments.collect(timeline):
+        role = str(item.record.get("role", "")).strip()
+        marker = _retention(item)
+        if item.kind == "audio":
+            # The two audio types are the same distinction the retention marker already
+            # draws: copied, or merely alluded to.
+            found.add("audio reuse" if marker == "fully_preserved" else "audio reference")
+        elif item.kind == "video":
+            found.add(ROLE_TASKS.get(role, "reference generation"))
+        else:
+            found.add(ROLE_TASKS.get(role, "reference generation"))
+
+    if not found:
+        found.add("reference generation")
+
+    order = ["keyframe completion", "reference generation", "video editing",
+             "video continuation", "audio reuse", "audio reference"]
+    return " + ".join(name for name in order if name in found)
+
+
+def _summary(timeline: Timeline) -> str:
+    """One paragraph, opening with the bracketed task type."""
     tokens = [item.token for item in attachments.collect(timeline)]
     shots = len(timeline.ordered_shots())
     scene = timeline.global_prompt.strip().rstrip(".")
 
-    opening = f"[reference generation] A {_count(shots)} clip"
+    opening = f"[{_task_types(timeline)}] A {_count(shots)} clip"
     if scene:
         opening += f" of {scene[0].lower()}{scene[1:]}"
     if tokens:
@@ -169,16 +237,19 @@ def _retention(item) -> str:
 
 
 def _appears_in(timeline: Timeline, item) -> str:
-    """`(appears in [Shot 2])`, or nothing when the file is not tied to a segment.
+    """`(appears in [Shot 2])`, or `([Shot 1] first frame)` for a concrete frame anchor.
 
     A reference video's own soundtrack has no origin of its own -- it belongs to the video
     rather than to a block on the timeline -- so it gets no shot list.
     """
     if item.origin is None:
         return ""
+    role = str(item.record.get("role", "")).strip()
     track, start = item.origin
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         if track == "shots" and shot.start == start:
+            if role in FRAME_ROLES:
+                return f" ([Shot {number}] {role})"
             return f" (appears in [Shot {number}])"
         if track == "cues" and shot.start <= start < shot.end:
             return f" (heard in [Shot {number}])"

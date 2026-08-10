@@ -160,7 +160,9 @@ class MiniMaxDirector(io.ComfyNode):
         document = document.with_references(
             references.assign(pictures, videos, soundtracks, audios)
         )
-        compiled = compile_timeline(document)
+        compiled = compile_timeline(
+            document, first_frame=first_frame is not None,
+            last_frame=last_frame is not None)
         issues = lint(document)
 
         # The core reference node has no `first_frame`, so wiring both would silently

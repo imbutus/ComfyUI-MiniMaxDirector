@@ -37,6 +37,13 @@ export const CAMERAS = [
  *
  *  Fixed English values in H3's full-reference output format, not prose -- these four and
  *  no others. Kept in step with `RETENTIONS` in `timeline.py`, which is what compiles. */
+/** What an attached file is *for*. Kept in step with `ROLE_TASKS` in `timeline.py`, which
+ *  maps each one to the task type the guide names for that job -- the compiler writes them
+ *  into the summary's bracketed prefix, combined with ` + ` when a clip has several. */
+export const ROLES = [
+  "reference", "first frame", "keyframe", "last frame", "continue from", "edit",
+];
+
 export const RETENTIONS = [
   "fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference",
 ];

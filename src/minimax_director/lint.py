@@ -36,6 +36,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_coverage(timeline),
         *_check_content(timeline),
         *_check_subjects(timeline),
+        *_check_dialogue(timeline),
     ]
     return sorted(issues, key=lambda issue: issue.level != "error")
 
@@ -57,6 +58,40 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
             f"{item.token} ({name}) has no description, so nothing tells the model what "
             f"to keep from it. Describe it on the block that carries it.",
         )
+
+
+def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
+    """Spoken lines the model will hear but cannot place.
+
+    H3 fixes a voice from what the prompt says about the speaker -- age, gender, pitch,
+    timbre, accent. With nothing said, the first line still gets a voice; it is just not
+    one anybody chose, and it changes between runs.
+
+    A second check catches an ID that speaks before it has been described. The guide asks
+    for the identifying detail the *first* time a speaker appears, and a clip whose S1 is
+    introduced in shot three has two shots of an unknown voice before it.
+    """
+    introduced: set[str] = set()
+    for number, shot in enumerate(timeline.ordered_shots(), start=1):
+        for line in shot.lines:
+            ids = {part.strip() for part in line.ids.split(",") if part.strip()}
+            described = bool(line.speaker.strip())
+            if described:
+                introduced |= ids
+                continue
+            unknown = sorted(ids - introduced)
+            if not unknown:
+                continue
+            yield Issue(
+                "warning",
+                f"[Shot {number}] {_join_ids(unknown)} speaks with no description, so the "
+                f"voice is whatever the model picks. Say who it is on the block: age, "
+                f"gender, pitch, timbre, accent.",
+            )
+
+
+def _join_ids(ids: list[str]) -> str:
+    return ids[0] if len(ids) == 1 else ", ".join(ids[:-1]) + f" and {ids[-1]}"
 
 
 def _check_references(timeline: Timeline) -> Iterator[Issue]:

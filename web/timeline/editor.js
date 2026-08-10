@@ -14,7 +14,7 @@ import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, RETENTIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
+  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
   items, length, neighbours,
   remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
 } from "./model.js";
@@ -66,6 +66,13 @@ const cameraOptions = (current) => {
  * compiler falls back to `fully_preserved` for an unknown marker; the select does not
  * pretend that already happened.
  */
+const roleOptions = (current) => {
+  const value = ROLES.includes(current) ? current : ROLES[0];
+  return ROLES
+    .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
 const retentionOptions = (current) => {
   const value = current || RETENTIONS[0];
   const names = RETENTIONS.includes(value) ? RETENTIONS : [value, ...RETENTIONS];
@@ -1400,14 +1407,59 @@ export class TimelineEditor {
         <input class="mmd-f-subject" type="text" placeholder="what this file is, and what must stay the same"
                value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
       </label>
+      <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
+        <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
+      </label>
       <label title="How much of this reference survives into the video. Fixed values from MiniMax's own guide.">keep
         <select class="mmd-f-retention">${retentionOptions(item.media.retention)}</select>
       </label>`;
+
+    // MAIN blocks only. H3 generates the voice with the picture in one pass, and the
+    // guide's form is exact enough that typing it by hand is how you get it wrong: the
+    // words go inside `<d>` with a language tag and nothing else, everything about the
+    // speaker stays outside it. A shot with two people talking gets a block each -- which
+    // is what a timeline is for.
+    const line = track !== "shots" ? "" : (() => {
+      const said = item.lines?.[0] || {};
+      const value = (key, fallback = "") =>
+        String(said[key] ?? fallback).replace(/"/g, "&quot;");
+      return `
+      <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">says
+        <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
+      </label>
+      <label class="mmd-f-wide" title="Who is speaking and how they sound: age, gender, pitch, timbre, accent, on screen or off. H3 needs this the first time a voice appears.">voice
+        <input class="mmd-f-speaker" type="text" placeholder="a young woman with a quiet, breathy voice" value="${value("speaker")}">
+      </label>
+      <label title="S1, or S1,S2 for a group speaking together.">id
+        <input class="mmd-f-ids" type="text" value="${value("ids", "S1")}">
+      </label>
+      <label title="The verb: says, shouts, whispers.">delivery
+        <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
+      </label>
+      <label title="Names the language of the words. The words themselves are never translated.">language
+        <input class="mmd-f-language" type="text" value="${value("language", "English")}">
+      </label>`;
+    })();
 
     const patch = (change) => {
       const next = this.read();
       Object.assign(items(next, track)[index], change);
       this.commit(next);
+    };
+
+    /** Write one field of the block's dialogue, keeping the rest. */
+    const patchLine = (change, live = false) => {
+      const next = this.read();
+      const target = items(next, track)[index];
+      if (!target) return;
+      const said = { ids: "S1", delivery: "says", language: "English", text: "",
+                     ...(target.lines?.[0] || {}), ...change };
+      // A block with nothing said carries no dialogue at all, rather than an empty
+      // record the compiler would have to know to ignore.
+      target.lines = said.text.trim() ? [said] : [];
+      if (!live) return this.commit(next);
+      this.snapshotTyping();
+      this.write(next);
     };
 
     /** Write onto the attachment record rather than the block itself. */
@@ -1453,6 +1505,7 @@ export class TimelineEditor {
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>
         ${cameras}
+        ${line}
         ${subject}
         ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
 
@@ -1540,12 +1593,21 @@ export class TimelineEditor {
         const value = typed(startEl);
         if (value !== null && Number.isFinite(value)) setStart(value);
       });
+      for (const [selector, key] of [
+        [".mmd-f-line", "text"], [".mmd-f-speaker", "speaker"], [".mmd-f-ids", "ids"],
+        [".mmd-f-delivery", "delivery"], [".mmd-f-language", "language"],
+      ]) {
+        this.segFields.querySelector(selector)
+          ?.addEventListener("input", (e) => patchLine({ [key]: e.target.value }, true));
+      }
       this.segFields.querySelector(".mmd-f-camera")
         ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
       this.segFields.querySelector(".mmd-f-subject")
         ?.addEventListener("input", (e) => patchMedia({ description: e.target.value }, true));
       this.segFields.querySelector(".mmd-f-retention")
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
+      this.segFields.querySelector(".mmd-f-role")
+        ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
@@ -1566,6 +1628,14 @@ export class TimelineEditor {
     put(".mmd-f-end", item.start + item.length);
     put(".mmd-f-len", item.length);
     put(".mmd-f-camera", item.camera || "static");
+
+    // Undo and a switch of selection both land here; the row itself is built once.
+    const said = item.lines?.[0] || {};
+    put(".mmd-f-line", said.text ?? "");
+    put(".mmd-f-speaker", said.speaker ?? "");
+    put(".mmd-f-ids", said.ids ?? "S1");
+    put(".mmd-f-delivery", said.delivery ?? "says");
+    put(".mmd-f-language", said.language ?? "English");
 
     // The locked mirrors are never the field under the cursor, so they follow every
     // render unconditionally -- `put`'s focus guard has nothing to protect here.

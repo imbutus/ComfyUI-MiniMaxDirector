@@ -18,6 +18,31 @@ from . import lattice
 
 RefKind = Literal["picture", "audio", "video"]
 
+ROLE_TASKS: dict[str, str] = {
+    "reference": "reference generation",
+    "first frame": "keyframe completion",
+    "keyframe": "keyframe completion",
+    "last frame": "keyframe completion",
+    "continue from": "video continuation",
+    "edit": "video editing",
+}
+"""What an attached file is *for*, and the task type the guide gives that job.
+
+The guide asks the summary to name every relationship the prompt has, combined with ` + `.
+Which one applies is not something a file can be inspected for -- the same photograph is a
+style reference or a literal first frame depending on what the author meant -- so the role
+is authored, and only the mapping to the guide's vocabulary lives here.
+
+`reference` is the default and the honest one: guidance, not a concrete frame anchor."""
+
+ROLES: tuple[str, ...] = tuple(ROLE_TASKS)
+
+FRAME_ROLES = ("first frame", "keyframe", "last frame")
+"""Roles that make a picture a concrete frame of the target video.
+
+`retention_analysis` names these where it would otherwise say "appears in": the guide
+writes `<Picture 2> ([Shot 1] first frame): fully_preserved - ...`."""
+
 REFERENCE_DIALECT = "reference"
 """The six-section shape H3 wants when anything is attached.
 
@@ -72,6 +97,76 @@ class Reference:
         return f"<{self.kind.capitalize()} {self.index}>"
 
 
+def _lines(data: Any) -> tuple["Line", ...]:
+    """Read the dialogue on a shot. Anything unreadable is dropped, never guessed at."""
+    if not isinstance(data, list):
+        return ()
+    return tuple(
+        Line(
+            text=str(item.get("text", "")),
+            speaker=str(item.get("speaker", "")),
+            ids=str(item.get("ids", "S1")),
+            delivery=str(item.get("delivery", "says")),
+            language=str(item.get("language", "English")),
+        )
+        for item in data
+        if isinstance(item, dict) and str(item.get("text", "")).strip()
+    )
+
+
+def _sentences(parts: Iterable[str]) -> str:
+    """Join fragments into prose, adding the full stops the author left out.
+
+    A shot is written as several pieces -- what happens, how it is filmed, who speaks --
+    and they arrive as separate fields. Run together they become one unreadable sentence;
+    given a blind `". "` they collect double punctuation after anything already ended.
+    """
+    out = ""
+    for part in parts:
+        piece = part.strip()
+        if not piece:
+            continue
+        if not out:
+            out = piece
+            continue
+        separator = " " if out.endswith((".", "!", "?", ",")) else ". "
+        out = f"{out}{separator}{piece}"
+    return out
+
+
+@dataclass(frozen=True, slots=True)
+class Line:
+    """One spoken line, in the exact shape H3's guide asks for.
+
+    The split is the whole point. Everything about *who* is speaking -- their description,
+    their ID, how they deliver it -- goes outside `<d>`; inside it goes a language tag and
+    the words themselves, verbatim. The guide is explicit that the words must not be
+    translated or rewritten, which is a rule about our formatting as much as the model's.
+    """
+
+    text: str
+    """What is actually said. Never touched: punctuation and language are the author's."""
+    speaker: str = ""
+    """Who says it, and how they sound -- age, gender, pitch, timbre, accent, on-screen or
+    not. The guide asks for enough to fix an identity the first time a speaker appears."""
+    ids: str = "S1"
+    """`S1`, or `S1,S2` for a group speaking together."""
+    delivery: str = "says"
+    """The verb: says, shouts, whispers, mutters."""
+    language: str = "English"
+    """The `[English]` tag inside `<d>`. The words keep their own language; this names it."""
+
+    def render(self) -> str:
+        """`The woman (S1) says: <d>[English] ...</d>`"""
+        said = self.text.strip()
+        if not said:
+            return ""
+        who = " ".join(part for part in (self.speaker.strip(), f"({self.ids.strip() or 'S1'})") if part)
+        verb = self.delivery.strip() or "says"
+        tag = self.language.strip() or "English"
+        return f"{who} {verb}: <d>[{tag}] {said}</d>"
+
+
 @dataclass(frozen=True, slots=True)
 class Shot:
     """A contiguous run of frames with one description."""
@@ -86,21 +181,23 @@ class Shot:
     so an old graph keeps producing the prompt it always did."""
     media: dict | None = None
     """An attached file: `{"kind": "image", "filename": ..., "subfolder": ...}`."""
+    lines: tuple[Line, ...] = ()
+    """What is spoken during this shot, in order."""
 
     @property
     def end(self) -> int:
         return self.start + self.length
 
     def text(self) -> str:
-        """Prompt plus the camera sentence, if any."""
+        """Prompt, the camera sentence, then the dialogue -- in that order.
+
+        Dialogue comes last because the guide describes a shot as composition, action and
+        camera first, with speech landing inside the scene that was just established.
+        """
         prose = CAMERA_PROSE.get(self.camera, self.camera).strip()
-        body = self.prompt.strip()
-        if not prose:
-            return body
-        if not body:
-            return prose
-        separator = " " if body.endswith((".", "!", "?", ",")) else ". "
-        return f"{body}{separator}{prose}"
+        parts = [self.prompt.strip(), prose]
+        parts.extend(line.render() for line in self.lines)
+        return _sentences(part for part in parts if part)
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +299,9 @@ class Timeline:
             yield cue.prompt
         for move in self.moves:
             yield move.prompt
+        for shot in self.shots:
+            for line in shot.lines:
+                yield line.speaker
 
     # -- serialisation -----------------------------------------------------
 
@@ -217,6 +317,7 @@ class Timeline:
                     prompt=str(item.get("prompt", "")),
                     camera=str(item.get("camera", "")),
                     media=item.get("media") or None,
+                    lines=_lines(item.get("lines")),
                 )
                 for item in data.get("shots", [])
             ],
@@ -272,6 +373,16 @@ class Timeline:
                     "prompt": shot.prompt,
                     "camera": shot.camera,
                     **({"media": shot.media} if shot.media else {}),
+                    **({"lines": [
+                        {
+                            "text": line.text,
+                            "speaker": line.speaker,
+                            "ids": line.ids,
+                            "delivery": line.delivery,
+                            "language": line.language,
+                        }
+                        for line in shot.lines
+                    ]} if shot.lines else {}),
                 }
                 for shot in self.shots
             ],
