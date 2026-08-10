@@ -136,7 +136,12 @@ const CSS = `
 /* Held, the block stays lit whether or not the pointer is still over it. */
 .mmd-dragging .mmd-seg.mmd-resizing { filter:brightness(1.18); }
 .mmd-seg:active { cursor:grabbing; }
-.mmd-seg.mmd-sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
+/* Black, white, black -- the same trick the captions use, and for the same reason: a
+   block's background is whatever image was dropped on it, and a plain light ring vanished
+   on a white one. Inset shadows rather than an outline, so the blue "this edge would
+   resize" ring can still use the outline property without the two fighting over it. */
+.mmd-seg.mmd-sel { z-index:3;
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 0 3px #fff, inset 0 0 0 4px #000; }
 /* The resize handles stay invisible until the pointer is on the segment, then show
    where the edges are rather than making the user hunt for them. */
 .mmd-seg .mmd-grip { background:transparent; transition:background .12s ease; }
@@ -252,8 +257,15 @@ const CSS = `
   color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
 .mmd-prompt textarea:disabled { color:#6b7280; }
 
-.mmd-seg-fields { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
+/* One row per group, and each group a box of its own. Everything used to sit in a single
+   wrapping row, which broke wherever the width ran out and put the end of a block's timing
+   next to the start of its dialogue. */
+.mmd-seg-fields { display:flex; flex-direction:column; gap:5px; align-items:stretch;
   margin-top:3px; }
+.mmd-f-group { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
+  background:#191c23; border:1px solid #262b34; border-radius:6px; padding:5px 9px; }
+.mmd-f-tag { flex:0 0 auto; min-width:58px; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:#6b7280; }
 .mmd-seg-fields label { display:flex; align-items:center; gap:0; color:#9ca3af;
   font-size:11px; }
 /* The subject description is a sentence, not a number, so it gets the room to be one. */

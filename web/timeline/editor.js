@@ -1699,17 +1699,23 @@ export class TimelineEditor {
       `${track}:${index}:${item.media ? 1 : 0}:${item.media?.subject?.trim() ? 1 : 0}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
-      this.segFields.innerHTML = `
+      // Three groups on three rows: when a block moves, what is said in it, and what
+      // file it carries. Eleven controls in one wrapping row read as one list of eleven
+      // unrelated things, and the row broke wherever the width happened to run out.
+      const group = (tag, body) =>
+        !body.trim() ? "" : `<div class="mmd-f-group"><span class="mmd-f-tag">${tag}</span>${body}</div>`;
+
+      this.segFields.innerHTML = group("timing", `
         <label title="The first frame of this block -- frames are the unit the document stores.">start <input class="mmd-f-start" type="number" min="0" step="1"><span class="mmd-unit">frames</span></label>
         <label class="mmd-f-locked" title="The same instant in seconds. Read-only: frames are what H3 is given, and a rounded second typed back would move the block."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-start-secs"></span><span class="mmd-unit">s</span></label>
         <label title="The frame this block ends on. Editing it moves the end, not the start -- the same as dragging the right grip.">end <input class="mmd-f-end" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
         <label class="mmd-f-locked" title="The end in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-end-secs"></span><span class="mmd-unit">s</span></label>
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
-        <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>
-        ${cameras}
-        ${line}
-        ${subject}
-        ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
+        <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
+        + group("camera", cameras)
+        + group("dialogue", line)
+        + group("file", subject
+            + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""));
 
       const secsEl = this.segFields.querySelector(".mmd-f-secs");
       const lenEl = this.segFields.querySelector(".mmd-f-len");
