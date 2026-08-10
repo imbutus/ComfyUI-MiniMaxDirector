@@ -13,6 +13,7 @@ import { api } from "../../../scripts/api.js";
 import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
+import { PRESETS, load as loadPreset } from "./presets.js";
 import {
   CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
   items, length, neighbours,
@@ -111,6 +112,9 @@ export class TimelineEditor {
     this.selected = [];
     this.drag = null;
     this.scrubbing = false;
+    /** Blocks copied with Cmd/Ctrl+C, waiting for a paste. Not the system clipboard: a
+     *  timeline block is not text, and reading the real one needs a permission prompt. */
+    this.clipboard = null;
     this.panelShape = null;
     this.marquee = null;
     /** Two steps in from `fit`: at fit a 64-frame block is too narrow to show its caption. */
@@ -139,6 +143,11 @@ export class TimelineEditor {
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
+        <select class="mmd-preset" title="Replace the timeline with a worked example. Each one compiles and runs as it stands.">
+          <option value="">preset…</option>
+          ${PRESETS.map((preset, at) =>
+            `<option value="${at}" title="${preset.hint}">${preset.name}</option>`).join("")}
+        </select>
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
       </div>
@@ -276,6 +285,13 @@ export class TimelineEditor {
         return;
       }
 
+      if (this.active && chord && key === "v" && this.clipboard?.length) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.paste();
+        return;
+      }
+
       if (!this.selected.length) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
@@ -286,6 +302,15 @@ export class TimelineEditor {
         event.preventDefault();
         event.stopPropagation();
         this.splitSelected();
+      } else if (chord && key === "c") {
+        event.preventDefault();
+        event.stopPropagation();
+        this.copySelected();
+      } else if (chord && key === "d") {
+        event.preventDefault();
+        event.stopPropagation();
+        this.copySelected();
+        this.paste();
       } else if (event.key === "Escape") {
         event.stopPropagation();
         this.selected = [];
@@ -301,6 +326,12 @@ export class TimelineEditor {
         this.applySelection();
       }
     }, true);
+
+    this.root.querySelector(".mmd-preset").addEventListener("change", (event) => {
+      const preset = PRESETS[Number(event.target.value)];
+      event.target.value = "";
+      if (preset) this.usePreset(preset);
+    });
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
@@ -459,6 +490,102 @@ export class TimelineEditor {
   }
 
   /**
+   * Replace the timeline with a preset.
+   *
+   * A confirm rather than a merge: the presets are whole documents, and dropping one on
+   * top of existing work would produce a third thing that is neither. One undo step, so
+   * pressing it by accident costs nothing.
+   */
+  usePreset(preset) {
+    const current = this.read();
+    const populated = TRACKS.some(({ key }) => items(current, key).length);
+    if (populated && !confirm(
+      `Replace the timeline with "${preset.name}"? Cmd/Ctrl+Z puts it back.`)) return;
+
+    this.selected = [];
+    this.selection = null;
+    this.panelShape = null;
+    this.playhead = 0;
+    this.commit(loadPreset(preset));
+  }
+
+  /**
+   * Remember the selected blocks, keeping their spacing.
+   *
+   * Positions are stored relative to the earliest one, so a pair of blocks two seconds
+   * apart is still two seconds apart wherever it lands. A deep copy, or a paste would
+   * hand out references into a document that has since been edited.
+   */
+  copySelected() {
+    if (!this.selected.length) return;
+    const timeline = this.read();
+
+    const picked = this.selected
+      .map(({ track, index }) => ({ track, item: items(timeline, track)[index] }))
+      .filter(({ item }) => item);
+    if (!picked.length) return;
+
+    const first = Math.min(...picked.map(({ item }) => item.start));
+    this.clipboard = picked.map(({ track, item }) => ({
+      track,
+      offset: item.start - first,
+      item: JSON.parse(JSON.stringify(item)),
+    }));
+  }
+
+  /**
+   * Drop the clipboard at the playhead, on the tracks it came from.
+   *
+   * A copy that will not fit is placed at the end of its track instead of being refused,
+   * the same bargain Add makes: a paste that silently does nothing reads as broken.
+   */
+  paste() {
+    if (!this.clipboard?.length) return;
+    const timeline = this.read();
+    const pasted = [];
+
+    for (const entry of this.clipboard) {
+      const at = this.playhead + entry.offset;
+      const index = add(timeline, entry.track, entry.item.length / FPS, at);
+      const target = items(timeline, entry.track)[index];
+      // The length `add` granted stands: it is what fits in the gap. Everything the block
+      // says about itself comes across.
+      const { start, length: granted } = target;
+      Object.assign(target, JSON.parse(JSON.stringify(entry.item)), { start, length: granted });
+      pasted.push({ track: entry.track, index });
+    }
+
+    this.selected = pasted;
+    this.selection = pasted[0] ?? null;
+    this.commit(timeline);
+  }
+
+  /**
+   * Warn when a reference clip is outside the length H3 accepts.
+   *
+   * Stored on the record, so the note survives a reload and a lint run rather than being
+   * a message that scrolled past. The check is skipped when the browser cannot read a
+   * duration: an unknown length is not a wrong one.
+   */
+  async checkDuration(track, index, record) {
+    const length = await media.seconds(record);
+    if (length === null) return;
+
+    const rounded = Math.round(length * 10) / 10;
+    const next = this.read();
+    const target = items(next, track)[index];
+    if (!target?.media || target.media.filename !== record.filename) return;
+
+    target.media = { ...target.media, seconds: rounded };
+    this.commit(next);
+
+    if (rounded < 2 || rounded > 15) {
+      console.warn(
+        `[MiniMaxDirector] ${record.filename} is ${rounded}s; H3 takes reference clips of 2-15s.`);
+    }
+  }
+
+  /**
    * Cut the selected blocks in two at the playhead.
    *
    * A cut is the one edit that needs a position rather than a size, which is what the
@@ -519,6 +646,11 @@ export class TimelineEditor {
     item.media = record;
     this.selection = { track, index: target };
     this.commit(timeline);
+
+    // H3 takes reference clips of 2-15 seconds. Outside that the model does not refuse --
+    // it quietly uses what it can -- so the only place this can be caught is here, and it
+    // is worth catching before a generation rather than after one.
+    if (kind !== "image") this.checkDuration(track, target, record);
 
     // The first reference image sets the generation size, but only under "match" --
     // that mode scales references to the generation's pixel area, so a mismatched
@@ -946,12 +1078,40 @@ export class TimelineEditor {
    */
   snap(value, lowest, highest, candidates) {
     const tolerance = Math.max(1, Math.round(7 / (this.drag?.scale ?? this.scale())));
+    let best = null;
+    let distance = tolerance + 1;
     for (const candidate of candidates) {
-      if (Math.abs(candidate - value) > tolerance) continue;
+      const gap = Math.abs(candidate - value);
+      if (gap > tolerance || gap >= distance) continue;
       if (candidate < lowest || candidate > highest) continue;
-      return candidate;
+      best = candidate;
+      distance = gap;
     }
-    return value;
+    return best === null ? value : best;
+  }
+
+  /**
+   * Frames worth snapping to: the playhead, and the edge of every other block.
+   *
+   * Cuts want to line up across tracks -- an audio cue starting exactly where a shot does,
+   * a camera move ending on the same frame as its shot -- and doing that by eye at a
+   * pixel per frame is guesswork. Every track is offered, not just this one: a block's own
+   * neighbours already stop it, and the interesting alignment is the one across tracks.
+   *
+   * The dragged blocks are excluded, or a group drag would snap to itself and stick.
+   */
+  landmarks(timeline) {
+    const moving = new Set(
+      (this.drag?.group ?? []).map((member) => `${member.track}:${member.index}`));
+
+    const marks = [this.playhead, 0, length(timeline)];
+    for (const { key } of TRACKS) {
+      items(timeline, key).forEach((item, index) => {
+        if (key === this.drag?.track && moving.has(`${key}:${index}`)) return;
+        marks.push(item.start, item.start + item.length);
+      });
+    }
+    return marks;
   }
 
   move(event) {
@@ -1021,9 +1181,11 @@ export class TimelineEditor {
       // Either edge may take the playhead -- whichever you brought to it is the one you
       // meant, and offering only the leading edge makes butting a block up against a cut
       // from the right impossible.
-      shift = this.snap(shift, lowest, highest,
-        [this.playhead - this.drag.start,
-         this.playhead - (this.drag.start + this.drag.length)]);
+      const marks = this.landmarks(timeline);
+      shift = this.snap(shift, lowest, highest, [
+        ...marks.map((mark) => mark - this.drag.start),
+        ...marks.map((mark) => mark - (this.drag.start + this.drag.length)),
+      ]);
       for (const member of this.drag.group) {
         reshape(items(timeline, member.track)[member.index], { start: member.start + shift });
       }
@@ -1031,13 +1193,13 @@ export class TimelineEditor {
       const finish = this.drag.start + this.drag.length;
       const start = this.snap(
         Math.min(Math.max(this.drag.start + frames, this.drag.limits[0]), finish - 1),
-        this.drag.limits[0], finish - 1, [this.playhead]);
+        this.drag.limits[0], finish - 1, this.landmarks(timeline));
       reshape(item, { start, length: finish - start });
     } else {
       const room = this.drag.limits[1] - this.drag.start;
       const span = this.snap(
         Math.max(1, Math.min(this.drag.length + frames, room)),
-        1, room, [this.playhead - this.drag.start]);
+        1, room, this.landmarks(timeline).map((mark) => mark - this.drag.start));
       reshape(item, { length: span });
     }
     this.write(timeline);

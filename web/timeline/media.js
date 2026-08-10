@@ -72,6 +72,29 @@ export function dimensions(record) {
 }
 
 /**
+ * How long a reference video or audio clip runs, in seconds.
+ *
+ * Read from the browser rather than the server: the file is already uploaded and served,
+ * and a `<video>` element knows its own duration without a decode pass. `null` when the
+ * browser cannot say -- a container it will not open, or a stream with no duration -- and
+ * an unknown duration is never reported as a problem.
+ */
+export function seconds(record) {
+  return new Promise((resolve) => {
+    const src = url(record);
+    if (!src) return resolve(null);
+    const probe = document.createElement(record.kind === "audio" ? "audio" : "video");
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => {
+      const value = probe.duration;
+      resolve(Number.isFinite(value) && value > 0 ? value : null);
+    };
+    probe.onerror = () => resolve(null);
+    probe.src = src;
+  });
+}
+
+/**
  * Generation size that matches a reference image.
  *
  * The aspect ratio is taken from the image, but the pixel count is capped: a phone photo

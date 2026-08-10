@@ -77,6 +77,9 @@ const CSS = `
 .mmd-f-locked > .mmd-unit { margin-left:0; }
 .mmd-prompt { transition:border-color .12s ease; }
 .mmd-prompt:focus-within { border-color:#3f5a6b; }
+.mmd-bar .mmd-preset { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
+  border-radius:5px; padding:5px 8px; font:inherit; cursor:pointer; }
+.mmd-bar .mmd-preset:hover { background:#3d4553; border-color:#5a6474; }
 .mmd-bar .mmd-grow { flex:1; }
 .mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
