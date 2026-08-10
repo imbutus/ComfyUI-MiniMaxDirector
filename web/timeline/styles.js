@@ -86,7 +86,7 @@ const CSS = `
    timeline for room instead of the node simply being the size it needs. */
 .mmd-stage { flex:0 0 auto; display:flex;
   background:#15181e; border:1px solid #2c313c; border-radius:6px; overflow:hidden; }
-.mmd-labels { flex:0 0 92px; padding-top:21px; border-right:1px solid #2c313c;
+.mmd-labels { flex:0 0 92px; padding-top:26px; border-right:1px solid #2c313c;
   background:#181c23; }
 .mmd-label { height:62px; margin-bottom:6px; display:flex; align-items:center;
   justify-content:center; font-size:10px; letter-spacing:.09em; color:#8b93a1; }
@@ -94,7 +94,7 @@ const CSS = `
   min-width:0; }
 .mmd-canvas { position:relative; min-width:100%; padding-bottom:4px; }
 
-.mmd-ruler { position:relative; height:17px; border-bottom:1px solid #262b34; }
+.mmd-ruler { position:relative; height:22px; border-bottom:1px solid #262b34; }
 .mmd-ruler span { position:absolute; top:0; font-size:9px; color:#6b7280;
   border-left:1px solid #333a45; padding-left:3px; height:100%;
   font-variant-numeric:tabular-nums; }
@@ -107,8 +107,18 @@ const CSS = `
 
 .mmd-playhead { position:absolute; top:0; bottom:0; width:2px; background:#e2564b;
   pointer-events:none; z-index:5; }
-.mmd-playhead::before { content:""; position:absolute; top:0; left:-4px;
-  border:5px solid transparent; border-top-color:#e2564b; }
+/* A handle you can actually hit. The head was a 10px CSS triangle drawn with borders --
+   nothing to grab, and nothing about it said it could be moved. This is a real element,
+   wide enough for a pointer, with the cursor that promises a horizontal drag. The ruler
+   was made taller to hold it (and .mmd-labels' padding with it, or the tracks stop lining
+   up with their names). */
+.mmd-head-grip { position:absolute; top:0; left:-8px; width:18px; height:15px;
+  background:#e2564b; border-radius:3px 3px 7px 7px; pointer-events:auto;
+  cursor:ew-resize; z-index:6; }
+.mmd-head-grip::after { content:""; position:absolute; left:50%; top:4px;
+  width:1px; height:7px; margin-left:-2px; background:rgba(0,0,0,.45);
+  box-shadow:3px 0 0 rgba(0,0,0,.45); }
+.mmd-head-grip:hover { background:#ee6a5f; }
 
 /* segments --------------------------------------------------------------- */
 /* The outline is an inset shadow, not a border, on purpose. A border creates a padding
