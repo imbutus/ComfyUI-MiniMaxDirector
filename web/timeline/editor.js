@@ -270,8 +270,8 @@ export class TimelineEditor {
     // ComfyUI's handler, which binds the same key to "delete the selected node": without
     // stopping the event, deleting a shot would delete the whole Director.
     //
-    // Having a selection is what scopes it. Clicking anywhere outside clears that below,
-    // so we never swallow a Delete meant for the graph.
+    // Focus is what scopes it: the editor answers for these keys only when it was the
+    // thing last clicked, so a Delete aimed at a node next to it still reaches the graph.
     document.addEventListener("keydown", (event) => {
       // Fields keep their native text undo and character deletion. Both the event's
       // target and whatever actually holds focus are checked: a keystroke aimed at a
@@ -298,7 +298,11 @@ export class TimelineEditor {
         return;
       }
 
-      if (!this.selected.length) return;
+      // Focus is what scopes these, not the existence of a selection. They used to be
+      // scoped by throwing the selection away on any click outside the editor, which kept
+      // Delete off the graph and cost the author their selected block for looking at a
+      // node next to it.
+      if (!this.active || !this.selected.length) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
@@ -327,10 +331,6 @@ export class TimelineEditor {
     // A click outside the editor gives the keyboard back to ComfyUI.
     document.addEventListener("pointerdown", (event) => {
       this.active = this.root.contains(event.target);
-      if (!this.active && this.selected.length) {
-        this.selected = [];
-        this.applySelection();
-      }
     }, true);
 
     this.root.querySelector(".mmd-preset").addEventListener("change", (event) => {
