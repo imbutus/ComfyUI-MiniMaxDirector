@@ -294,6 +294,10 @@ export class TimelineEditor {
       // being rebuilt under the cursor on every pointermove.
       const dragged = this.drag?.recorded;
       this.drag = null;
+      this.root.classList.remove("mmd-dragging");
+      for (const node of this.canvas.querySelectorAll(".mmd-resizing")) {
+        node.classList.remove("mmd-resizing");
+      }
       if (this.marquee) this.endMarquee();
       if (dragged) this.render();
     });
@@ -636,6 +640,17 @@ export class TimelineEditor {
       baseline: JSON.stringify(timeline),
       recorded: false,
     };
+
+    // The gesture owns the block's appearance until the button comes up. The hover rules
+    // are written for a pointer that is choosing something; during a drag the pointer is
+    // already committed, and it spends the whole time crossing in and out of a 7px grip,
+    // which made the outline strobe. `mmd-dragging` on the root switches those rules off
+    // and `mmd-resizing` holds the outline on the block being dragged.
+    this.root.classList.add("mmd-dragging");
+    node.classList.add("mmd-resizing");
+    // Keeps the moves coming even when the pointer outruns the block or leaves the node.
+    node.setPointerCapture?.(event.pointerId);
+
     this.applySelection();
   }
 

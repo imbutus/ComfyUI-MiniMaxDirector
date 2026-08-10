@@ -94,20 +94,27 @@ const CSS = `
   overflow:hidden; box-sizing:border-box; user-select:none;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
 .mmd-seg { transition:filter .12s ease; }
-.mmd-seg:hover { filter:brightness(1.18); }
+.mmd:not(.mmd-dragging) .mmd-seg:hover { filter:brightness(1.18); }
+/* Held, the block stays lit whether or not the pointer is still over it. */
+.mmd-dragging .mmd-seg.mmd-resizing { filter:brightness(1.18); }
 .mmd-seg:active { cursor:grabbing; }
 .mmd-seg.mmd-sel { outline:2px solid #e5e7eb; outline-offset:-2px; z-index:3; }
 /* The resize handles stay invisible until the pointer is on the segment, then show
    where the edges are rather than making the user hunt for them. */
 .mmd-seg .mmd-grip { background:transparent; transition:background .12s ease; }
-.mmd-seg:hover .mmd-grip { background:rgba(255,255,255,.22); }
-.mmd-seg .mmd-grip:hover { background:#6ea8c4; }
+.mmd:not(.mmd-dragging) .mmd-seg:hover .mmd-grip { background:rgba(255,255,255,.22); }
+.mmd:not(.mmd-dragging) .mmd-seg .mmd-grip:hover { background:#6ea8c4; }
+.mmd-dragging .mmd-seg.mmd-resizing .mmd-grip { background:#6ea8c4; }
 
 /* Touching blocks put two handles side by side. Outlining the whole block whose edge is
    under the pointer says which one a drag would resize -- the handles alone are 7px of
    near-identical highlight and give no answer. */
-.mmd-seg:has(.mmd-grip:hover), .mmd-seg.mmd-resizing {
+/* Hover only answers "which block would a drag take?", so it is switched off once the
+   answer is settled. Held down, the pointer crosses in and out of a 7px grip constantly
+   and the outline strobed with it. */
+.mmd:not(.mmd-dragging) .mmd-seg:has(.mmd-grip:hover), .mmd-seg.mmd-resizing {
   outline:2px solid #6ea8c4; outline-offset:-2px; z-index:4; }
+.mmd-dragging .mmd-seg { cursor:inherit; }
 .mmd-seg.mmd-resizing .mmd-grip.mmd-l, .mmd-seg.mmd-resizing .mmd-grip.mmd-r {
   background:#6ea8c4; }
 /* White on a black outline rather than white on a drop shadow. A block's background is the
