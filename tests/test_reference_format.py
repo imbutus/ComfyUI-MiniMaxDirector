@@ -63,11 +63,10 @@ def build(**overrides):
     return Timeline.from_dict(document)
 
 
-def test_attachments_choose_the_format_not_the_author():
-    """`dialect` says `official`, and it is overruled. The graph routes a timeline with
-    attachments to `MiniMaxH3ReferenceToVideo` whatever the combo box says, so the prompt
-    has to follow -- a disagreement here is invisible until the video comes out wrong."""
-    assert build().dialect == "official"
+def test_attachments_choose_the_format():
+    """Nothing an author can set changes this. The graph routes a timeline with
+    attachments to `MiniMaxH3ReferenceToVideo`, so the prompt has to follow -- a
+    disagreement here is invisible until the video comes out wrong."""
     assert compile_timeline(build()).prompt.startswith("subject_definitions:")
 
 

@@ -35,11 +35,6 @@ def test_official_format_matches_golden():
     assert compiled.prompt == (GOLDEN / "alley_official.txt").read_text().strip()
 
 
-def test_legacy_format_matches_golden():
-    compiled = compile_timeline(build(dialect="legacy"))
-    assert compiled.prompt == (GOLDEN / "alley_timeline.txt").read_text().strip()
-
-
 def test_the_three_documented_fields_are_all_present():
     prompt = compile_timeline(build()).prompt
     assert prompt.startswith("integrated_multimodal_description: [Shot 1] ")
@@ -114,8 +109,10 @@ def test_cues_become_the_soundscape_without_timestamps():
 
 
 def test_empty_shots_are_dropped_rather_than_emitted_blank():
-    timeline = build(shots=[{"start": 0, "length": 24, "prompt": "   "}], dialect="legacy")
-    assert "Timeline:" not in compile_timeline(timeline).prompt
+    timeline = build(global_prompt="", shots=[{"start": 0, "length": 24, "prompt": "   "}])
+    assert compile_timeline(timeline).prompt.startswith(
+        "integrated_multimodal_description: [Shot 1]\n"
+    )
 
 
 def test_an_empty_timeline_compiles_to_the_bare_fields():
@@ -126,10 +123,6 @@ def test_an_empty_timeline_compiles_to_the_bare_fields():
         "non_diegetic_music: N/A"
     )
     assert compiled.length == 5
-
-
-def test_an_empty_timeline_compiles_to_nothing_in_the_legacy_shape():
-    assert compile_timeline(Timeline(dialect="legacy")).prompt == ""
 
 
 def test_compilation_is_deterministic():
@@ -154,12 +147,6 @@ def test_a_fifty_shot_timeline_stays_on_the_lattice():
     assert compiled.length >= 600
 
 
-def test_camera_moves_get_their_own_block_in_the_legacy_shape():
-    timeline = build(moves=[{"start": 0, "length": 24, "camera": "dolly_in"}], dialect="legacy")
-    prompt = compile_timeline(timeline).prompt
-    assert "Camera:\n[0s-1s] The camera pushes in with small amplitude at slow speed." in prompt
-
-
 def test_a_move_combines_its_camera_and_its_note():
     timeline = build(moves=[{"start": 0, "length": 24, "camera": "orbit", "prompt": "around the sign"}])
     assert "The camera moves in an arc around the subject. around the sign" in compile_timeline(timeline).prompt
@@ -171,18 +158,13 @@ def test_moves_extend_the_clip_like_any_other_track():
 
 
 def test_empty_moves_are_dropped():
-    timeline = build(moves=[{"start": 0, "length": 24, "camera": "", "prompt": "  "}], dialect="legacy")
-    assert "Camera:" not in compile_timeline(timeline).prompt
-
-
-def test_blocks_are_ordered_shots_camera_then_audio_in_the_legacy_shape():
     timeline = build(
-        moves=[{"start": 0, "length": 24, "camera": "orbit"}],
-        cues=[{"start": 0, "length": 24, "prompt": "rain"}],
-        dialect="legacy",
+        global_prompt="", shots=[],
+        moves=[{"start": 0, "length": 24, "camera": "", "prompt": "  "}],
     )
-    prompt = compile_timeline(timeline).prompt
-    assert prompt.index("Timeline:") < prompt.index("Camera:") < prompt.index("Audio:")
+    assert compile_timeline(timeline).prompt.startswith(
+        "integrated_multimodal_description: \n"
+    )
 
 
 def test_the_official_fields_are_ordered_body_soundscape_music():

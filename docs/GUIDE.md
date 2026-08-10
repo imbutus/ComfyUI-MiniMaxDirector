@@ -202,10 +202,6 @@ Three consequences worth knowing:
   the MUSIC box is `non_diegetic_music`, the score only the audience hears, and compiles
   to `N/A` when empty.
 
-The **dialect** dropdown chooses `official` (the above) or `legacy` — this pack's original
-`Timeline:` / `Camera:` / `Audio:` blocks. Legacy exists only so the two can be compared;
-its camera and audio blocks are measurably ignored by the model.
-
 ---
 
 ## The outputs
@@ -242,7 +238,8 @@ for feeding other nodes that need to agree about clip length.
 `<Picture n>` token, and check the number matches the image you meant.
 
 **Everything is one continuous shot.** That is the model, not the node — check `prompt`
-to confirm the shot list is really there, then try the other dialect.
+to confirm the shot list is really there, with a cut time opening every shot after the
+first.
 
 **The video looks fine but there is no sound.** The audio VAE is not connected, or the
 latent only reaches `VAEDecode`. Both decoders take the *same* latent.

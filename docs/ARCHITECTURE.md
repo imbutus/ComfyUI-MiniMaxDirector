@@ -33,7 +33,6 @@ All director state is one JSON object in one widget:
 {
   "version": 1,
   "fps": 24,
-  "dialect": "timeline",
   "global_prompt": "Neon-lit alley after rain.",
   "shots": [{ "start": 0, "length": 24, "prompt": "Wide shot.", "camera": "dolly_in" }],
   "cues": [{ "start": 0, "length": 48, "prompt": "Distant siren." }],
@@ -137,5 +136,8 @@ came with three audible jumps.
 - Nothing longer than one H3 pass. See above for why the windowed version was dropped.
 - Reference slot counts (3 pictures, 1 audio, 1 video) mirror what the official template
   wires. Whether the model accepts more is untested.
-- Which dialect H3 follows more faithfully — `[0s-1s]` timestamps or `SHOT 1:` ordinals —
-  is unmeasured. Both ship; the document chooses.
+- One prompt shape per case, chosen by the document rather than by the author: the
+  three-field format from MiniMax's guide, and the six-section full-reference format as
+  soon as anything is attached. The pack's original `Timeline:` / `Camera:` / `Audio:`
+  blocks were removed once the guide was published -- shipping two shapes meant every
+  question about output had a second answer nobody could rule out.

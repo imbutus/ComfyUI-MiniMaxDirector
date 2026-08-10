@@ -65,14 +65,12 @@ def compile_timeline(timeline: Timeline) -> Compiled:
 def _renderer(timeline: Timeline):
     """Which shape this timeline compiles to.
 
-    Attachments decide it, not the author: anything attached sends the graph to
+    Attachments decide it, and nothing else does. Anything attached sends the graph to
     `MiniMaxH3ReferenceToVideo`, and that model wants the six-section full-reference
-    format. The `dialect` field still chooses between the two formats for a timeline with
-    nothing attached, where the question is genuinely open.
+    format; with nothing attached the three-field format from MiniMax's own guide is what
+    H3 was written to read.
     """
-    if attachments.collect(timeline):
-        return _render_reference
-    return _render_legacy if timeline.dialect == "legacy" else _render_official
+    return _render_reference if attachments.collect(timeline) else _render_official
 
 
 # -- the documented format ---------------------------------------------------
@@ -326,57 +324,3 @@ def _with_tokens(text: str, tokens: list[str]) -> str:
         return text
     joined = " ".join(missing)
     return f"{text} {joined}" if text else joined
-
-
-# -- the shape this project used before the guide was read -------------------
-
-
-def _render_legacy(timeline: Timeline) -> str:
-    """Labelled blocks: `Timeline:` / `Camera:` / `Audio:`.
-
-    Kept so the two can be compared on one GPU run. The shot list here does work; the
-    camera and audio blocks measurably do not.
-    """
-    blocks: list[str] = []
-
-    preamble = timeline.global_prompt.strip()
-    if preamble:
-        blocks.append(preamble)
-
-    tokens = attachments.tokens_by_segment(timeline)
-
-    shots = [
-        (shot, _with_tokens(shot.text(), tokens.get(("shots", shot.start), [])))
-        for shot in timeline.ordered_shots()
-    ]
-    shots = [(shot, text) for shot, text in shots if text]
-    if shots:
-        lines = [
-            f"{_span(shot.start, shot.end, timeline.fps)} {text}" for shot, text in shots
-        ]
-        blocks.append("Timeline:\n" + "\n".join(lines))
-
-    moves = [move for move in timeline.ordered_moves() if move.text()]
-    if moves:
-        lines = [
-            f"{_span(move.start, move.end, timeline.fps)} {move.text()}" for move in moves
-        ]
-        blocks.append("Camera:\n" + "\n".join(lines))
-
-    cues = [
-        (cue, _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), [])))
-        for cue in timeline.ordered_cues()
-    ]
-    cues = [(cue, text) for cue, text in cues if text]
-    if cues:
-        lines = [f"{_span(cue.start, cue.end, timeline.fps)} {text}" for cue, text in cues]
-        blocks.append("Audio:\n" + "\n".join(lines))
-
-    return "\n\n".join(blocks)
-
-
-def _span(start: int, end: int, fps: int) -> str:
-    """`[1s-2.5s]`, the bracket form the legacy blocks used."""
-    first = lattice.format_seconds(start / fps)
-    last = lattice.format_seconds(end / fps)
-    return f"[{first}s-{last}s]"

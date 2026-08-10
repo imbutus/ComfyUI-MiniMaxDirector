@@ -19,7 +19,6 @@ pytestmark = pytest.mark.skipif(
 
 TIMELINE = {
     "global_prompt": "Neon-lit alley after rain, cyan and magenta signage, 35mm grain.",
-    "dialect": "official",
     "shots": [
         {"start": 0, "length": 24, "prompt": "Wide shot of the alley.", "camera": "dolly_in"},
         {"start": 24, "length": 36, "prompt": "Close on the collar, rain beading."},
@@ -134,7 +133,6 @@ def test_the_geometry_survives_the_round_trip(run):
 
 MEDIA_TIMELINE = {
     "global_prompt": "Neon-lit alley after rain.",
-    "dialect": "official",
     "shots": [
         {"start": 0, "length": 48, "prompt": "The alley",
          "media": {"kind": "image", "filename": "example.png", "subfolder": ""}},

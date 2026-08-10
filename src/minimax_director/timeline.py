@@ -18,16 +18,6 @@ from . import lattice
 
 RefKind = Literal["picture", "audio", "video"]
 
-DIALECTS = ("official", "legacy")
-"""Which prompt shape the compiler emits for a timeline with nothing attached.
-
-`official` follows MiniMax's own writing guide: one `integrated_multimodal_description`
-carrying the shots with camera work written into them, plus `overall_soundscape` and
-`non_diegetic_music`. `legacy` is this project's original `Timeline:` / `Camera:` /
-`Audio:` blocks, kept only so the two can be compared on one GPU run.
-
-Attaching a file overrides both -- see `REFERENCE_DIALECT`."""
-
 REFERENCE_DIALECT = "reference"
 """The six-section shape H3 wants when anything is attached.
 
@@ -167,7 +157,6 @@ class Timeline:
 
     The model's guide separates this from everything the characters can hear, and asks
     for instrumentation, tempo and dynamics rather than mood words."""
-    dialect: str = "official"
     fps: int = lattice.FPS
     duration: int = 0
     """Explicit clip length in frames. Zero means "as long as the content needs"."""
@@ -257,7 +246,6 @@ class Timeline:
                 )
                 for item in data.get("references", [])
             ],
-            dialect=str(data.get("dialect", "official")),
             duration=int(data.get("duration", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
@@ -274,7 +262,6 @@ class Timeline:
         return {
             "version": 1,
             "fps": self.fps,
-            "dialect": self.dialect,
             "duration": self.duration,
             "global_prompt": self.global_prompt,
             "music": self.music,
