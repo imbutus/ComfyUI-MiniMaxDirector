@@ -110,13 +110,22 @@ const CSS = `
   outline:2px solid #6ea8c4; outline-offset:-2px; z-index:4; }
 .mmd-seg.mmd-resizing .mmd-grip.mmd-l, .mmd-seg.mmd-resizing .mmd-grip.mmd-r {
   background:#6ea8c4; }
+/* White on a black outline rather than white on a drop shadow. A block's background is the
+   attached image when it has one, so the text sits on whatever that frame happens to be --
+   a shadow disappears into a dark photo and the caption with it. The outline is drawn by
+   paint-order:stroke under the fill, so the letters keep their shape at 11px; the shadow
+   stays as a second layer for the blur a hard stroke does not give. */
 .mmd-seg .mmd-cap { position:absolute; left:6px; right:6px; top:5px; font-size:11px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  text-shadow:0 1px 2px rgba(0,0,0,.85); pointer-events:none; }
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;
+  -webkit-text-stroke:2.5px #000; paint-order:stroke fill;
+  text-shadow:0 1px 3px rgba(0,0,0,.9); pointer-events:none; }
 .mmd-seg .mmd-chip { position:absolute; left:0; bottom:0; padding:1px 5px; font-size:9px;
-  background:rgba(0,0,0,.62); color:#d7dbe2; border-top-right-radius:4px;
+  background:rgba(0,0,0,.72); color:#fff; border-top-right-radius:4px;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   pointer-events:none; }
+/* A control shares the bottom row, so the filename gives it the corner rather than running
+   underneath it. */
+.mmd-seg:has(.mmd-cam-pick) .mmd-chip { max-width:calc(100% - 118px); }
 /* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
    transparent to them so a click there still grabs the block. */
 /* A real dropdown, always on the block, so the move is both readable and changeable
@@ -132,7 +141,10 @@ const CSS = `
 .mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
   object-fit:cover; pointer-events:none; }
-.mmd-seg.mmd-has-media .mmd-cap { top:auto; bottom:16px; }
+/* One layout for every block, whatever it carries: the prompt on the top line, the file on
+   the bottom line, controls in the bottom right corner. Attaching a file used to move the
+   prompt down onto the filename's row, which read as the file name being replaced by the
+   prompt rather than the two being different things. */
 
 .mmd-track[data-track="shots"] .mmd-seg { background:#2f6d8f; }
 .mmd-track[data-track="moves"] .mmd-seg { background:#414958; }
