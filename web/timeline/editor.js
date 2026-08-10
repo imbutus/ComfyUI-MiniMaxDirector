@@ -111,6 +111,8 @@ export class TimelineEditor {
       this.schedulePreview();
     };
     this.widgets = widgets;
+    /** Called after every panel render, so the host can remember what was selected. */
+    this.onState = null;
     this.selected = [];
     this.drag = null;
     this.scrubbing = false;
@@ -478,10 +480,28 @@ export class TimelineEditor {
     this.restore(this.future.pop());
   }
 
+  /**
+   * Put a snapshot back, keeping whatever of the selection still exists.
+   *
+   * The selection used to be dropped outright, which is safe and wrong: undoing a change
+   * *to* a block leaves you looking at the block, and having to re-find and re-click it is
+   * the moment an undo stops feeling like an undo. Only indices naming a block that is no
+   * longer there are discarded -- those would point at somebody else's block, and a Delete
+   * aimed at one of those is the bug this was avoiding.
+   */
   restore(json) {
     this.typing = null;
-    this.selection = null;
-    this.write(JSON.parse(json));
+    const timeline = JSON.parse(json);
+    const alive = ({ track, index }) => !!items(timeline, track)[index];
+
+    this.selected = this.selected.filter(alive);
+    if (this.selection && !alive(this.selection)) this.selection = null;
+    if (!this.selection) this.selection = this.selected[0] ?? null;
+    // The panel is rebuilt rather than updated: an undo can put a file back, and the
+    // fields for one are only built when the block has it.
+    this.panelShape = null;
+
+    this.write(timeline);
     this.render();
   }
 
@@ -1547,6 +1567,11 @@ export class TimelineEditor {
   }
 
   renderPanel(timeline) {
+    // Every path that changes what is selected ends up here, so this is the one place
+    // that has to report it. See `remember()` in minimax_director.js for why anything
+    // outside the editor cares.
+    this.onState?.(this);
+
     if (document.activeElement !== this.global) this.global.value = timeline.global_prompt || "";
     if (document.activeElement !== this.music) this.music.value = timeline.music || "";
 

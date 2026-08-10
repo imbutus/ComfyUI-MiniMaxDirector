@@ -20,6 +20,21 @@ const PROMPT_VIEW = "compiled_prompt";
 /** Wide enough to read a compiled shot without wrapping every few words. */
 const PROMPT_SIZE = [520, 420];
 
+/**
+ * What was selected on each director, keyed by node id.
+ *
+ * ComfyUI's own undo does not edit a node, it rebuilds it: `Cmd+Z` after any change
+ * destroys the node and constructs a new one from the restored graph, and with it a new
+ * editor whose selection starts empty. Undoing a change *to* a block would leave you
+ * looking at the block with nothing selected, having to find and click it again -- which
+ * is the moment an undo stops feeling like an undo.
+ *
+ * Keeping it here rather than in the editor is the whole point: this survives the
+ * instance. Node ids are preserved across that rebuild, which is what makes them a usable
+ * key. A stale entry costs nothing -- the panel drops any index whose block is gone.
+ */
+const SELECTION = new Map();
+
 const MIN_HEIGHT = 420;
 /** Matches LTXDirector, whose editor sets `size[0] = 1375` and saves at 1380x1000.
  *  A director is a workspace, not a form -- at form size the tracks are unreadable. */
@@ -75,6 +90,8 @@ function attach(node) {
   // The editor holds no state of its own, so nothing here can drift from the document.
   node.timelineEditor = editor;
 
+  remember(node, editor);
+
   // Every compile goes to the prompt nodes wired downstream. The editor no longer shows
   // the string itself: it was the tallest thing on the node, and it arrived late enough
   // to miss the sizing pass and hang out through the bottom.
@@ -107,6 +124,34 @@ function attach(node) {
     // on the frame after that, so the second pass settles the remainder.
     fitNode(node, editor);
     requestAnimationFrame(() => fitNode(node, editor));
+  });
+}
+
+/**
+ * Carry the selection across a rebuild of the node.
+ *
+ * The editor reports its state after every panel render; the last report for this node id
+ * is handed back to whatever editor is mounted next. The view state travels with it --
+ * the playhead and the zoom are equally annoying to lose, and for the same reason.
+ */
+function remember(node, editor) {
+  // A frame late, and deliberately: `onNodeCreated` runs during construction, before the
+  // graph has given the node its id. Reading it now would look up -1 and find nothing.
+  // This callback is registered before the one that renders, so it still lands first.
+  requestAnimationFrame(() => {
+    const saved = SELECTION.get(node.id);
+    if (!saved) return;
+    editor.selection = saved.selection;
+    editor.selected = saved.selected;
+    editor.playhead = saved.playhead;
+    editor.zoom = saved.zoom;
+  });
+
+  editor.onState = (source) => SELECTION.set(node.id, {
+    selection: source.selection,
+    selected: [...source.selected],
+    playhead: source.playhead,
+    zoom: source.zoom,
   });
 }
 
@@ -249,6 +294,20 @@ function centreOnNode(node) {
   const view = canvas?.ds;
   const element = canvas?.canvas;
   if (!view?.offset || !element?.clientWidth) return;
+
+  // Only when it is not already in front of you. `onConfigure` fires for every rebuild of
+  // the node, and ComfyUI's undo *is* a rebuild -- so this used to yank the canvas back to
+  // centre on every Cmd+Z, throwing away wherever the author had panned to. Asking whether
+  // the node is visible answers both cases with one rule: a workflow that just opened has
+  // it off-screen, an undo does not, and the canvas keeps its own position through the
+  // rebuild anyway.
+  const middle = [
+    (node.pos[0] + node.size[0] / 2 + view.offset[0]) * view.scale,
+    (node.pos[1] + node.size[1] / 2 + view.offset[1]) * view.scale,
+  ];
+  const inside = middle[0] > 0 && middle[0] < element.clientWidth
+    && middle[1] > 0 && middle[1] < element.clientHeight;
+  if (inside) return;
 
   view.offset[0] = element.clientWidth / 2 / view.scale - (node.pos[0] + node.size[0] / 2);
   view.offset[1] = element.clientHeight / 2 / view.scale - (node.pos[1] + node.size[1] / 2);
