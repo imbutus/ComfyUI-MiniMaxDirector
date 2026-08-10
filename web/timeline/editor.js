@@ -289,8 +289,13 @@ export class TimelineEditor {
     });
     document.addEventListener("pointermove", (event) => this.move(event));
     document.addEventListener("pointerup", () => {
+      // A drag paints only the blocks it touched, so the tracks are redrawn once here --
+      // captions, chips and the panel catch up with the document in one pass rather than
+      // being rebuilt under the cursor on every pointermove.
+      const dragged = this.drag?.recorded;
       this.drag = null;
       if (this.marquee) this.endMarquee();
+      if (dragged) this.render();
     });
 
     this.scrub.addEventListener("input", () => {
@@ -610,6 +615,8 @@ export class TimelineEditor {
       track, index, mode,
       originX: event.clientX,
       scale: this.scale(),
+      factor: this.factor(),
+      applied: null,
       start: item.start,
       length: item.length,
       // Resizing only ever applies to the grabbed segment; moving applies to the group.
@@ -812,9 +819,18 @@ export class TimelineEditor {
     }
 
     if (!this.drag) return;
+
+    // Measured from where the gesture began, never accumulated: every move recomputes the
+    // whole travel, so the block is a function of where the pointer is and nothing else.
+    // `factor` is the graph's zoom, read once at pointerdown -- it cannot change while a
+    // button is held, and reading it per event forced a synchronous layout on every frame.
     const frames = Math.round(
-      ((event.clientX - this.drag.originX) / this.factor()) / this.drag.scale);
-    if (frames === 0) return;
+      ((event.clientX - this.drag.originX) / this.drag.factor) / this.drag.scale);
+    // Nothing new to say. Not an early return on `frames === 0`: zero is a real position,
+    // the one the block started at, and skipping it left a block that had travelled a
+    // frame and come back stuck a frame out for the rest of the drag.
+    if (frames === this.drag.applied) return;
+    this.drag.applied = frames;
 
     const timeline = this.read();
     const item = items(timeline, this.drag.track)[this.drag.index];
@@ -850,7 +866,60 @@ export class TimelineEditor {
       reshape(item, { length: Math.max(1, Math.min(this.drag.length + frames, room)) });
     }
     this.write(timeline);
-    this.render();
+    this.paintDrag(timeline);
+  }
+
+  /**
+   * Move the blocks a drag is touching, without rebuilding the tracks.
+   *
+   * `render()` empties every lane and recreates every segment. Run on each pointermove --
+   * up to the display's refresh rate -- that destroys and rebuilds the very element under
+   * the cursor, which is what the flicker was, and it throws away the hover and resizing
+   * outlines with it. A drag only ever changes where some blocks sit and how wide they
+   * are, and those are two style properties.
+   *
+   * The clip readout and the end marker still follow, because a resize can change the
+   * length of the whole piece. `scale()` is frozen for the gesture, so nothing else on the
+   * canvas can have moved.
+   */
+  paintDrag(timeline) {
+    const scale = this.scale();
+    const touched = this.drag.mode === "body"
+      ? this.drag.group
+      : [{ track: this.drag.track, index: this.drag.index }];
+
+    for (const { track, index } of touched) {
+      const item = items(timeline, track)[index];
+      const node = this.canvas.querySelector(
+        `[data-track="${track}"] [data-index="${index}"]`);
+      if (!item || !node) continue;
+      node.style.left = `${item.start * scale}px`;
+      node.style.width = `${Math.max(item.length * scale, 14)}px`;
+    }
+
+    const rendered = length(timeline);
+    this.readout.textContent =
+      `${rendered} frames · ${formatSeconds(toSeconds(rendered))}s · ` +
+      `${rendered % 17 === 5 ? "valid" : "INVALID"}`;
+    this.end.style.left = `${this.extent() * scale}px`;
+    this.renderSettings(timeline);
+
+    // The numbers under the timeline are the only exact reading of what a drag is doing;
+    // a resize with them frozen is a resize done by eye.
+    const held = items(timeline, this.drag.track)[this.drag.index];
+    if (held) {
+      this.range.textContent =
+        `Start: ${toSeconds(held.start).toFixed(2)} | ` +
+        `End: ${toSeconds(held.start + held.length).toFixed(2)} | ` +
+        `Length: ${toSeconds(held.length).toFixed(2)}`;
+      const put = (selector, value) => {
+        const field = this.segFields.querySelector(selector);
+        if (field && field !== document.activeElement) field.value = value;
+      };
+      put(".mmd-f-start", held.start);
+      put(".mmd-f-len", held.length);
+      put(".mmd-f-secs", toSeconds(held.length).toFixed(2));
+    }
   }
 
   // -- rendering -----------------------------------------------------------
