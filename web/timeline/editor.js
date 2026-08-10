@@ -15,7 +15,8 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import { PRESETS, load as loadPreset } from "./presets.js";
 import {
-  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
+  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling,
+  emptyTimeline, formatSeconds,
   items, length, neighbours,
   remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
 } from "./model.js";
@@ -40,6 +41,7 @@ const ICON = {
   camera: svg('<circle cx="8" cy="8" r="4.6"/><path d="M8 3.4V1.8M12.6 8h1.6"/><circle cx="8" cy="8" r="1.4"/>'),
   trash: svg('<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.2a1 1 0 001 .8h3.8a1 1 0 001-.8l.6-8.2M7 7v4M9 7v4"/>'),
   sound: svg('<path d="M1.5 8h2l2-4.5 2 9 2-7 1.5 2.5h2"/>'),
+  reset: svg('<path d="M13.5 8a5.5 5.5 0 11-1.9-4.2M13.5 2.2v3.1h-3.1"/>'),
 };
 
 /**
@@ -143,6 +145,7 @@ export class TimelineEditor {
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
+        <button data-reset="1" title="Empty the timeline: every block, the global prompt and the music. Cmd/Ctrl+Z puts it back.">${ICON.reset} Clear</button>
         <select class="mmd-preset" title="Replace the timeline with a worked example. Each one compiles and runs as it stands.">
           <option value="">preset…</option>
           ${PRESETS.map((preset, at) =>
@@ -252,6 +255,7 @@ export class TimelineEditor {
       if (el.dataset.add) this.append(el.dataset.add);
       else if (el.dataset.media) this.attach(el.dataset.media);
       else if (el.dataset.del) this.deleteSelected();
+      else if (el.dataset.reset) this.clear();
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
       else if (el.classList.contains("mmd-play")) this.togglePlay();
     });
@@ -487,6 +491,32 @@ export class TimelineEditor {
     const timeline = this.read();
     this.selection = { track, index: add(timeline, track, 1.5, this.playhead) };
     this.commit(timeline);
+  }
+
+  /**
+   * Empty the timeline.
+   *
+   * Everything: the blocks on all three tracks, the global prompt, the music, the clip
+   * settings the document owns. Deleting blocks one selection at a time leaves the prose
+   * behind, and a global prompt describing a scene that no longer exists is the kind of
+   * leftover that ends up in a render.
+   *
+   * One undo step, and the confirm is skipped for a document that is already empty --
+   * asking whether to clear nothing is a dialog with one correct answer.
+   */
+  clear() {
+    const current = this.read();
+    const populated = TRACKS.some(({ key }) => items(current, key).length)
+      || current.global_prompt?.trim() || current.music?.trim();
+    if (populated && !confirm("Clear the timeline? Cmd/Ctrl+Z puts it back.")) return;
+
+    this.selected = [];
+    this.selection = null;
+    this.panelShape = null;
+    this.playhead = 0;
+    // The duration is kept: it is a property of the piece being made, not of its content,
+    // and clearing it would silently drop back to whatever the blocks happened to need.
+    this.commit({ ...emptyTimeline(), duration: current.duration || 0 });
   }
 
   /**
