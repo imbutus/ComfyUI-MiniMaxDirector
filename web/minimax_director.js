@@ -225,10 +225,34 @@ function fitAfterLoad(node, editor) {
     const result = configured?.apply(this, arguments);
     requestAnimationFrame(() => {
       fitNode(node, editor, { growOnly: true });
-      requestAnimationFrame(() => fitNode(node, editor, { growOnly: true }));
+      requestAnimationFrame(() => {
+        fitNode(node, editor, { growOnly: true });
+        centreOnNode(node);
+      });
     });
     return result;
   };
+}
+
+/**
+ * Put the director in the middle of the canvas.
+ *
+ * A workflow stores one viewport -- a scale and an offset in graph units -- and that offset
+ * only frames the node on the window it was saved from. On a shorter screen the timeline
+ * opens half off the edge. The zoom travels fine; where to look does not, because it is the
+ * one part that depends on how big the window is, so it is computed here instead of stored.
+ *
+ * Only on load. Panning afterwards is the author's business.
+ */
+function centreOnNode(node) {
+  const canvas = app.canvas;
+  const view = canvas?.ds;
+  const element = canvas?.canvas;
+  if (!view?.offset || !element?.clientWidth) return;
+
+  view.offset[0] = element.clientWidth / 2 / view.scale - (node.pos[0] + node.size[0] / 2);
+  view.offset[1] = element.clientHeight / 2 / view.scale - (node.pos[1] + node.size[1] / 2);
+  canvas.setDirty(true, true);
 }
 
 /**
