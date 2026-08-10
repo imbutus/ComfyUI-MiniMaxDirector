@@ -16,7 +16,7 @@ import * as media from "./media.js";
 import {
   CAMERAS, RETENTIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling, formatSeconds,
   items, length, neighbours,
-  remove, reshape, span, toSeconds, FPS,
+  remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
 } from "./model.js";
 
 /**
@@ -58,20 +58,28 @@ const cameraOptions = (current) => {
     .join("");
 };
 
+/**
+ * The four retention markers as `<option>`s, with `current` selected.
+ *
+ * Same bargain as `cameraOptions`: a value this build does not know is offered rather
+ * than dropped, so the control never shows something the document does not say. The
+ * compiler falls back to `fully_preserved` for an unknown marker; the select does not
+ * pretend that already happened.
+ */
+const retentionOptions = (current) => {
+  const value = current || RETENTIONS[0];
+  const names = RETENTIONS.includes(value) ? RETENTIONS : [value, ...RETENTIONS];
+  return names
+    .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
 /** Anything a keystroke could legitimately be typed into. */
 const isEditable = (el) =>
   !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
-/** One lattice step, in seconds, used as the inputs' `step`.
- *
- * `min` has to be the first legal length rather than zero: a browser steps from `min`,
- * and legal lengths are 17n+**5** frames. Basing the step at zero walks 17-frame
- * multiples that all miss the grid by five, so every arrow press would need correcting.
- */
-const STEP = (17 / 24).toFixed(4);
-const BASE = (5 / 24).toFixed(4);
 const TAIL = 34;
 const TYPING_PAUSE = 500;
 
@@ -286,6 +294,7 @@ export class TimelineEditor {
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     this.canvas.addEventListener("change", (event) => {
       if (event.target.classList.contains("mmd-cam-pick")) this.setCamera(event);
+      if (event.target.classList.contains("mmd-keep-pick")) this.setRetention(event);
     });
     document.addEventListener("pointermove", (event) => this.move(event));
     document.addEventListener("pointerup", () => {
@@ -575,7 +584,7 @@ export class TimelineEditor {
     // An open inline editor owns its own clicks; starting a drag would close it. The
     // camera dropdown is the same bargain: a click there is aimed at the control, and
     // treating it as the start of a drag makes the move impossible to pick.
-    if (event.target.closest(".mmd-inline, .mmd-cam-pick")) return;
+    if (event.target.closest(".mmd-inline, .mmd-cam-pick, .mmd-keep-pick")) return;
 
     const node = event.target.closest(".mmd-seg");
     const total = this.extent();
@@ -751,6 +760,29 @@ export class TimelineEditor {
 
     this.selection = { track, index };
     target.camera = event.target.value;
+    this.commit(next);
+  }
+
+  /**
+   * A media block's retention dropdown was changed.
+   *
+   * The marker belongs to the attachment, not the block, so it is written onto
+   * `item.media` -- the same record `describes` lives on, and the one the compiler reads
+   * when it builds `retention_analysis`.
+   */
+  setRetention(event) {
+    const node = event.target.closest(".mmd-seg");
+    if (!node) return;
+    event.stopPropagation();
+
+    const track = node.parentElement.dataset.track;
+    const index = Number(node.dataset.index);
+    const next = this.read();
+    const target = items(next, track)[index];
+    if (!target?.media) return;
+
+    this.selection = { track, index };
+    target.media = { ...target.media, retention: event.target.value };
     this.commit(next);
   }
 
@@ -931,10 +963,17 @@ export class TimelineEditor {
         const field = this.segFields.querySelector(selector);
         if (field && field !== document.activeElement) field.value = value;
       };
-      put(".mmd-f-start-secs", toSeconds(held.start).toFixed(2));
       put(".mmd-f-start", held.start);
+      put(".mmd-f-end", held.start + held.length);
       put(".mmd-f-len", held.length);
-      put(".mmd-f-secs", toSeconds(held.length).toFixed(2));
+      // The mirrors are spans, not fields: they take text, and no caret can be in them.
+      const show = (selector, value) => {
+        const el = this.segFields.querySelector(selector);
+        if (el) el.textContent = value;
+      };
+      show(".mmd-f-start-secs", toSeconds(held.start).toFixed(2));
+      show(".mmd-f-end-secs", toSeconds(held.start + held.length).toFixed(2));
+      show(".mmd-f-secs", toSeconds(held.length).toFixed(2));
     }
   }
 
@@ -1060,11 +1099,13 @@ export class TimelineEditor {
       const node = this.settings.querySelector(selector);
       if (node && node !== document.activeElement) node.value = value;
     };
-    set(".s-duration", secs(timeline.duration || rendered));
+    set(".s-duration", timeline.duration || rendered);
+    // Locked, so it is never the field under the cursor and needs no guard.
+    const mirror = this.settings.querySelector(".s-duration-secs");
+    if (mirror) mirror.textContent = secs(timeline.duration || rendered);
     set(".s-width", widget("width") ?? 1344);
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
-    set(".s-dialect", timeline.dialect || "official");
 
     // The lattice appears here and nowhere else. A typed duration is left alone; this
     // says what will actually be generated, which is where the 17-frame grid bites.
@@ -1077,21 +1118,19 @@ export class TimelineEditor {
   /** The settings row, built once. */
   buildSettings() {
     this.settings.innerHTML = `
-      <label title="Length of the whole piece"><span class="mmd-key">duration</span><input class="s-duration" type="number" min="0" step="0.1"><span class="mmd-unit">s</span></label>
+      <label title="Length of the whole piece, in frames. H3 only accepts 17n+5, so the arrows step a whole lattice slot."><span class="mmd-key">duration</span><input class="s-duration" type="number" min="${PHASE}" step="${STRIDE}"><span class="mmd-unit">frames</span></label>
+      <label class="mmd-f-locked" title="The same length in seconds. Read-only: the lattice is counted in frames, and a rounded second typed back would not land on it."><span class="mmd-key">=</span><span class="mmd-mirror s-duration-secs"></span><span class="mmd-unit">s</span></label>
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
-      <label><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
-      <label><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
-      <label><span class="mmd-key">resize</span>
+      <label title="Output width, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
+      <label title="Output height, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
+      <label title="How reference images are fitted. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time."><span class="mmd-key">resize</span>
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
-      </label>
-      <label><span class="mmd-key">dialect</span>
-        <select class="s-dialect" title="official follows MiniMax's own prompt guide; legacy is this pack's original labelled blocks">${["official", "legacy"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <span class="mmd-grow"></span>
       <span class="mmd-renders"></span>
       <span class="mmd-build" title="extension build">${BUILD}</span>`;
 
-    const frames = (input) => Math.max(0, Math.round(Number(input.value) * FPS));
+    const frames = (input) => Math.max(0, Math.round(Number(input.value)));
 
     const bind = (selector, apply) => {
       const node = this.settings.querySelector(selector);
@@ -1102,7 +1141,6 @@ export class TimelineEditor {
     };
 
     bind(".s-duration", (next, node) => { next.duration = frames(node); });
-    bind(".s-dialect", (next, node) => { next.dialect = node.value; });
 
     const setWidget = (name, raw) => {
       const w = this.widgets[name];
@@ -1155,6 +1193,18 @@ export class TimelineEditor {
       pick.title = "The camera move for this block";
       pick.innerHTML = cameraOptions(item.camera);
       node.appendChild(pick);
+    }
+
+    // Same idea for a block carrying a file. Retention is the one field on an attachment
+    // that changes what the model is told to do with it, and reading it off the timeline
+    // beat opening the panel one block at a time to find the reference set to the wrong
+    // marker. `describes` stays below: it is a sentence, not a choice.
+    if (item.media) {
+      const keep = document.createElement("select");
+      keep.className = "mmd-keep-pick";
+      keep.title = "How much of this reference survives into the video";
+      keep.innerHTML = retentionOptions(item.media.retention);
+      node.appendChild(keep);
     }
 
     node.insertAdjacentHTML(
@@ -1230,11 +1280,7 @@ export class TimelineEditor {
                value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
       </label>
       <label title="How much of this reference survives into the video. Fixed values from MiniMax's own guide.">keep
-        <select class="mmd-f-retention">
-          ${RETENTIONS.map((name) =>
-            `<option value="${name}"${name === (item.media.retention || RETENTIONS[0]) ? " selected" : ""}>${name}</option>`
-          ).join("")}
-        </select>
+        <select class="mmd-f-retention">${retentionOptions(item.media.retention)}</select>
       </label>`;
 
     const patch = (change) => {
@@ -1279,21 +1325,41 @@ export class TimelineEditor {
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       this.segFields.innerHTML = `
-        <label>starts at <input class="mmd-f-start-secs" type="number" min="0" step="0.01"></label>
-        <label title="The same instant in frames. Frames are what the document stores; seconds are what a clip is written in.">s · frames <input class="mmd-f-start" type="number" min="0" step="1"></label>
-        <label>lasts <input class="mmd-f-secs" type="number" min="0.04" step="0.01"></label>
-        <label>s · frames <input class="mmd-f-len" type="number" min="1" step="1"></label>
+        <label title="The first frame of this block -- frames are the unit the document stores.">start <input class="mmd-f-start" type="number" min="0" step="1"><span class="mmd-unit">frames</span></label>
+        <label class="mmd-f-locked" title="The same instant in seconds. Read-only: frames are what H3 is given, and a rounded second typed back would move the block."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-start-secs"></span><span class="mmd-unit">s</span></label>
+        <label title="The frame this block ends on. Editing it moves the end, not the start -- the same as dragging the right grip.">end <input class="mmd-f-end" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
+        <label class="mmd-f-locked" title="The end in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-end-secs"></span><span class="mmd-unit">s</span></label>
+        <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
+        <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>
         ${cameras}
         ${subject}
         ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
 
       const secsEl = this.segFields.querySelector(".mmd-f-secs");
       const lenEl = this.segFields.querySelector(".mmd-f-len");
+      const startEl = this.segFields.querySelector(".mmd-f-start");
+      const startSecsEl = this.segFields.querySelector(".mmd-f-start-secs");
+      const endEl = this.segFields.querySelector(".mmd-f-end");
+      const endSecsEl = this.segFields.querySelector(".mmd-f-end-secs");
 
-      // Seconds and frames are two views of one number. Whichever you are not typing
-      // into follows immediately; the document only ever stores frames.
-      // The same ceiling the drag obeys: typing a length may not push past the clip
-      // either, or the two ways of editing would disagree about what is legal.
+      // Start, end and length are three readings of two numbers, so editing any one of
+      // them has to move the other two on screen. Only the box under the cursor is left
+      // alone -- writing into it is what eats keystrokes.
+      const mirror = (start, len) => {
+        startSecsEl.textContent = toSeconds(start).toFixed(2);
+        secsEl.textContent = toSeconds(len).toFixed(2);
+        endSecsEl.textContent = toSeconds(start + len).toFixed(2);
+        if (endEl !== document.activeElement) endEl.value = start + len;
+      };
+
+      // Frames are typed, seconds are shown. They were both editable, and a second is
+      // 24 frames wide -- so a block typed as `1.08` came back as 26 frames, redisplayed
+      // as `1.08`, and the number the author actually set was never on screen. The clip
+      // is written in seconds; it is *cut* in frames, and only one of those can be the
+      // field you edit.
+      //
+      // The same ceiling the drag obeys: typing a length may not push past a neighbour,
+      // or the two ways of editing would disagree about what is legal.
       const setLength = (frames) => {
         const now = this.read();
         const here = items(now, track)[index] || item;
@@ -1306,11 +1372,8 @@ export class TimelineEditor {
         // The field under the cursor is normally left alone, so typing is not fought.
         // A refused number is the exception: showing what was typed while the timeline
         // holds something else means the two boxes disagree, and one of them is lying.
-        const refused = n !== wanted;
-        if (refused || secsEl !== document.activeElement) {
-          secsEl.value = toSeconds(n).toFixed(2);
-        }
-        if (refused || lenEl !== document.activeElement) lenEl.value = n;
+        if (n !== wanted || lenEl !== document.activeElement) lenEl.value = n;
+        mirror(here.start, n);
         patchLive({ length: n });
       };
 
@@ -1319,20 +1382,26 @@ export class TimelineEditor {
       // back over the field, so "2.5" came out as "0.045".
       const typed = (el) => (el.value.trim() === "" ? null : Number(el.value));
 
-      secsEl.addEventListener("input", () => {
-        const value = typed(secsEl);
-        if (value !== null && Number.isFinite(value)) setLength(value * FPS);
-      });
       lenEl.addEventListener("input", () => {
         const value = typed(lenEl);
         if (value !== null && Number.isFinite(value)) setLength(value);
       });
-      const startEl = this.segFields.querySelector(".mmd-f-start");
-      const startSecsEl = this.segFields.querySelector(".mmd-f-start-secs");
 
-      // Seconds and frames are two views of one number, the same bargain the length
-      // fields make: whichever you are not typing into follows, and the document only
-      // ever stores frames.
+      // Typing an end moves the end. Reading it as "keep the length, slide the block" is
+      // the other possible answer and the wrong one: the right grip does exactly this,
+      // and two controls that look like the same edit must not do different things.
+      const setEnd = (frames) => {
+        const now = this.read();
+        const here = items(now, track)[index] || item;
+        setLength(Math.round(frames) - here.start);
+      };
+
+      endEl.addEventListener("input", () => {
+        const value = typed(endEl);
+        if (value !== null && Number.isFinite(value)) setEnd(value);
+      });
+
+      // Frames typed, seconds shown -- the same bargain the length fields make.
       const setStart = (frames) => {
         const now = this.read();
         const here = items(now, track)[index] || item;
@@ -1341,18 +1410,11 @@ export class TimelineEditor {
         const wanted = Math.round(frames);
         const start = Math.max(floor, Math.min(wanted, top));
 
-        const refused = start !== wanted;
-        if (refused || startEl !== document.activeElement) startEl.value = start;
-        if (refused || startSecsEl !== document.activeElement) {
-          startSecsEl.value = toSeconds(start).toFixed(2);
-        }
+        if (start !== wanted || startEl !== document.activeElement) startEl.value = start;
+        mirror(start, here.length);
         patchLive({ start });
       };
 
-      startSecsEl.addEventListener("input", () => {
-        const value = typed(startSecsEl);
-        if (value !== null && Number.isFinite(value)) setStart(value * FPS);
-      });
       startEl.addEventListener("input", () => {
         const value = typed(startEl);
         if (value !== null && Number.isFinite(value)) setStart(value);
@@ -1379,10 +1441,19 @@ export class TimelineEditor {
       const el = this.segFields.querySelector(selector);
       if (el && (changed || el !== document.activeElement)) el.value = value;
     };
-    put(".mmd-f-start-secs", toSeconds(item.start).toFixed(2));
     put(".mmd-f-start", item.start);
-    put(".mmd-f-secs", toSeconds(item.length).toFixed(2));
+    put(".mmd-f-end", item.start + item.length);
     put(".mmd-f-len", item.length);
     put(".mmd-f-camera", item.camera || "static");
+
+    // The locked mirrors are never the field under the cursor, so they follow every
+    // render unconditionally -- `put`'s focus guard has nothing to protect here.
+    const show = (selector, value) => {
+      const el = this.segFields.querySelector(selector);
+      if (el) el.textContent = value;
+    };
+    show(".mmd-f-start-secs", toSeconds(item.start).toFixed(2));
+    show(".mmd-f-end-secs", toSeconds(item.start + item.length).toFixed(2));
+    show(".mmd-f-secs", toSeconds(item.length).toFixed(2));
   }
 }

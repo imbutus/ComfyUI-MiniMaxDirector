@@ -50,6 +50,31 @@ const CSS = `
 .mmd-settings input:focus, .mmd-settings select:focus,
 .mmd-seg-fields input:focus, .mmd-seg-fields select:focus,
 .mmd-prompt textarea:focus { border-color:#6ea8c4; outline:none; }
+/* A span, not a read-only input. An input is a box with a width, so the number sat at one
+   end of it and its unit at the other -- and every rule written to take the box away lost
+   to the generic .mmd-seg-fields input rule below, which is just as specific and comes
+   later. A span is exactly as wide as its number, so the unit sits against it. */
+.mmd-mirror { color:#cbd5e1; font-variant-numeric:tabular-nums; }
+/* The gap belongs between a label and its control, not between a number and its unit --
+   "5.17 s" is one reading, and a flex gap put air in the middle of it. So the row runs at
+   gap 0 and the controls carry their own left margin; a unit, following its value, gets
+   none and sits against it. */
+.mmd-settings label > input, .mmd-settings label > select,
+.mmd-settings label > .mmd-value, .mmd-settings label > .mmd-mirror,
+.mmd-seg-fields label > input, .mmd-seg-fields label > select,
+.mmd-seg-fields label > .mmd-mirror { margin-left:5px; }
+/* A mirror is its own label, so the row gap -- meant to separate one field from the next --
+   landed to the left of its equals sign and made the reading straddle two fields' worth of
+   air. Pulled back to the same single space that sits on the other side of the sign. */
+/* The row gap is cancelled outright, and both spaces around the sign then come from one
+   declaration on the sign itself. Splitting them -- gap on the left, margin on the right --
+   is what made them drift: two numbers that have to stay equal, in two places. */
+.mmd-settings .mmd-f-locked { margin-left:-12px; }
+.mmd-seg-fields .mmd-f-locked { margin-left:-9px; }
+.mmd-f-locked > .mmd-key { margin:0 4px; }
+.mmd-settings .mmd-f-locked > .mmd-mirror,
+.mmd-seg-fields .mmd-f-locked > .mmd-mirror { margin-left:0; }
+.mmd-f-locked > .mmd-unit { margin-left:0; }
 .mmd-prompt { transition:border-color .12s ease; }
 .mmd-prompt:focus-within { border-color:#3f5a6b; }
 .mmd-bar .mmd-grow { flex:1; }
@@ -133,17 +158,22 @@ const CSS = `
 /* A control shares the bottom row, so the filename gives it the corner rather than running
    underneath it. */
 .mmd-seg:has(.mmd-cam-pick) .mmd-chip { max-width:calc(100% - 118px); }
+.mmd-seg:has(.mmd-keep-pick) .mmd-chip { max-width:calc(100% - 150px); }
 /* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
    transparent to them so a click there still grabs the block. */
 /* A real dropdown, always on the block, so the move is both readable and changeable
    without selecting the block first. Bottom right, opposite the media chip: the left
    edge is where a block's start time is read off the ruler. */
-.mmd-cam-pick { position:absolute; right:3px; bottom:3px; z-index:5; pointer-events:auto;
+/* The keep picker sits in the same corner on a block carrying a file: it is the other field that
+   changes what the model is told to do with the block, and a camera block never holds
+   media, so the two never want the corner at once. */
+.mmd-cam-pick, .mmd-keep-pick { position:absolute; right:3px; bottom:3px; z-index:5;
+  pointer-events:auto;
   cursor:pointer; font:inherit; font-size:11px; max-width:calc(100% - 6px);
   padding:2px 4px; background:#1c1f26; color:#e5e7eb; border:1px solid #4a5262;
   border-radius:4px; }
-.mmd-cam-pick:hover { border-color:#6b7484; background:#232733; }
-.mmd-cam-pick:focus { outline:none; border-color:#8b93a1; }
+.mmd-cam-pick:hover, .mmd-keep-pick:hover { border-color:#6b7484; background:#232733; }
+.mmd-cam-pick:focus, .mmd-keep-pick:focus { outline:none; border-color:#8b93a1; }
 .mmd-seg .mmd-grip { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
 .mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
@@ -169,7 +199,7 @@ const CSS = `
 .mmd-settings { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   flex:0 0 auto; padding:5px 8px; background:#181c23; border:1px solid #2c313c;
   border-radius:6px; }
-.mmd-settings label { display:flex; align-items:center; gap:5px; color:#9ca3af;
+.mmd-settings label { display:flex; align-items:center; gap:0; color:#9ca3af;
   font-size:11px; white-space:nowrap; flex:0 0 auto; min-width:max-content; }
 .mmd-settings label > * { flex:0 0 auto; }
 .mmd-settings input, .mmd-settings select { width:72px; flex:0 0 auto;
@@ -211,12 +241,16 @@ const CSS = `
 
 .mmd-seg-fields { display:flex; gap:9px; flex-wrap:wrap; align-items:center;
   margin-top:3px; }
-.mmd-seg-fields label { display:flex; align-items:center; gap:4px; color:#9ca3af;
+.mmd-seg-fields label { display:flex; align-items:center; gap:0; color:#9ca3af;
   font-size:11px; }
 /* The subject description is a sentence, not a number, so it gets the room to be one. */
 .mmd-seg-fields .mmd-f-wide { flex:1 1 320px; }
 .mmd-seg-fields .mmd-f-wide input { width:100%; }
 .mmd-seg-fields .mmd-f-retention { width:auto; }
+/* The same weight the clip-settings row gives its units -- one look for one kind of
+   thing, wherever it appears. */
+.mmd-seg-fields .mmd-unit { color:#e5e7eb; }
+.mmd-seg-fields .mmd-f-start, .mmd-seg-fields .mmd-f-end, .mmd-seg-fields .mmd-f-len { width:64px; }
 .mmd-seg-fields input, .mmd-seg-fields select { width:88px; background:#1c1f26;
   color:#e5e7eb; border:1px solid #2c313c; border-radius:4px; padding:2px 4px;
   font:inherit; }
