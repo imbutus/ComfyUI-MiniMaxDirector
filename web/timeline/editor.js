@@ -80,7 +80,8 @@ export class TimelineEditor {
     this.drag = null;
     this.panelShape = null;
     this.marquee = null;
-    this.zoom = 1;
+    /** Two steps in from `fit`: at fit a 64-frame block is too narrow to show its caption. */
+    this.zoom = ZOOM_STEP ** 2;
     this.playhead = 0;
     this.playing = null;
 
