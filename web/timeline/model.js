@@ -130,16 +130,34 @@ export function ceiling(timeline) {
 }
 
 /**
- * Append an item to a track, starting where that track currently ends.
+ * Put a new item on a track: at `at` if it fits there, otherwise after everything.
  *
  * A full clip is not a reason to refuse. Pressing Add and getting nothing reads as a
  * broken button, so the segment is added at its normal length and the clip stretches to
  * hold it -- the same rule a typed length follows.
  */
-export function add(timeline, track, seconds = 1.5) {
+export function add(timeline, track, seconds = 1.5, at = null) {
   const list = items(timeline, track);
-  const start = list.reduce((end, item) => Math.max(end, item.start + item.length), 0);
-  const item = { start, length: Math.max(1, Math.round(seconds * FPS)), prompt: "" };
+  const wanted = Math.max(1, Math.round(seconds * FPS));
+  let start = list.reduce((end, item) => Math.max(end, item.start + item.length), 0);
+  let size = wanted;
+
+  // The playhead is where you are looking, so it is where a new block goes -- unless it
+  // is standing inside one, where there is no room to put anything and appending is the
+  // only answer that does not overlap. A gap shorter than the default is used as it is
+  // rather than refused: a two-second block that does not fit is still a block.
+  if (at !== null) {
+    const frame = Math.max(0, Math.round(at));
+    const inside = list.some((item) => frame >= item.start && frame < item.start + item.length);
+    const next = list.reduce(
+      (edge, item) => (item.start >= frame ? Math.min(edge, item.start) : edge), Infinity);
+    if (!inside && next - frame >= 1) {
+      start = frame;
+      size = Math.min(wanted, next - frame);
+    }
+  }
+
+  const item = { start, length: size, prompt: "" };
   // A camera block with no move is a camera block that does nothing -- the reason to add
   // one is to say how the camera behaves, and "holds a static shot" is the answer for a
   // shot nobody has decided about yet.

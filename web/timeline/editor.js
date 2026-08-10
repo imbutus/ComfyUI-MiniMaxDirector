@@ -103,6 +103,7 @@ export class TimelineEditor {
     this.widgets = widgets;
     this.selected = [];
     this.drag = null;
+    this.scrubbing = false;
     this.panelShape = null;
     this.marquee = null;
     /** Two steps in from `fit`: at fit a 64-frame block is too narrow to show its caption. */
@@ -146,7 +147,7 @@ export class TimelineEditor {
             <div class="mmd-ruler"></div>
             ${TRACKS.map((t) => `<div class="mmd-track" data-track="${t.key}"></div>`).join("")}
             <div class="mmd-end"></div>
-            <div class="mmd-playhead"></div>
+            <div class="mmd-playhead"><div class="mmd-head-grip"></div></div>
           </div>
         </div>
       </div>
@@ -274,6 +275,10 @@ export class TimelineEditor {
         event.preventDefault();
         event.stopPropagation();
         this.deleteSelected();
+      } else if (key === "s" && !chord) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.splitSelected();
       } else if (event.key === "Escape") {
         event.stopPropagation();
         this.selected = [];
@@ -303,6 +308,7 @@ export class TimelineEditor {
       // being rebuilt under the cursor on every pointermove.
       const dragged = this.drag?.recorded;
       this.drag = null;
+      this.scrubbing = false;
       this.root.classList.remove("mmd-dragging");
       for (const node of this.canvas.querySelectorAll(".mmd-resizing")) {
         node.classList.remove("mmd-resizing");
@@ -313,8 +319,7 @@ export class TimelineEditor {
 
     this.scrub.addEventListener("input", () => {
       const extent = this.extent();
-      this.playhead = (this.scrub.value / 1000) * extent;
-      this.renderPlayhead(extent);
+      this.seek((this.scrub.value / 1000) * extent, extent);
     });
 
     this.segPrompt.addEventListener("input", () => {
@@ -442,7 +447,45 @@ export class TimelineEditor {
 
   append(track) {
     const timeline = this.read();
-    this.selection = { track, index: add(timeline, track) };
+    this.selection = { track, index: add(timeline, track, 1.5, this.playhead) };
+    this.commit(timeline);
+  }
+
+  /**
+   * Cut the selected blocks in two at the playhead.
+   *
+   * A cut is the one edit that needs a position rather than a size, which is what the
+   * playhead is for. Blocks the playhead is not standing inside are skipped rather than
+   * refused as a group: splitting a multi-track selection should do the tracks it can.
+   *
+   * The tail keeps the prose and drops the file. Copying the attachment would put the
+   * same picture in the prompt twice under two tokens, and a reference the author never
+   * added is worse than one they have to add back.
+   */
+  splitSelected() {
+    const timeline = this.read();
+    const at = this.playhead;
+    let cut = false;
+
+    // Highest index first: an insert shifts everything after it, and the indices still to
+    // come were read before that happened.
+    for (const { track, index } of [...this.selected].sort((a, b) => b.index - a.index)) {
+      const list = items(timeline, track);
+      const item = list[index];
+      if (!item || at <= item.start || at >= item.start + item.length) continue;
+
+      const tail = { ...item, start: at, length: item.start + item.length - at };
+      delete tail.media;
+      item.length = at - item.start;
+      list.splice(index + 1, 0, tail);
+      cut = true;
+    }
+
+    if (!cut) return;
+    // Every index after a split moved, so the selection now names blocks it did not mean.
+    // Nothing selected is honest; the wrong block selected is what deletes the wrong block.
+    this.selected = [];
+    this.selection = null;
     this.commit(timeline);
   }
 
@@ -464,7 +507,7 @@ export class TimelineEditor {
       && !items(timeline, track).some((entry) => entry.media?.kind === "image");
     // Always a new segment, never a swap. Dropping the file onto whatever happened to
     // be selected silently destroyed the media already there -- and "add" should add.
-    const target = add(timeline, track, 2);
+    const target = add(timeline, track, 2, this.playhead);
     const item = items(timeline, track)[target];
     item.media = record;
     this.selection = { track, index: target };
@@ -502,10 +545,24 @@ export class TimelineEditor {
     this.commit(timeline);
   }
 
+  /**
+   * Zoom around the playhead, the way an NLE does.
+   *
+   * Zooming about the start of the clip is only the right answer while the playhead is at
+   * the start. Move it to 2.34s, press `+`, and the frames you were looking at leave the
+   * window: you land back at 0.00 and have to scroll to where you already were. The
+   * playhead is where the work is, so the view is recentred on it -- what you zoomed into
+   * is what you were pointing at.
+   */
   setZoom(mode) {
     if (mode === "fit") this.zoom = 1;
     else this.zoom = Math.min(24, Math.max(1, this.zoom * (mode === "in" ? ZOOM_STEP : 1 / ZOOM_STEP)));
     this.render();
+
+    // Assigning past either end is clamped by the browser, which is exactly right: a
+    // playhead near 0.00 or near the tail cannot be centred, and should not leave a band
+    // of nothing on one side to pretend otherwise.
+    this.stage.scrollLeft = this.playhead * this.scale() - this.stage.clientWidth / 2;
   }
 
   togglePlay() {
@@ -518,11 +575,27 @@ export class TimelineEditor {
     }
     button.textContent = "❚❚";
     const total = this.extent();
+    const from = this.playhead;
+    const started = performance.now();
+    // Counted from the clock rather than added up tick by tick. A timer that fires late --
+    // and every timer does -- would otherwise drift away from real time, and rounding each
+    // step to a frame would compound its own error on top of that.
     this.playing = setInterval(() => {
-      this.playhead += FPS / 20;
-      if (this.playhead >= total) this.playhead = 0;
-      this.renderPlayhead(total);
-    }, 50);
+      const elapsed = Math.round(((performance.now() - started) / 1000) * FPS);
+      this.seek((from + elapsed) % total, total);
+    }, 1000 / FPS);
+  }
+
+  /**
+   * Put the playhead on a frame.
+   *
+   * Frames are the unit the clip is cut in, so the playhead stands on one rather than
+   * between two: it moved smoothly, which looks right and means the time in the readout
+   * belongs to no frame in particular.
+   */
+  seek(frames, total = this.extent()) {
+    this.playhead = Math.max(0, Math.min(total, Math.round(frames)));
+    this.renderPlayhead(total);
   }
 
   // -- geometry ------------------------------------------------------------
@@ -585,6 +658,16 @@ export class TimelineEditor {
     // camera dropdown is the same bargain: a click there is aimed at the control, and
     // treating it as the start of a drag makes the move impossible to pick.
     if (event.target.closest(".mmd-inline, .mmd-cam-pick, .mmd-keep-pick")) return;
+
+    // The playhead's head is a handle, not part of the tracks. Dragging it scrubs; letting
+    // it fall through would start a marquee over the blocks underneath instead.
+    if (event.target.closest(".mmd-head-grip")) {
+      this.scrubbing = true;
+      this.root.classList.add("mmd-dragging");
+      event.target.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      return;
+    }
 
     const node = event.target.closest(".mmd-seg");
     const total = this.extent();
@@ -683,9 +766,8 @@ export class TimelineEditor {
     if (!moved) {
       const total = this.extent();
       const [x] = this.toLocal(this.marqueeOrigin[0], this.marqueeOrigin[1]);
-      this.playhead = Math.max(0, Math.min(total, x / this.scale()));
+      this.seek(x / this.scale(), total);
       this.selected = [];
-      this.renderPlayhead(total);
       this.applySelection();
       return;
     }
@@ -842,7 +924,36 @@ export class TimelineEditor {
     });
   }
 
+  /**
+   * Pull a dragged value onto the playhead when it comes close.
+   *
+   * The playhead is the only landmark on the timeline, so it is the only thing worth
+   * snapping to -- and it is the thing you put there on purpose. The tolerance is in
+   * pixels, converted to frames at the current scale: seven pixels is seven pixels
+   * whether the clip is zoomed out to five seconds or in to half of one, where a fixed
+   * number of frames would be either unreachable or impossible to escape.
+   *
+   * `candidates` are values that would land an edge on the playhead. Out-of-range ones
+   * are dropped rather than clamped: a snap that has to be moved to be legal is not the
+   * position it promised.
+   */
+  snap(value, lowest, highest, candidates) {
+    const tolerance = Math.max(1, Math.round(7 / (this.drag?.scale ?? this.scale())));
+    for (const candidate of candidates) {
+      if (Math.abs(candidate - value) > tolerance) continue;
+      if (candidate < lowest || candidate > highest) continue;
+      return candidate;
+    }
+    return value;
+  }
+
   move(event) {
+    if (this.scrubbing) {
+      const [x] = this.toLocal(event.clientX, event.clientY);
+      this.seek(x / this.scale());
+      return;
+    }
+
     if (this.marquee) {
       const [ax, ay] = this.toLocal(this.marquee.x0, this.marquee.y0);
       const [bx, by] = this.toLocal(event.clientX, event.clientY);
@@ -899,18 +1010,28 @@ export class TimelineEditor {
         lowest = Math.max(lowest, member.limits[0] - member.start);
         highest = Math.min(highest, member.limits[1] - (member.start + member.length));
       }
-      const shift = Math.max(lowest, Math.min(highest, frames));
+      let shift = Math.max(lowest, Math.min(highest, frames));
+      // Either edge may take the playhead -- whichever you brought to it is the one you
+      // meant, and offering only the leading edge makes butting a block up against a cut
+      // from the right impossible.
+      shift = this.snap(shift, lowest, highest,
+        [this.playhead - this.drag.start,
+         this.playhead - (this.drag.start + this.drag.length)]);
       for (const member of this.drag.group) {
         reshape(items(timeline, member.track)[member.index], { start: member.start + shift });
       }
     } else if (this.drag.mode === "start") {
       const finish = this.drag.start + this.drag.length;
-      const start = Math.min(
-        Math.max(this.drag.start + frames, this.drag.limits[0]), finish - 1);
+      const start = this.snap(
+        Math.min(Math.max(this.drag.start + frames, this.drag.limits[0]), finish - 1),
+        this.drag.limits[0], finish - 1, [this.playhead]);
       reshape(item, { start, length: finish - start });
     } else {
       const room = this.drag.limits[1] - this.drag.start;
-      reshape(item, { length: Math.max(1, Math.min(this.drag.length + frames, room)) });
+      const span = this.snap(
+        Math.max(1, Math.min(this.drag.length + frames, room)),
+        1, room, [this.playhead - this.drag.start]);
+      reshape(item, { length: span });
     }
     this.write(timeline);
     this.paintDrag(timeline);
