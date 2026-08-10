@@ -41,6 +41,23 @@ const ICON = {
   sound: svg('<path d="M1.5 8h2l2-4.5 2 9 2-7 1.5 2.5h2"/>'),
 };
 
+/**
+ * The camera vocabulary as `<option>`s, with `current` selected.
+ *
+ * A hand-edited document can hold a verb this build has never heard of, and the compiler
+ * passes an unknown value through untouched -- so it is offered as its own option rather
+ * than dropped. A select that silently shows `static` for a block saying something else
+ * is lying about the document. The empty value never arrives here: `parse` reads it as
+ * `static`.
+ */
+const cameraOptions = (current) => {
+  const value = current || "static";
+  const names = CAMERAS.includes(value) ? CAMERAS : [value, ...CAMERAS];
+  return names
+    .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
 /** Anything a keystroke could legitimately be typed into. */
 const isEditable = (el) =>
   !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
@@ -1051,9 +1068,7 @@ export class TimelineEditor {
       const pick = document.createElement("select");
       pick.className = "mmd-cam-pick";
       pick.title = "The camera move for this block";
-      pick.innerHTML = CAMERAS.map((name) =>
-        `<option value="${name}"${name === (item.camera || "") ? " selected" : ""}>${name || "—"}</option>`
-      ).join("");
+      pick.innerHTML = cameraOptions(item.camera);
       node.appendChild(pick);
     }
 
@@ -1118,11 +1133,7 @@ export class TimelineEditor {
     // block -- with nothing on screen to say which you were getting.
     const cameras = track !== "moves" ? "" : `
       <label>camera
-        <select class="mmd-f-camera">
-          ${CAMERAS.map((name) =>
-            `<option value="${name}"${name === (item.camera || "") ? " selected" : ""}>${name || "—"}</option>`
-          ).join("")}
-        </select>
+        <select class="mmd-f-camera">${cameraOptions(item.camera)}</select>
       </label>`;
 
     // Only for a block carrying a file. Attaching one puts the clip in full-reference
@@ -1269,6 +1280,6 @@ export class TimelineEditor {
     put(".mmd-f-start", item.start);
     put(".mmd-f-secs", toSeconds(item.length).toFixed(2));
     put(".mmd-f-len", item.length);
-    put(".mmd-f-camera", item.camera || "");
+    put(".mmd-f-camera", item.camera || "static");
   }
 }

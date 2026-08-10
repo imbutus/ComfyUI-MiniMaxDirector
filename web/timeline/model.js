@@ -24,8 +24,12 @@ export const TRACKS = [
 export const TRACK_FOR_MEDIA = { image: "shots", video: "shots", audio: "cues" };
 
 /** Camera vocabulary; must match CAMERA_PROSE in timeline.py. */
+/** The camera vocabulary. No empty entry: a move that contributes no sentence is a block
+ *  that does nothing, and `static` already says "the camera holds still" out loud, which
+ *  is what an author picking "none" actually means. Documents written before this still
+ *  carry `""` and still compile -- the note alone is used, as it always was. */
 export const CAMERAS = [
-  "", "static", "dolly_in", "dolly_out", "pan_left", "pan_right",
+  "static", "dolly_in", "dolly_out", "pan_left", "pan_right",
   "tilt_up", "tilt_down", "orbit", "handheld", "crash_zoom",
 ];
 
@@ -80,7 +84,14 @@ export function emptyTimeline() {
 export function parse(text) {
   if (!text || !text.trim()) return emptyTimeline();
   try {
-    return { ...emptyTimeline(), ...JSON.parse(text) };
+    const timeline = { ...emptyTimeline(), ...JSON.parse(text) };
+    // A camera block with no move contributes no camera sentence, which makes it a block
+    // that does nothing. Documents written before the empty value was dropped are read as
+    // `static` -- the move they were already describing by holding still.
+    for (const move of Array.isArray(timeline.moves) ? timeline.moves : []) {
+      if (!move.camera) move.camera = "static";
+    }
+    return timeline;
   } catch {
     return emptyTimeline();
   }
@@ -130,7 +141,10 @@ export function add(timeline, track, seconds = 1.5) {
   const list = items(timeline, track);
   const start = list.reduce((end, item) => Math.max(end, item.start + item.length), 0);
   const item = { start, length: Math.max(1, Math.round(seconds * FPS)), prompt: "" };
-  if (track === "moves") item.camera = "";
+  // A camera block with no move is a camera block that does nothing -- the reason to add
+  // one is to say how the camera behaves, and "holds a static shot" is the answer for a
+  // shot nobody has decided about yet.
+  if (track === "moves") item.camera = "static";
   list.push(item);
 
   const end = start + item.length;
