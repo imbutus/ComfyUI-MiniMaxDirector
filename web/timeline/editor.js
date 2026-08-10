@@ -931,6 +931,7 @@ export class TimelineEditor {
         const field = this.segFields.querySelector(selector);
         if (field && field !== document.activeElement) field.value = value;
       };
+      put(".mmd-f-start-secs", toSeconds(held.start).toFixed(2));
       put(".mmd-f-start", held.start);
       put(".mmd-f-len", held.length);
       put(".mmd-f-secs", toSeconds(held.length).toFixed(2));
@@ -1278,9 +1279,10 @@ export class TimelineEditor {
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       this.segFields.innerHTML = `
-        <label>start <input class="mmd-f-start" type="number" min="0" step="1"></label>
-        <label>seconds <input class="mmd-f-secs" type="number" min="0.04" step="0.01"></label>
-        <label>frames <input class="mmd-f-len" type="number" min="1" step="1"></label>
+        <label>starts at <input class="mmd-f-start-secs" type="number" min="0" step="0.01"></label>
+        <label title="The same instant in frames. Frames are what the document stores; seconds are what a clip is written in.">s · frames <input class="mmd-f-start" type="number" min="0" step="1"></label>
+        <label>lasts <input class="mmd-f-secs" type="number" min="0.04" step="0.01"></label>
+        <label>s · frames <input class="mmd-f-len" type="number" min="1" step="1"></label>
         ${cameras}
         ${subject}
         ${item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""}`;
@@ -1325,20 +1327,36 @@ export class TimelineEditor {
         const value = typed(lenEl);
         if (value !== null && Number.isFinite(value)) setLength(value);
       });
-      this.segFields.querySelector(".mmd-f-start")
-        .addEventListener("input", (e) => {
-          if (e.target.value.trim() === "") return;
-          const wanted = Math.round(Number(e.target.value));
-          if (!Number.isFinite(wanted)) return;
+      const startEl = this.segFields.querySelector(".mmd-f-start");
+      const startSecsEl = this.segFields.querySelector(".mmd-f-start-secs");
 
-          const now = this.read();
-          const here = items(now, track)[index] || item;
-          const [floor, roof] = neighbours(now, track, index);
-          const top = Math.max(floor, roof - here.length);
-          const start = Math.max(floor, Math.min(wanted, top));
-          if (start !== wanted) e.target.value = start;
-          patchLive({ start });
-        });
+      // Seconds and frames are two views of one number, the same bargain the length
+      // fields make: whichever you are not typing into follows, and the document only
+      // ever stores frames.
+      const setStart = (frames) => {
+        const now = this.read();
+        const here = items(now, track)[index] || item;
+        const [floor, roof] = neighbours(now, track, index);
+        const top = Math.max(floor, roof - here.length);
+        const wanted = Math.round(frames);
+        const start = Math.max(floor, Math.min(wanted, top));
+
+        const refused = start !== wanted;
+        if (refused || startEl !== document.activeElement) startEl.value = start;
+        if (refused || startSecsEl !== document.activeElement) {
+          startSecsEl.value = toSeconds(start).toFixed(2);
+        }
+        patchLive({ start });
+      };
+
+      startSecsEl.addEventListener("input", () => {
+        const value = typed(startSecsEl);
+        if (value !== null && Number.isFinite(value)) setStart(value * FPS);
+      });
+      startEl.addEventListener("input", () => {
+        const value = typed(startEl);
+        if (value !== null && Number.isFinite(value)) setStart(value);
+      });
       this.segFields.querySelector(".mmd-f-camera")
         ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
       this.segFields.querySelector(".mmd-f-subject")
@@ -1361,6 +1379,7 @@ export class TimelineEditor {
       const el = this.segFields.querySelector(selector);
       if (el && (changed || el !== document.activeElement)) el.value = value;
     };
+    put(".mmd-f-start-secs", toSeconds(item.start).toFixed(2));
     put(".mmd-f-start", item.start);
     put(".mmd-f-secs", toSeconds(item.length).toFixed(2));
     put(".mmd-f-len", item.length);
