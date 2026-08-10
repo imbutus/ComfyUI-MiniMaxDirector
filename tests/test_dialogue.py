@@ -280,3 +280,36 @@ def test_subjects_are_numbered_across_files():
     prompt = compile_timeline(timeline).prompt
     assert "<Subject 1> is the man's face, from <Picture 1>." in prompt
     assert "<Subject 2> is the red jacket, from <Picture 2>." in prompt
+
+
+def test_a_dialogue_tag_is_not_given_a_second_full_stop():
+    """The stop is inside `<d>` with the words, where the author typed it."""
+    timeline = Timeline.from_dict({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 124, "prompt": "A woman.",
+                   "lines": [{"text": "Hello.", "speaker": "A woman"}]}],
+        "moves": [{"start": 0, "length": 124, "camera": "static"}],
+    })
+    assert "</d>." not in compile_timeline(timeline).prompt
+
+
+def test_a_reference_clip_outside_two_to_fifteen_seconds_warns_once():
+    timeline = Timeline.from_dict({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 124, "prompt": "A street.",
+                   "media": {"kind": "video", "filename": "a.mp4",
+                             "description": "the street", "seconds": 22.4}}],
+    })
+    warned = [text for text in messages(timeline) if "2-15 seconds" in text]
+    assert len(warned) == 1
+    assert "22.4s" in warned[0]
+
+
+def test_a_clip_of_unknown_length_is_not_second_guessed():
+    timeline = Timeline.from_dict({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 124, "prompt": "A street.",
+                   "media": {"kind": "video", "filename": "a.mp4",
+                             "description": "the street"}}],
+    })
+    assert not any("2-15 seconds" in text for text in messages(timeline))

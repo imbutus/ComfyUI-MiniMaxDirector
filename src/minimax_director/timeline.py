@@ -129,7 +129,10 @@ def _sentences(parts: Iterable[str]) -> str:
         if not out:
             out = piece
             continue
-        separator = " " if out.endswith((".", "!", "?", ",")) else ". "
+        # `</d>` closes a sentence of its own -- the full stop is inside the tag, with the
+        # words, where the author put it. Adding another leaves `</d>.` in the prompt.
+        ended = out.endswith((".", "!", "?", ",", "</d>"))
+        separator = " " if ended else ". "
         out = f"{out}{separator}{piece}"
     return out
 

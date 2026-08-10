@@ -37,6 +37,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_content(timeline),
         *_check_subjects(timeline),
         *_check_dialogue(timeline),
+        *_check_clip_lengths(timeline),
     ]
     return sorted(issues, key=lambda issue: issue.level != "error")
 
@@ -57,6 +58,36 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
             "warning",
             f"{item.token} ({name}) has no description, so nothing tells the model what "
             f"to keep from it. Describe it on the block that carries it.",
+        )
+
+
+def _check_clip_lengths(timeline: Timeline) -> Iterator[Issue]:
+    """Reference videos and audio outside the 2-15 second window H3 documents.
+
+    The editor measures a file when it is attached and records the result. Nothing is said
+    about a file whose length was never read -- an unknown duration is not a wrong one, and
+    a warning that fires on every hand-written document would train people to ignore this.
+
+    H3 does not refuse an out-of-range clip; it quietly uses what it can, which is the kind
+    of failure that only shows up in the finished video.
+    """
+    # A reference video is collected twice -- once as its own soundtrack, once as the
+    # video -- from one record. That is one file and deserves one warning.
+    seen: set[int] = set()
+    for item in attachments.collect(timeline):
+        if item.record.get("kind") == "image" or id(item.record) in seen:
+            continue
+        seen.add(id(item.record))
+        length = item.record.get("seconds")
+        if not isinstance(length, (int, float)) or length <= 0:
+            continue
+        if 2 <= length <= 15:
+            continue
+        name = str(item.record.get("filename", "")) or item.kind
+        yield Issue(
+            "warning",
+            f"{name} runs {length:g}s. H3 takes reference clips of 2-15 seconds; "
+            f"{'shorter' if length < 2 else 'longer'} ones are used only in part.",
         )
 
 

@@ -102,7 +102,12 @@ Select it and the panel below shows:
 
 Double-click a block to edit its text in place. Drag its edges to resize, its middle to
 move, and drag a box over several to select them together. `Delete` removes the
-selection; `S` cuts it in two at the playhead; `Cmd/Ctrl+Z` undoes.
+selection; `S` cuts it in two at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
+it, keeping its spacing; `Cmd/Ctrl+D` duplicates; `Cmd/Ctrl+Z` undoes.
+
+The **preset** dropdown in the toolbar replaces the timeline with a worked example that
+compiles and runs as it stands — a talking avatar, a three-shot scene, a two-hander, a
+reference shot.
 
 The red playhead is the timeline's one landmark. Click empty track to move it, and it
 becomes where new blocks land, what a drag snaps to, and what `+` / `-` zoom around.

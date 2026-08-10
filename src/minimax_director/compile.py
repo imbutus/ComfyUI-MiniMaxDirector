@@ -394,9 +394,15 @@ def _timecode(frame: int, fps: int) -> str:
 
 
 def _sentence(text: str) -> str:
-    """Close a fragment so the next one does not run into it."""
+    """Close a fragment so the next one does not run into it.
+
+    `</d>` counts as closed. The full stop lives inside the tag with the words, where the
+    author typed it, and the guide forbids touching what is in there -- so a second one
+    outside leaves `</d>.` in the prompt.
+    """
     stripped = text.rstrip()
-    return stripped if stripped.endswith((".", "!", "?", ":", ";")) else f"{stripped}."
+    ended = stripped.endswith((".", "!", "?", ":", ";", "</d>"))
+    return stripped if ended else f"{stripped}."
 
 
 def _with_tokens(text: str, tokens: list[str]) -> str:
