@@ -81,13 +81,63 @@ def collect(timeline: Timeline) -> list[Attachment]:
     return found
 
 
+@dataclass(frozen=True, slots=True)
+class Subject:
+    """Something abstracted *out of* a file, tracked separately from the file itself.
+
+    The guide's fourth label. `<Picture 2>` is a photograph; `<Subject 1>` is the face in
+    it, which can be carried onto a different person in a different shot. Saying "keep the
+    face from this photo" needs both -- the picture as provenance, the subject as the thing
+    that survives -- and with only the file labels the two collapse into one claim about
+    the whole frame.
+    """
+
+    index: int
+    name: str
+    """What it is, in the author's words: `the man's face`."""
+    source: str
+    """The token it was abstracted from: `<Picture 2>`."""
+    record: dict[str, Any]
+    origin: tuple[str, int] | None = None
+
+    @property
+    def token(self) -> str:
+        return f"<Subject {self.index}>"
+
+
+def subjects(timeline: Timeline) -> list[Subject]:
+    """Named subjects drawn from attached files, in the files' own order.
+
+    One per file. The guide allows many-to-many -- several subjects from one picture, one
+    subject assembled from several -- but a file is attached to a block, so a second
+    subject has nowhere to be authored yet. The case that matters, *this photo is here for
+    the face in it*, is expressible as it stands.
+    """
+    found: list[Subject] = []
+    for item in collect(timeline):
+        name = str(item.record.get("subject", "")).strip()
+        # A video's own soundtrack shares the video's record, and a face is not abstracted
+        # out of an audio track -- taking the name twice would define one subject twice.
+        if not name or item.kind == "audio":
+            continue
+        found.append(Subject(len(found) + 1, name, item.token, item.record, item.origin))
+    return found
+
+
 def tokens_by_segment(timeline: Timeline) -> dict[tuple[str, int], list[str]]:
     """Which tokens each segment should mention, keyed by track and start frame."""
+    named = {subject.source: subject for subject in subjects(timeline)}
+
     mapping: dict[tuple[str, int], list[str]] = {}
     for item in collect(timeline):
         if item.origin is None:
             continue
-        mapping.setdefault(item.origin, []).append(item.token)
+        # A file that exists to supply a subject is mentioned as the subject. Naming both
+        # in one sentence asks the model to reproduce the photograph *and* to lift one
+        # feature out of it, which are different instructions.
+        subject = named.get(item.token)
+        mapping.setdefault(item.origin, []).append(
+            subject.token if subject else item.token)
     return mapping
 
 

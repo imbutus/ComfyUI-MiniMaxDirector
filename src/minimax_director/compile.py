@@ -161,6 +161,10 @@ def _subject_definitions(timeline: Timeline) -> str:
     for item in attachments.collect(timeline):
         described = _described(item)
         lines.append(f"{item.token} is {described}.")
+    for subject in attachments.subjects(timeline):
+        # Provenance named on the subject's own line, which is what the guide asks for
+        # when a picture is only there to supply something else.
+        lines.append(f"{subject.token} is {subject.name.rstrip('.')}, from {subject.source}.")
     return "\n".join(lines)
 
 
@@ -219,6 +223,10 @@ def _retention_analysis(timeline: Timeline) -> str:
         marker = _retention(item)
         where = _appears_in(timeline, item)
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
+    for subject in attachments.subjects(timeline):
+        where = _appears_in(timeline, subject)
+        lines.append(
+            f"{subject.token}{where}: {_retention(subject)} - {subject.name.rstrip('.')}.")
     return "\n".join(lines)
 
 
@@ -232,7 +240,16 @@ def _described(item) -> str:
 
 
 def _retention(item) -> str:
-    marker = str(item.record.get("retention", "")).strip()
+    """The marker for this token.
+
+    A subject gets its own: the picture may be fully preserved as a frame while the face
+    lifted out of it is an `attribute_transfer` onto somebody else. Absent, it falls back
+    to the file's, which is the answer for the ordinary case where they agree.
+    """
+    key = "subject_retention" if isinstance(item, attachments.Subject) else "retention"
+    marker = str(item.record.get(key, "")).strip()
+    if marker not in RETENTIONS and key == "subject_retention":
+        marker = str(item.record.get("retention", "")).strip()
     return marker if marker in RETENTIONS else RETENTIONS[0]
 
 

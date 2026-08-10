@@ -219,3 +219,64 @@ def test_a_speaker_described_once_stays_known():
         ],
     })
     assert not any("speaks with no description" in text for text in messages(timeline))
+
+
+# -- <Subject N> -------------------------------------------------------------
+
+
+def with_subject(**media):
+    record = {"kind": "image", "filename": "face.png",
+              "description": "a full-face and profile photo of a man",
+              "retention": "weak_reference", "subject": "the man's face"}
+    record.update(media)
+    return Timeline.from_dict({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 124, "prompt": "A man turns to the camera.",
+                   "media": record}],
+    })
+
+
+def test_a_named_subject_gets_its_own_definition_naming_its_source():
+    prompt = compile_timeline(with_subject()).prompt
+    assert "<Subject 1> is the man's face, from <Picture 1>." in prompt
+
+
+def test_a_subject_carries_its_own_retention():
+    prompt = compile_timeline(with_subject(subject_retention="attribute_transfer")).prompt
+    assert "<Subject 1> (appears in [Shot 1]): attribute_transfer - the man's face." in prompt
+    # The picture it came from keeps its own, which is a different claim.
+    assert "<Picture 1> (appears in [Shot 1]): weak_reference" in prompt
+
+
+def test_a_subject_without_its_own_marker_follows_the_file():
+    assert "<Subject 1> (appears in [Shot 1]): weak_reference" in compile_timeline(
+        with_subject()).prompt
+
+
+def test_the_shot_mentions_the_subject_rather_than_the_picture():
+    """Naming both asks the model to reproduce the frame *and* lift one feature out of it."""
+    body = compile_timeline(with_subject()).prompt
+    body = body[body.index("detailed_description:"):]
+    assert "<Subject 1>" in body
+    assert "<Picture 1>" not in body
+
+
+def test_no_subject_means_no_subject_label():
+    assert "<Subject" not in compile_timeline(with_subject(subject="")).prompt
+
+
+def test_subjects_are_numbered_across_files():
+    timeline = Timeline.from_dict({
+        "duration": 248,
+        "shots": [
+            {"start": 0, "length": 124, "prompt": "A man.",
+             "media": {"kind": "image", "filename": "a.png", "description": "a man",
+                       "subject": "the man's face"}},
+            {"start": 124, "length": 124, "prompt": "A jacket.",
+             "media": {"kind": "image", "filename": "b.png", "description": "a jacket",
+                       "subject": "the red jacket"}},
+        ],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert "<Subject 1> is the man's face, from <Picture 1>." in prompt
+    assert "<Subject 2> is the red jacket, from <Picture 2>." in prompt

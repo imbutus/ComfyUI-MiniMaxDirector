@@ -1380,7 +1380,8 @@ export class TimelineEditor {
     // guards below exist so a render mid-keystroke does not eat what is being typed --
     // but when the selection itself changed, the field is about a different block and
     // keeping the old text is the bug, not the protection.
-    const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}`;
+    const changed = this.panelShape !==
+      `${track}:${index}:${item.media ? 1 : 0}:${item.media?.subject?.trim() ? 1 : 0}`;
 
     this.segPrompt.disabled = false;
     if (changed || document.activeElement !== this.segPrompt) {
@@ -1407,6 +1408,14 @@ export class TimelineEditor {
         <input class="mmd-f-subject" type="text" placeholder="what this file is, and what must stay the same"
                value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
       </label>
+      <label class="mmd-f-wide" title="Name the one thing this file is here to supply -- a face, a jacket, a colour grade -- and it becomes a <Subject n> of its own, tracked apart from the picture it came from. Leave empty when the whole file is the reference.">supplies
+        <input class="mmd-f-subject-name" type="text" placeholder="the man's face"
+               value="${String(item.media.subject || "").replace(/"/g, "&quot;")}">
+      </label>
+      ${!String(item.media.subject || "").trim() ? "" : `
+      <label title="How much of that one thing survives. Usually attribute_transfer -- the feature moves onto a different subject -- while the picture it came from is only a weak_reference.">keep it
+        <select class="mmd-f-subject-keep">${retentionOptions(item.media.subject_retention || item.media.retention)}</select>
+      </label>`}
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
@@ -1494,7 +1503,8 @@ export class TimelineEditor {
     // Rebuilding the markup on every render would destroy whatever is being typed, so
     // it happens only when the panel is actually a different shape. Everything else is
     // an in-place value update below.
-    const shape = `${track}:${index}:${item.media ? 1 : 0}`;
+    const shape =
+      `${track}:${index}:${item.media ? 1 : 0}:${item.media?.subject?.trim() ? 1 : 0}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       this.segFields.innerHTML = `
@@ -1608,6 +1618,10 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
+      this.segFields.querySelector(".mmd-f-subject-name")
+        ?.addEventListener("input", (e) => patchMedia({ subject: e.target.value }, true));
+      this.segFields.querySelector(".mmd-f-subject-keep")
+        ?.addEventListener("change", (e) => patchMedia({ subject_retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
