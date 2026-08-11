@@ -173,7 +173,13 @@ const CSS = `
    block's background is whatever image was dropped on it, and a plain light ring vanished
    on a white one. Inset shadows rather than an outline, so the blue "this edge would
    resize" ring can still use the outline property without the two fighting over it. */
-.mmd-seg.mmd-sel { z-index:3;
+/* Drawn on a layer above the children rather than as a shadow on the block itself. An
+   inset shadow belongs to the background, so it paints under every child -- an image is a
+   background and kept its ring, but a video preview is a real <video> element and covered
+   the ring completely, leaving a selected video block looking exactly like an idle one. */
+.mmd-seg.mmd-sel { z-index:3; }
+.mmd-seg.mmd-sel::after { content:""; position:absolute; inset:0; z-index:6;
+  border-radius:4px; pointer-events:none;
   box-shadow: inset 0 0 0 1px #000, inset 0 0 0 3px #fff, inset 0 0 0 4px #000; }
 /* The resize handles stay invisible until the pointer is on the segment, then show
    where the edges are rather than making the user hunt for them. */

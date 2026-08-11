@@ -7,4 +7,4 @@
  * instead of something to argue about.
  */
 
-export const BUILD = "2026-08-11·09:40";
+export const BUILD = "2026-08-11·10:25";
