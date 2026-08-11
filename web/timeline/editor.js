@@ -593,7 +593,7 @@ export class TimelineEditor {
     const timeline = this.panels.find((panel) => panel.dataset.panel === "timeline");
     const height = timeline && !timeline.classList.contains("mmd-hide")
       ? timeline.offsetHeight : 0;
-    if (height > 0) this.root.style.setProperty("--mmd-cast-height", `${height - 72}px`);
+    if (height > 0) this.root.style.setProperty("--mmd-cast-height", `${height}px`);
   }
 
   /** How many people are in the cast, shown on the tab so it is not a mystery door. */

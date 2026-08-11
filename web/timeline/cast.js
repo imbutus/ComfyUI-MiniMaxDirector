@@ -92,6 +92,7 @@ export class CastEditor {
         <label>CAST
           <span class="mmd-hint">everyone in this clip — one card each: their face, what stays the same, how they sound</span>
         </label>
+        <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the cast"></textarea>
         <div class="mmd-cast-body">
           <div class="mmd-cast"></div>
           <div class="mmd-cast-foot">
@@ -108,6 +109,7 @@ export class CastEditor {
     this.list = this.root.querySelector(".mmd-cast");
     this.speech = this.root.querySelector(".mmd-speech");
     this.box = this.root.querySelector(".mmd-cast-box");
+    this.grip();
 
     this.speech.addEventListener("change", () => {
       const next = this.read();
@@ -206,6 +208,41 @@ export class CastEditor {
       return `<video class="mmd-face" src="${src}#t=0.6" muted preload="metadata"></video>`;
     }
     return `<span class="mmd-face" style="background-image:url('${src}')"></span>`;
+  }
+
+  /**
+   * Drag the block taller by the corner.
+   *
+   * Ours rather than CSS `resize`, which Chrome answers with a glyph of its own that no
+   * rule reliably hides -- next to the one drawn to match the prompt boxes it read as two
+   * handles in one corner. The pointer moves in screen pixels and the editor lives inside
+   * the canvas's transform, so the movement is divided by whatever that scale turns out to
+   * be, measured rather than looked up.
+   */
+  grip() {
+    const grip = this.root.querySelector(".mmd-cast-grip");
+    if (!grip) return;
+    grip.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      grip.setPointerCapture(event.pointerId);
+      const start = event.clientY;
+      const from = this.box.offsetHeight;
+      const scale = (this.box.getBoundingClientRect().height / from) || 1;
+
+      const move = (moved) => {
+        const height = Math.max(120, from + (moved.clientY - start) / scale);
+        this.box.style.height = `${Math.round(height)}px`;
+      };
+      const done = () => {
+        grip.removeEventListener("pointermove", move);
+        grip.removeEventListener("pointerup", done);
+        grip.removeEventListener("pointercancel", done);
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", done);
+      grip.addEventListener("pointercancel", done);
+    });
   }
 
   render() {

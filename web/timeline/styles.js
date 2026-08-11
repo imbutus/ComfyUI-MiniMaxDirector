@@ -122,13 +122,32 @@ const CSS = `
    given, so a cast of ten never pushes the node past the screen. */
 .mmd-panel[data-panel="cast"] { overflow:hidden; }
 .mmd-panel .mmd-cast-node { overflow:hidden; }
-/* The list is a box you drag by the corner, like the prompt boxes below the timeline --
-   same grip, same result. It opens at the height the timeline was using and scrolls
-   inside whatever height it is left at, so the node grows when you ask it to and not
-   because somebody added a card. */
-.mmd-panel .mmd-cast { height:var(--mmd-cast-height, 360px); min-height:90px;
-  resize:vertical; overflow-y:auto; padding-right:4px; }
-.mmd-panel .mmd-cast-foot { padding-top:6px; }
+/* The whole block is the box you drag -- header, list and footer together -- so the grip
+   sits on its own corner, where a textarea's does, and the list takes what is left inside
+   and scrolls. The grip is the browser's own -- a hidden overflow is what makes it draw
+   one for a div -- and a painted one on top of that read as two grips overlapping. */
+/* The block is dragged by a handle of our own, not by the browser's resizer. Chrome draws
+   that resizer whether or not it is told to hide, and a second glyph painted to match the
+   prompt boxes then read as two grips in one corner. Nothing to hide now: the block is not
+   resizable at all as far as CSS is concerned, so there is one handle, and it drags the
+   same way, with the same strokes, at the same inset as the ones on the prompt boxes. */
+.mmd-panel .mmd-cast-box { height:var(--mmd-cast-height, 420px); min-height:120px;
+  overflow:hidden; position:relative; padding:0; }
+.mmd-cast-grip { display:none; }
+/* The handle is a real textarea, shrunk to the size of its own corner and doing nothing
+   else. That is the only way to get exactly the grip the prompt boxes have: it is drawn by
+   the browser, for a textarea, because it is one. The drag is still ours -- pointerdown is
+   taken before the native resize can start -- so what it resizes is the block. */
+.mmd-panel .mmd-cast-grip { display:block; position:absolute; right:7px; bottom:5px;
+  width:15px; height:15px; min-height:0; flex:none; padding:0; border:0; margin:0;
+  background:transparent; color:transparent; overflow:hidden; resize:vertical;
+  cursor:ns-resize; touch-action:none; }
+.mmd-panel .mmd-cast-box > label { padding:6px 8px 0; }
+.mmd-panel .mmd-cast-body { padding:0 8px 6px; }
+.mmd-panel .mmd-cast-body { flex:1 1 auto; min-height:0; display:flex;
+  flex-direction:column; }
+.mmd-panel .mmd-cast { flex:1 1 auto; min-height:0; overflow-y:auto; padding-right:4px; }
+.mmd-panel .mmd-cast-foot { flex:0 0 auto; padding-top:6px; }
 /* The cast editor is a whole widget elsewhere; inside a tab it is just a section. */
 .mmd-panel .mmd-cast-node .mmd-stamp { display:none; }
 
