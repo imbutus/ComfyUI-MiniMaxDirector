@@ -88,29 +88,60 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 - **Neither** lets two blocks on one track overlap. Two descriptions of the same frames
   is not something the prompt can express.
 
+### The three tabs
+
+The panel under the toolbar shows one of three things, and remembers which one across a
+reload:
+
+- **TIMELINE** — the tracks, and the fields of whatever block is selected
+- **CAST** — one card per person in the clip
+- **GLOBAL** — GLOBAL PROMPT and GLOBAL MUSIC, the two things that are set once for the
+  whole piece and then left alone
+
 ### Editing a block
 
-Select it and the panel below shows:
+Select it — with nothing selected there is no block to edit, and the segment fields are
+not on screen — and the TIMELINE tab shows:
 
 - **SEGMENT PROMPT** — what happens in it
 - **TIMING** — `start`, `end` and `length` in frames, each with a read-only seconds
   reading beside it. Frames are what the document stores and what H3 is given.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
-- **DIALOGUE** — MAIN blocks only: the `line`, the `speaker` who says it, `how` it is
-  said, and its `language`. Who the speakers *are* is written once in the CAST box
-  further down, not here — see below.
-- **FILE** — blocks carrying one: `used as`, `supplies`, `describes`, `keep`, and
+- **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
+  says it, `how` it is said, and its `language`. **+ line** adds another row, so a block
+  can hold a conversation; `×` removes one. Who the speakers *are* is written once in the
+  CAST tab, not here — see below.
+- **FILE** — blocks carrying one: `describes`, `used as`, `keep file`, and
   **detach media**, which removes the file without removing the block
+
+Two faces lit on **one** row is the guide's `(S1,S2)`: the same words spoken by both at
+the same instant. Two rows is a conversation — they speak in turn. Speech with no agreed
+words, an argument or a crowd, is neither: describe it in the segment prompt and put the
+sound in an AUDIO cue.
 
 ### The cast
 
-**CAST** sits beside GLOBAL PROMPT: one row per person who speaks, holding a number and
-how they sound — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the voice
-from that description, so an empty one is a voice nobody chose and the linter says so.
+The **CAST** tab is one card per person, and the tab itself carries the count. A card
+holds:
 
-It lives on the document rather than on each line because a speaker is not a property of
-one shot. Describing the same `S1` two different ways in two blocks was possible before,
+- **name them** — a short name, yours, so the chips on a dialogue row are readable
+- **from** — which file on the timeline this person is drawn from, if any. That binding is
+  what makes a face and a voice one person: the card then shows the `<Subject n>` badge
+  the prompt will use for them.
+- **keep them** — how much of *the person* survives, compiled as `subject_retention`. Not
+  the same field as the block's `keep file`: the photo may be `fully_preserved` while the
+  face taken out of it is an `attribute_transfer` onto somebody else.
+- **what they look like** — for a card with a file; becomes their `subject_definitions` line
+- **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
+  voice from this, so an empty one is a voice nobody chose and the linter says so.
+
+**+ character** adds a card. **they speak** switches dialogue off for the whole clip: the
+rows and every `<d>` go at once, and the cards stay — a character can be in a clip without
+saying anything.
+
+The cast lives on the document rather than on each line because a speaker is not a property
+of one shot. Describing the same `S1` two different ways in two blocks was possible before,
 and to the model that reads as two people sharing one label.
 
 Removing a speaker leaves the lines that used their number alone. Renumbering to close the
