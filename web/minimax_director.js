@@ -289,28 +289,43 @@ function fitAfterLoad(node, editor) {
  *
  * Only on load. Panning afterwards is the author's business.
  */
+/** Where the director's top-left corner should sit on screen, in pixels. */
+const MARGIN = [116, 146];
+
+/** Node ids already framed in this page session. See `centreOnNode`. */
+const FRAMED = new Set();
+
 function centreOnNode(node) {
   const canvas = app.canvas;
   const view = canvas?.ds;
   const element = canvas?.canvas;
   if (!view?.offset || !element?.clientWidth) return;
 
-  // Only when it is not already in front of you. `onConfigure` fires for every rebuild of
-  // the node, and ComfyUI's undo *is* a rebuild -- so this used to yank the canvas back to
-  // centre on every Cmd+Z, throwing away wherever the author had panned to. Asking whether
-  // the node is visible answers both cases with one rule: a workflow that just opened has
-  // it off-screen, an undo does not, and the canvas keeps its own position through the
-  // rebuild anyway.
-  const middle = [
-    (node.pos[0] + node.size[0] / 2 + view.offset[0]) * view.scale,
-    (node.pos[1] + node.size[1] / 2 + view.offset[1]) * view.scale,
-  ];
-  const inside = middle[0] > 0 && middle[0] < element.clientWidth
-    && middle[1] > 0 && middle[1] < element.clientHeight;
-  if (inside) return;
+  // Once per node per page session, and again any time the corner is off-screen.
+  //
+  // `onConfigure` fires for every rebuild, and ComfyUI's undo *is* a rebuild -- so framing
+  // on all of them yanked the canvas about on every Cmd+Z, throwing away wherever the
+  // author had panned to. Framing only when the corner is hidden was the first attempt,
+  // and it was too shy: a workflow whose stored offset happens to leave the corner on
+  // screen never got framed at all, and that offset was written on somebody else's window.
+  // The first configure after load is the one that means "this workflow just opened"; the
+  // rest are rebuilds and leave the canvas alone.
+  const first = !FRAMED.has(node.id);
+  FRAMED.add(node.id);
 
-  view.offset[0] = element.clientWidth / 2 / view.scale - (node.pos[0] + node.size[0] / 2);
-  view.offset[1] = element.clientHeight / 2 / view.scale - (node.pos[1] + node.size[1] / 2);
+  const corner = [
+    (node.pos[0] + view.offset[0]) * view.scale,
+    (node.pos[1] + view.offset[1]) * view.scale,
+  ];
+  const showing = corner[0] > 0 && corner[0] < element.clientWidth
+    && corner[1] > 0 && corner[1] < element.clientHeight;
+  if (showing && !first) return;
+
+  // The corner rather than the middle. Centring is right for a node that fits on screen;
+  // this one is a workspace taller than most windows, so centring it put the toolbar and
+  // the clip settings above the top edge -- the two things you reach for first.
+  view.offset[0] = MARGIN[0] / view.scale - node.pos[0];
+  view.offset[1] = MARGIN[1] / view.scale - node.pos[1];
   canvas.setDirty(true, true);
 }
 
