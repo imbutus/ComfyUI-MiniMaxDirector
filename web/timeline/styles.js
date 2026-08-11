@@ -441,6 +441,18 @@ const CSS = `
 .mmd-seg-fields label { display:flex; align-items:center; gap:0; color:#9ca3af;
   font-size:11px; }
 /* The subject description is a sentence, not a number, so it gets the room to be one. */
+/* One line per row, stacked: a shot where two people talk is a short script, and a script
+   is read down the page. The tag stays beside the first row, as it does for every group. */
+.mmd-f-lines { display:flex; flex-direction:column; gap:5px; flex:1 1 320px; min-width:0; }
+/* The tag names the group, so it sits beside the first row of it, not halfway down. */
+.mmd-f-group:has(> .mmd-f-lines) { align-items:flex-start; }
+.mmd-f-group:has(> .mmd-f-lines) > .mmd-f-tag { padding-top:6px; }
+.mmd-f-line-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-delline {
+  background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
+.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-delline:hover {
+  background:#2c313c; border-color:#4b5563; }
+.mmd-seg-fields .mmd-f-delline { padding:2px 7px; }
 .mmd-seg-fields .mmd-f-wide { flex:1 1 320px; }
 .mmd-seg-fields .mmd-f-wide input { width:100%; }
 .mmd-seg-fields .mmd-f-retention { width:auto; }

@@ -557,11 +557,13 @@ export class TimelineEditor {
    * description is being typed, and left alone it went on calling them undescribed.
    */
   paintPicker(timeline) {
-    const chips = this.segFields.querySelector(".mmd-f-chips");
-    if (!chips || !this.selection) return;
+    if (!this.selection) return;
     const { track, index } = this.selection;
-    const ids = items(timeline, track)[index]?.lines?.[0]?.ids;
-    chips.innerHTML = this.chips(timeline, ids);
+    const lines = items(timeline, track)[index]?.lines || [];
+    for (const row of this.segFields.querySelectorAll(".mmd-f-line-row")) {
+      const chips = row.querySelector(".mmd-f-chips");
+      if (chips) chips.innerHTML = this.chips(timeline, lines[Number(row.dataset.line)]?.ids);
+    }
   }
 
   /**
@@ -1782,7 +1784,11 @@ export class TimelineEditor {
     // keeping the old text is the bug, not the protection.
     const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
-      + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
+      // How many rows, and which of them are a chorus: both change the markup, and a
+      // shape that missed it left the new row unbuilt until the selection moved away.
+      + `:${(item.lines?.length || 1)}`
+      + `:${(item.lines || []).map((said) =>
+            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`;
 
     this.segPrompt.disabled = false;
     if (changed || document.activeElement !== this.segPrompt) {
@@ -1822,21 +1828,34 @@ export class TimelineEditor {
     // speaker stays outside it. A shot with two people talking gets a block each -- which
     // is what a timeline is for.
     const line = (track !== "shots" || !this.speaks()) ? "" : (() => {
-      const said = item.lines?.[0] || {};
-      const value = (key, fallback = "") =>
-        String(said[key] ?? fallback).replace(/"/g, "&quot;");
-      return `
-      <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
-        <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
-      </label>
-      <div class="mmd-f-chips" title="Who says this line. Click a face; click two and they say it together, which is the guide's (S1,S2) form.">${
-        this.chips(timeline, said.ids)}</div>
-      <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
-        <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
-      </label>
-      <label title="Names the language of the words. The words themselves are never translated.">language
-        <input class="mmd-f-language" type="text" value="${value("language", "English")}">
-      </label>`;
+      // One row per line, because two people in a shot usually say different things. Chips
+      // lit together still mean a chorus -- the guide's (S1,S2), one sentence spoken by
+      // both -- so the two readings stay separate: a chorus is one line, a conversation is
+      // two. They compile in the order shown, which is the order they are heard in.
+      const said = item.lines?.length ? item.lines : [{}];
+      const row = (line, at) => {
+        const value = (key, fallback = "") =>
+          String(line[key] ?? fallback).replace(/"/g, "&quot;");
+        return `
+        <div class="mmd-f-line-row" data-line="${at}">
+          <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
+            <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
+          </label>
+          <div class="mmd-f-chips" title="Who says this line. Click a face; click two and they say it together, which is the guide's (S1,S2) form.">${
+            this.chips(timeline, line.ids)}</div>
+          <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
+            <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
+          </label>
+          <label title="Names the language of the words. The words themselves are never translated.">language
+            <input class="mmd-f-language" type="text" value="${value("language", "English")}">
+          </label>
+          ${said.length > 1
+            ? '<button class="mmd-f-delline" title="Remove this line">×</button>' : ""}
+        </div>`;
+      };
+      return `<div class="mmd-f-lines">${said.map(row).join("")}
+        <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
+      </div>`;
     })();
 
     const patch = (change) => {
@@ -1845,13 +1864,14 @@ export class TimelineEditor {
       this.commit(next);
     };
 
-    /** Write one field of the block's dialogue, keeping the rest. */
-    const patchLine = (change, live = false) => {
+    /** Write one field of one of the block's lines, keeping the rest. */
+    const patchLine = (change, live = false, at = 0) => {
       const next = this.read();
       const target = items(next, track)[index];
       if (!target) return;
+      const lines = [...(target.lines || [])];
       const said = { ids: "S1", delivery: "says", language: "English", text: "",
-                     ...(target.lines?.[0] || {}), ...change };
+                     ...(lines[at] || {}), ...change };
 
       // Dropped only when nothing has been said *and* nothing has been decided. Keying it
       // on the words alone meant picking a speaker or describing a voice before typing the
@@ -1861,7 +1881,11 @@ export class TimelineEditor {
       const blank = !said.text.trim() && !String(said.speaker || "").trim()
         && speakerNumbers(said.ids).join() === "1"
         && said.delivery === "says" && said.language === "English";
-      target.lines = blank ? [] : [said];
+      // Only the last row may vanish for being empty. An empty row above a full one is a
+      // line the author is still writing, and dropping it would renumber the rest under
+      // the cursor.
+      lines[at] = said;
+      target.lines = blank && at === lines.length - 1 ? lines.slice(0, at) : lines;
       if (!live) return this.commit(next);
       this.snapshotTyping();
       this.write(next);
@@ -1901,7 +1925,11 @@ export class TimelineEditor {
     // an in-place value update below.
     const shape = `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
-      + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
+      // How many rows, and which of them are a chorus: both change the markup, and a
+      // shape that missed it left the new row unbuilt until the selection moved away.
+      + `:${(item.lines?.length || 1)}`
+      + `:${(item.lines || []).map((said) =>
+            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       // Three groups on three rows: when a block moves, what is said in it, and what
@@ -2008,28 +2036,58 @@ export class TimelineEditor {
         const value = typed(startEl);
         if (value !== null && Number.isFinite(value)) setStart(value);
       });
+      // Delegated, because how many rows there are is the document's business and not
+      // this listener's: one handler covers the row that exists now and the one added
+      // next. `data-line` on the row is which line the control belongs to.
+      const rowOf = (target) => Number(target.closest(".mmd-f-line-row")?.dataset.line ?? 0);
+      const lines = this.segFields.querySelector(".mmd-f-lines");
+
       for (const [selector, key] of [
         [".mmd-f-line", "text"],
         [".mmd-f-delivery", "delivery"], [".mmd-f-language", "language"],
       ]) {
-        this.segFields.querySelector(selector)
-          ?.addEventListener("input", (e) => patchLine({ [key]: e.target.value }, true));
+        lines?.addEventListener("input", (e) => {
+          if (!e.target.matches(selector)) return;
+          patchLine({ [key]: e.target.value }, true, rowOf(e.target));
+        });
       }
 
-      // Clicking a face adds or removes that person from the line. A chorus is two chips
+      // Clicking a face adds or removes that person from that line. A chorus is two chips
       // lit at once, so the group form needs no mode of its own; the last one cannot be
       // turned off, because a line spoken by nobody is not a line.
-      this.segFields.querySelector(".mmd-f-chips")?.addEventListener("click", (e) => {
+      lines?.addEventListener("click", (e) => {
         if (e.target.closest(".mmd-f-tocast")) return this.showTab("cast");
+
+        if (e.target.closest(".mmd-f-addline")) {
+          const next = this.read();
+          const target = items(next, track)[index];
+          if (!target) return;
+          target.lines = [...(target.lines || []),
+                          { ids: "S1", delivery: "says", language: "English", text: "" }];
+          this.panelShape = null;
+          return this.commit(next);
+        }
+
+        if (e.target.closest(".mmd-f-delline")) {
+          const at = rowOf(e.target);
+          const next = this.read();
+          const target = items(next, track)[index];
+          if (!target) return;
+          target.lines = (target.lines || []).filter((_, i) => i !== at);
+          this.panelShape = null;
+          return this.commit(next);
+        }
+
         const chip = e.target.closest(".mmd-f-chip");
         if (!chip) return;
+        const at = rowOf(chip);
         const who = Number(chip.dataset.speaker);
-        const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[0]?.ids);
+        const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[at]?.ids);
         const next = current.includes(who)
           ? current.filter((number) => number !== who)
           : [...current, who].sort((a, b) => a - b);
         if (!next.length) return;
-        patchLine({ ids: speakerIds(next) });
+        patchLine({ ids: speakerIds(next) }, false, at);
         this.panelShape = null;
         this.render();
       });
@@ -2062,14 +2120,21 @@ export class TimelineEditor {
     put(".mmd-f-len", item.length);
     put(".mmd-f-camera", item.camera || "static");
 
-    // Undo and a switch of selection both land here; the row itself is built once.
-    const said = item.lines?.[0] || {};
-    put(".mmd-f-line", said.text ?? "");
+    // Undo and a switch of selection both land here; the rows themselves are built once.
+    const rows = [...this.segFields.querySelectorAll(".mmd-f-line-row")];
+    rows.forEach((row, at) => {
+      const said = item.lines?.[at] || {};
+      const write = (selector, value) => {
+        const el = row.querySelector(selector);
+        if (el && (changed || el !== document.activeElement)) el.value = value;
+      };
+      write(".mmd-f-line", said.text ?? "");
+      write(".mmd-f-delivery", said.delivery ?? "says");
+      write(".mmd-f-language", said.language ?? "English");
+    });
     // The chips carry names and faces owned by the cast, so they go stale as the cast is
     // edited. Rebuilt on every render: they hold no caret to lose.
     this.paintPicker(timeline);
-    put(".mmd-f-delivery", said.delivery ?? "says");
-    put(".mmd-f-language", said.language ?? "English");
 
     // The locked mirrors are never the field under the cursor, so they follow every
     // render unconditionally -- `put`'s focus guard has nothing to protect here.
