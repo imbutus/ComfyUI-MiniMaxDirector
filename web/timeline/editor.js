@@ -204,7 +204,6 @@ export class TimelineEditor {
     /** Two steps in from `fit`: at fit a 64-frame block is too narrow to show its caption. */
     this.zoom = ZOOM_STEP ** 2;
     this.playhead = 0;
-    this.playing = null;
 
     // Undo state. Snapshots are JSON strings of the whole document -- small, trivially
     // comparable, and immune to any aliasing bug a structural copy could introduce.
@@ -254,8 +253,7 @@ export class TimelineEditor {
       </div>
 
       <div class="mmd-transport">
-        <button class="mmd-play">▶</button>
-        <span class="mmd-clock">0.00s</span>
+        <span class="mmd-clock" title="Where the playhead is">0.00s</span>
         <span class="mmd-range"></span>
         <input class="mmd-scrub" type="range" min="0" max="1000" value="0">
         <button data-zoom="out">−</button>
@@ -353,7 +351,6 @@ export class TimelineEditor {
       else if (el.dataset.del) this.deleteSelected();
       else if (el.dataset.reset) this.clear();
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
-      else if (el.classList.contains("mmd-play")) this.togglePlay();
     });
 
     // Delete / Backspace remove the selected segment.
@@ -999,27 +996,6 @@ export class TimelineEditor {
     // playhead near 0.00 or near the tail cannot be centred, and should not leave a band
     // of nothing on one side to pretend otherwise.
     this.stage.scrollLeft = this.playhead * this.scale() - this.stage.clientWidth / 2;
-  }
-
-  togglePlay() {
-    const button = this.root.querySelector(".mmd-play");
-    if (this.playing) {
-      clearInterval(this.playing);
-      this.playing = null;
-      button.textContent = "▶";
-      return;
-    }
-    button.textContent = "❚❚";
-    const total = this.extent();
-    const from = this.playhead;
-    const started = performance.now();
-    // Counted from the clock rather than added up tick by tick. A timer that fires late --
-    // and every timer does -- would otherwise drift away from real time, and rounding each
-    // step to a frame would compound its own error on top of that.
-    this.playing = setInterval(() => {
-      const elapsed = Math.round(((performance.now() - started) / 1000) * FPS);
-      this.seek((from + elapsed) % total, total);
-    }, 1000 / FPS);
   }
 
   /**
