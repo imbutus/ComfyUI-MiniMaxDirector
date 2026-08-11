@@ -415,6 +415,10 @@ const CSS = `
   color:#e5e7eb; border:0; outline:none; font:inherit; padding:0; }
 .mmd-prompt textarea:disabled { color:#6b7280; }
 
+/* With no segment selected the box has nothing to hold, and a locked field still asks to be
+   read before it can be dismissed. It leaves instead, and the panel closes over the gap. */
+.mmd-prompt:has(> textarea:disabled) { display:none; }
+
 /* One row per group, and each group a box of its own. Everything used to sit in a single
    wrapping row, which broke wherever the width ran out and put the end of a block's timing
    next to the start of its dialogue. */
