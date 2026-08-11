@@ -1725,7 +1725,7 @@ export class TimelineEditor {
     if (item.media) {
       const keep = document.createElement("select");
       keep.className = "mmd-keep-pick";
-      keep.title = "How much of this reference survives into the video";
+      keep.title = "How much of this file survives into the video";
       keep.innerHTML = retentionOptions(item.media.retention);
       node.appendChild(keep);
     }
@@ -1812,7 +1812,7 @@ export class TimelineEditor {
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
-      <label title="How much of this reference survives into the video. Fixed values from MiniMax's own guide.">keep
+      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide. A cast card lifted out of this file carries its own marker for the person, which can differ: the picture may be fully_preserved while the face on it is an attribute_transfer.">keep file
         <select class="mmd-f-retention">${retentionOptions(item.media.retention)}</select>
       </label>`;
 

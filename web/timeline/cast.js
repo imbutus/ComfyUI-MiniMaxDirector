@@ -286,7 +286,7 @@ export class CastEditor {
                 </select>
               </label>
               ${!file ? "" : `
-              <label class="mmd-card-keep" title="How much of this person survives into the video. attribute_transfer carries a feature onto somebody else; fully_preserved keeps them as they are.">keep
+              <label class="mmd-card-keep" title="How much of this person survives into the video -- their own marker, not the file's: the photo may be fully_preserved while the face taken from it is an attribute_transfer onto somebody else. Compiled as subject_retention.">keep them
                 <select class="mmd-card-retention">${retentionOptions(card.keep)}</select>
               </label>`}
               <span class="mmd-grow"></span>
