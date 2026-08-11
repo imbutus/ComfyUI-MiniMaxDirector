@@ -135,8 +135,11 @@ const CSS = `
 .mmd-track { position:relative; height:62px; margin-bottom:6px; margin-top:4px;
   background:#1c1f26; border-top:1px solid #22262e; border-bottom:1px solid #22262e; }
 
-.mmd-end { position:absolute; top:0; bottom:0; width:1px; z-index:4;
-  border-left:1px dashed #4b5563; pointer-events:none; }
+/* Past the last frame is not part of the piece. The dashed line said so quietly; the milky
+   wash says it at a glance, so a block dragged over the edge reads as wrong immediately. */
+.mmd-end { position:absolute; top:0; bottom:0; right:0; z-index:4;
+  border-left:1px dashed #6b7280; background:rgba(255,255,255,.13);
+  pointer-events:none; }
 
 .mmd-playhead { position:absolute; top:0; bottom:0; width:2px; background:#e2564b;
   pointer-events:none; z-index:5; }
