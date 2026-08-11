@@ -411,3 +411,53 @@ def test_a_binding_to_a_subject_that_does_not_exist_is_ignored():
                    "lines": [{"text": "Hello.", "ids": "S1"}]}],
     })
     assert "a man with a low voice (S1) says:" in compile_timeline(timeline).prompt
+
+
+def _two_in_one_frame(**media):
+    return Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "speakers": [
+            {"id": 1, "voice": "a woman with a clear voice", "subject": 1},
+            {"id": 2, "voice": "a man, hoarse and slow", "subject": 2},
+        ],
+        "shots": [{"start": 0, "length": 124, "prompt": "Two people at a table.",
+                   "media": {"kind": "image", "filename": "pair.png",
+                             "description": "a two-shot", **media},
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+
+
+def test_one_file_can_define_two_subjects():
+    """A two-shot is two people, and asking for a second block to name the second one
+    made the timeline claim references the clip does not have."""
+    prompt = compile_timeline(_two_in_one_frame(subjects=[
+        {"name": "the woman on the left"}, {"name": "the man on the right"},
+    ])).prompt
+    assert "<Subject 1> is the woman on the left, from <Picture 1>." in prompt
+    assert "<Subject 2> is the man on the right, from <Picture 1>." in prompt
+    assert "<Subject 1> (S1) says: <d>[English] Hello.</d>" in prompt
+
+
+def test_a_subject_in_the_list_keeps_its_own_retention():
+    prompt = compile_timeline(_two_in_one_frame(retention="weak_reference", subjects=[
+        {"name": "the woman on the left", "subject_retention": "attribute_transfer"},
+        {"name": "the man on the right"},
+    ])).prompt
+    assert "<Subject 1> (appears in [Shot 1]): attribute_transfer" in prompt
+    # No marker of its own: retained the way the file it came out of is.
+    assert "<Subject 2> (appears in [Shot 1]): weak_reference" in prompt
+
+
+def test_an_unnamed_entry_defines_nothing():
+    """A card exists before it is filled in, and an empty one must not take a number."""
+    prompt = compile_timeline(_two_in_one_frame(subjects=[
+        {"name": ""}, {"name": "the man on the right"},
+    ])).prompt
+    assert "<Subject 1> is the man on the right" in prompt
+    assert "<Subject 2>" not in prompt
+
+
+def test_the_single_subject_form_still_compiles():
+    prompt = compile_timeline(_two_in_one_frame(subject="the woman on the left")).prompt
+    assert "<Subject 1> is the woman on the left, from <Picture 1>." in prompt
+    assert "<Subject 2>" not in prompt

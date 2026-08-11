@@ -37,7 +37,8 @@ def _register_routes():
     @PromptServer.instance.routes.post("/minimax_director/compile")
     async def compile_route(request):
         payload = await request.json()
-        return web.json_response(compile_preview(payload.get("timeline", "")))
+        return web.json_response(compile_preview(
+            payload.get("timeline", ""), payload.get("cast", "")))
 
 
 _register_routes()

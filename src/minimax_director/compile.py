@@ -407,11 +407,8 @@ def _voices(timeline: Timeline) -> dict[int, str] | None:
     if voices is None:
         return None
 
-    subjects = {subject.index: subject.token for subject in attachments.subjects(timeline)}
-    for speaker in timeline.speakers:
-        token = subjects.get(speaker.subject)
-        if token:
-            voices[speaker.id] = token
+    for number, subject in attachments.bound(timeline).items():
+        voices[number] = subject.token
     return voices
 
 

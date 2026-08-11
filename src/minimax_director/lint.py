@@ -110,23 +110,19 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
 
     # Which shot each subject is attached to, so a speaker bound to one can be checked
     # against the shot they are talking in.
-    homes = {
-        subject.index: subject.origin[1] if subject.origin else None
-        for subject in attachments.subjects(timeline)
-    }
-    bound = {speaker.id: speaker.subject for speaker in timeline.speakers if speaker.subject}
+    pairs = attachments.bound(timeline)
 
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         for speaking in shot.lines:
             if not speaking.text.strip():
                 continue
             for person in speaking.numbers:
-                subject = bound.get(person)
-                home = homes.get(subject)
+                subject = pairs.get(person)
+                home = subject.origin[1] if subject and subject.origin else None
                 if subject and home is not None and home != shot.start:
                     yield Issue(
                         "warning",
-                        f"[Shot {number}] S{person} is <Subject {subject}>, which is "
+                        f"[Shot {number}] S{person} is {subject.token}, which is "
                         f"attached to a different shot. The model is being told the person "
                         f"on screen here is the one talking.",
                     )

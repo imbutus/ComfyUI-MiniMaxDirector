@@ -137,7 +137,9 @@ def _speakers(data: dict[str, Any]) -> list["Speaker"]:
                 except (TypeError, ValueError):
                     subject = 0
                 found.append(Speaker(
-                    id=number, voice=str(item.get("voice", "")), subject=max(0, subject)))
+                    id=number, voice=str(item.get("voice", "")),
+                    name=str(item.get("name", "")), uid=str(item.get("uid", "")),
+                    subject=max(0, subject)))
         if found:
             return sorted(found, key=lambda speaker: speaker.id)
 
@@ -209,6 +211,15 @@ class Speaker:
 
     id: int
     voice: str = ""
+    name: str = ""
+    """What the editor calls them on screen. Never compiled: the model is told what a
+    person looks like and sounds like, not what the author filed them under."""
+    uid: str = ""
+    """The tag pairing this person with a subject record, when a file defines them.
+
+    Preferred over `subject` wherever both are present. The number is an ordinal computed
+    from where files sit on the timeline, so dragging a block renumbers it -- and a
+    binding stored only as a number would quietly start pointing at somebody else."""
     subject: int = 0
     """The `<Subject n>` this person is, when they were defined by an attached file.
 
@@ -500,7 +511,8 @@ class Timeline:
             "music": self.music,
             "speech": self.speech,
             "speakers": [
-                {"id": speaker.id, "voice": speaker.voice, "subject": speaker.subject}
+                {"id": speaker.id, "voice": speaker.voice, "name": speaker.name,
+                 "uid": speaker.uid, "subject": speaker.subject}
                 for speaker in self.speakers
             ],
             "shots": [

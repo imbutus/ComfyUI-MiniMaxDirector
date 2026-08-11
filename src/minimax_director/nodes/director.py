@@ -11,6 +11,8 @@ from __future__ import annotations
 from comfy_api.latest import ComfyExtension, io, ui
 
 from .. import attachments, core, lattice, references
+from ..cast import EMPTY as CAST_EMPTY
+from ..cast import merge_json as cast_merge
 from ..compile import compile_timeline
 from ..lint import Issue, lint
 from ..timeline import Timeline
@@ -117,6 +119,9 @@ class MiniMaxDirector(io.ComfyNode):
                     "ref_image_size", options=["match", "max"], default="match",
                     tooltip="How reference images are sized; 'max' is slower but keeps identity.",
                 ),
+                io.String.Input("cast", multiline=True, default=CAST_EMPTY, optional=True,
+                                tooltip="Everyone in the clip. Edited in the director's "
+                                        "CAST tab, or wired from a Cast node."),
                 io.Vae.Input("audio_vae", optional=True),
                 io.Image.Input("first_frame", optional=True),
                 io.Image.Input("last_frame", optional=True),
@@ -137,9 +142,10 @@ class MiniMaxDirector(io.ComfyNode):
 
     @classmethod
     def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",
-                audio_vae=None, first_frame=None, last_frame=None, ref_images=None,
-                ref_videos=None, ref_video_audios=None, ref_audios=None) -> io.NodeOutput:
-        document = Timeline.from_json(timeline)
+                cast=None, audio_vae=None, first_frame=None, last_frame=None,
+                ref_images=None, ref_videos=None, ref_video_audios=None,
+                ref_audios=None) -> io.NodeOutput:
+        document = Timeline.from_json(cast_merge(timeline, cast))
 
         # Files on the timeline come first and files wired into sockets follow, so the
         # ordinals the compiler wrote into the prompt are the ones the model receives.
@@ -222,7 +228,10 @@ class MiniMaxDirectorCompile(io.ComfyNode):
             display_name="MiniMax Director — Compile",
             category=CATEGORY,
             description=cls.__doc__,
-            inputs=[io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE)],
+            inputs=[
+                io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE),
+                io.String.Input("cast", multiline=True, default=CAST_EMPTY, optional=True),
+            ],
             outputs=[
                 io.String.Output(display_name="prompt"),
                 io.Int.Output(display_name="length"),
@@ -232,8 +241,8 @@ class MiniMaxDirectorCompile(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, timeline) -> io.NodeOutput:
-        document = Timeline.from_json(timeline)
+    def execute(cls, timeline, cast=None) -> io.NodeOutput:
+        document = Timeline.from_json(cast_merge(timeline, cast))
         compiled = compile_timeline(document)
         return io.NodeOutput(
             compiled.prompt, compiled.length, compiled.duration, _report(lint(document))
@@ -295,8 +304,39 @@ class MiniMaxDirectorLength(io.ComfyNode):
         return io.NodeOutput(length, lattice.to_seconds(length))
 
 
+class MiniMaxDirectorCast(io.ComfyNode):
+    """Everyone in the clip, one card each: their face, what stays the same, how they sound.
+
+    A character is four things -- a face, a name, a description the model must honour, and
+    a voice -- and they used to be authored in two different parts of the director with
+    nothing on screen tying them together. They are written here instead and folded into
+    the timeline at compile time.
+
+    Wire `cast` into the director. The card names the file it draws a person out of by
+    filename rather than by `<Picture n>`: the ordinal is computed from where blocks sit
+    on the timeline and changes when one is dragged, and a card that quietly re-pointed at
+    a different photograph is a mistake you would only see in the finished video.
+    """
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorCast",
+            display_name="MiniMax Director — Cast",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[io.String.Input("cast", multiline=True, default=CAST_EMPTY)],
+            outputs=[io.String.Output(display_name="cast")],
+        )
+
+    @classmethod
+    def execute(cls, cast) -> io.NodeOutput:
+        return io.NodeOutput(cast)
+
+
 NODES = [
     MiniMaxDirector,
+    MiniMaxDirectorCast,
     MiniMaxDirectorCompile,
     MiniMaxDirectorPrompt,
     MiniMaxDirectorLength,

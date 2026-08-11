@@ -266,3 +266,79 @@ export function reshape(item, { start, length: len }) {
   if (len !== undefined) item.length = Math.max(1, Math.round(len));
   return item;
 }
+
+/** The subject records one file carries. Mirrors `attachments._named` in Python. */
+export const entriesOf = (media) => {
+  if (!media) return [];
+  if (Array.isArray(media.subjects)) {
+    return media.subjects.filter((entry) => entry && String(entry.name || "").trim());
+  }
+  const name = String(media.subject || "").trim();
+  return name ? [{ name, subject_retention: media.subject_retention }] : [];
+};
+
+/**
+ * Turn a file's single `subject` into the list form, in place.
+ *
+ * Called before any write. A document written before a file could hold two people keeps
+ * compiling unchanged until something is edited, and converts the moment it is -- so the
+ * two shapes never have to be handled by anything but this function.
+ */
+export const listOf = (media) => {
+  if (!Array.isArray(media.subjects)) {
+    media.subjects = entriesOf(media).map((entry) => ({ ...entry }));
+    delete media.subject;
+    delete media.subject_retention;
+  }
+  return media.subjects;
+};
+
+/**
+ * Attached files in the order H3 numbers them: images first, then videos, each in time
+ * order. A file with no subjects still takes its number, so the tokens on screen are the
+ * tokens in the prompt.
+ */
+export const filesOf = (timeline) => {
+  const shots = items(timeline, "shots")
+    .map((shot, index) => ({ shot, index }))
+    .sort((a, b) => a.shot.start - b.shot.start);
+  const found = [];
+  let pictures = 0;
+  let videos = 0;
+  for (const { shot, index } of shots) {
+    if (shot.media?.kind !== "image") continue;
+    pictures += 1;
+    found.push({ token: `<Picture ${pictures}>`, media: shot.media, block: index });
+  }
+  for (const { shot, index } of shots) {
+    if (shot.media?.kind !== "video") continue;
+    videos += 1;
+    found.push({ token: `<Video ${videos}>`, media: shot.media, block: index });
+  }
+  return found;
+};
+
+/**
+ * The `<Subject n>` labels this document defines, in the order the compiler numbers them.
+ *
+ * Mirrors `attachments.subjects` in Python. Written twice rather than shared because the
+ * two run in different languages, and checked against each other by the compiled prompt.
+ */
+export const subjectsOf = (timeline) => {
+  const found = [];
+  for (const file of filesOf(timeline)) {
+    entriesOf(file.media).forEach((entry, slot) => {
+      found.push({
+        index: found.length + 1,
+        name: String(entry.name).trim(),
+        entry,
+        slot,
+        block: file.block,
+        media: file.media,
+        source: file.token,
+      });
+    });
+  }
+  return found;
+};
+

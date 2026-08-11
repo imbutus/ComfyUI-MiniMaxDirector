@@ -9,12 +9,13 @@ text with no way to say why.
 
 from __future__ import annotations
 
+from .cast import merge_json
 from .compile import compile_timeline
 from .lint import lint
 from .timeline import Timeline
 
 
-def compile_preview(timeline_json: str) -> dict:
+def compile_preview(timeline_json: str, cast_json: str = "") -> dict:
     """Compile `timeline_json` to the fields the editor's prompt panel shows.
 
     Always returns a dict. A payload that cannot be parsed comes back as
@@ -22,7 +23,7 @@ def compile_preview(timeline_json: str) -> dict:
     keystroke-driven request and half-typed JSON is expected traffic.
     """
     try:
-        document = Timeline.from_json(timeline_json)
+        document = Timeline.from_json(merge_json(timeline_json, cast_json))
         compiled = compile_timeline(document)
         issues = lint(document)
     except Exception as error:  # malformed payload; the panel shows the reason
