@@ -225,6 +225,11 @@ const CSS = `
 .mmd-seg-fields .mmd-f-chip.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
   background:#2a1e1d; }
 .mmd-f-nobody { color:#6b7280; font-size:11px; }
+/* Part of the sentence, not a control beside it: it reads as the words it replaces and
+   underlines like a link, because that is what it does. */
+.mmd-f-tocast { background:none; border:0; padding:0; font:inherit; color:#8fb8cc;
+  text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+.mmd-f-tocast:hover { color:#cde3ef; }
 .mmd-cast-add { align-self:flex-start; margin-top:5px; background:#2c313c; color:#e5e7eb;
   border:1px solid #3a4150; border-radius:5px; padding:4px 9px; cursor:pointer;
   font:inherit; font-size:11px; }

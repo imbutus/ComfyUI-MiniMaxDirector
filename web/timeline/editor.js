@@ -664,8 +664,10 @@ export class TimelineEditor {
         <b>MiniMax Director — Cast</b> and wire its <b>cast</b> output here</span>`;
     }
     if (!cast.cards.length) {
-      return `<span class="mmd-f-nobody">nobody in the cast yet — add a character on the
-        cast node</span>`;
+      // A line needs somebody to speak it, and the place to add them is one tab away --
+      // so the sentence saying so is the way there, rather than an instruction to follow.
+      return `<span class="mmd-f-nobody">nobody in the cast yet —
+        <button type="button" class="mmd-f-tocast">add a character</button></span>`;
     }
 
     const files = filesOf(timeline);
@@ -2018,6 +2020,7 @@ export class TimelineEditor {
       // lit at once, so the group form needs no mode of its own; the last one cannot be
       // turned off, because a line spoken by nobody is not a line.
       this.segFields.querySelector(".mmd-f-chips")?.addEventListener("click", (e) => {
+        if (e.target.closest(".mmd-f-tocast")) return this.showTab("cast");
         const chip = e.target.closest(".mmd-f-chip");
         if (!chip) return;
         const who = Number(chip.dataset.speaker);
