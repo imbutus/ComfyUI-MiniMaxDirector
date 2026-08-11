@@ -269,8 +269,9 @@ function attach(node) {
     requestAnimationFrame(() => {
       fitNode(node, editor);
       // Last, and only now: switching tabs measures the timeline on the way out, so the
-      // cast inherits its height instead of opening at whatever it happens to need.
-      if (node.properties?.tab === "cast") editor.showTab("cast");
+      // panel inherits its height instead of opening at whatever it happens to need.
+      const tab = node.properties?.tab;
+      if (tab && tab !== "timeline") editor.showTab(tab);
     });
   });
 }

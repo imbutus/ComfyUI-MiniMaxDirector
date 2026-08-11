@@ -169,6 +169,7 @@ export class TimelineEditor {
       <div class="mmd-tabs">
         <button class="mmd-tab mmd-on" data-tab="timeline">TIMELINE</button>
         <button class="mmd-tab" data-tab="cast">CAST <span class="mmd-tab-count"></span></button>
+        <button class="mmd-tab" data-tab="global">GLOBAL</button>
       </div>
 
       <div class="mmd-panel" data-panel="timeline">
@@ -201,6 +202,11 @@ export class TimelineEditor {
         <div class="mmd-seg-fields"></div>
       </div>
 
+      </div>
+
+      <div class="mmd-panel mmd-hide" data-panel="cast"></div>
+
+      <div class="mmd-panel mmd-hide" data-panel="global">
       <div class="mmd-globals">
         <div class="mmd-prompt">
           <label>GLOBAL PROMPT</label>
@@ -213,8 +219,6 @@ export class TimelineEditor {
         </div>
       </div>
       </div>
-
-      <div class="mmd-panel mmd-hide" data-panel="cast"></div>
       </div>`;
 
     // The two globals are one row, so they resize as one. Dragging one alone left a tall
