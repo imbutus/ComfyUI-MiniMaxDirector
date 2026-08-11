@@ -19,6 +19,7 @@ import {
   emptyTimeline, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours,
   remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
+  filesOf,
 } from "./model.js";
 
 /**
@@ -84,85 +85,11 @@ const retentionOptions = (current) => {
     .join("");
 };
 
-/**
- * The `<Subject n>` labels this document defines, in the order the compiler numbers them.
- *
- * Mirrors `attachments.subjects` in Python: one per attached file whose `supplies` names
- * something, images before videos. Written twice rather than shared because the two run in
- * different languages, and checked against each other by the compiled prompt itself.
- */
-const subjectsOf = (timeline) => {
-  const found = [];
-  for (const shot of items(timeline, "shots")) {
-    if (shot.media?.kind === "image" && String(shot.media.subject || "").trim()) {
-      found.push({ index: found.length + 1, name: shot.media.subject.trim() });
-    }
-  }
-  for (const shot of items(timeline, "shots")) {
-    if (shot.media?.kind === "video" && String(shot.media.subject || "").trim()) {
-      found.push({ index: found.length + 1, name: shot.media.subject.trim() });
-    }
-  }
-  return found;
-};
-
-/** A cast entry back in the shape the document stores. */
-const asRecord = (person) =>
-  ({ id: person.number, voice: person.voice, subject: person.subject || 0 });
-
-/** The document's cast, as `{ number, voice }`, in speaking order. */
-const cast = (timeline) =>
-  (Array.isArray(timeline.speakers) ? timeline.speakers : [])
-    .map((speaker) => ({
-      number: Number(speaker.id) || 0,
-      voice: String(speaker.voice || ""),
-      subject: Number(speaker.subject) || 0,
-    }))
-    .filter((speaker) => speaker.number > 0)
-    .sort((a, b) => a.number - b.number);
-
-/**
- * The cast as `<option>`s, plus the two ways to leave the list.
- *
- * `several speakers…` is a mode rather than a value: picking it reveals a box for the
- * numbers, because a group is the only case where one line has more than one speaker and
- * a dropdown cannot express it.
- */
-const speakerOptions = (timeline, ids) => {
-  const numbers = speakerNumbers(ids);
-  const many = numbers.length > 1;
-  const people = cast(timeline);
-  // A line can name a speaker the cast no longer has -- removing someone leaves the lines
-  // that quoted them alone, on purpose. The row stays, saying so: dropping it would show a
-  // picker that disagrees with the document it is editing.
-  const orphan = !people.some((person) => person.number === numbers[0]);
-  if (orphan) {
-    people.push({ number: numbers[0], voice: "" });
-    people.sort((a, b) => a.number - b.number);
-  }
-
-  // A bare `1` in a dropdown is a riddle. Until a voice is described the entry says what
-  // it is instead, and the description replaces it the moment there is one.
-  const label = ({ number, voice }) => {
-    const short = voice.length > 34 ? `${voice.slice(0, 33)}…` : voice;
-    if (short) return `${number} · ${short}`;
-    return orphan && number === numbers[0]
-      ? `speaker ${number} — not in the cast`
-      : `speaker ${number} — no voice described`;
-  };
-  const option = (value, text, on) =>
-    `<option value="${value}"${on ? " selected" : ""}>${text}</option>`;
-
-  // A group needs two people to be a group. Offered with a cast of one it produced a line
-  // spoken by a speaker the clip does not have.
-  const grouping = many || cast(timeline).length > 1;
-
-  return people.map((person) =>
-      option(String(person.number), label(person), !many && person.number === numbers[0]))
-    .join("")
-    + option("new", "new speaker", false)
-    + (grouping ? option("several", "several speakers…", many) : "");
-};
+/** What to call somebody on screen: their name, else what they look like, else S-number. */
+const nameOf = (card) =>
+  card.name.trim()
+  || card.description.replace(/[:,].*$/, "").trim()
+  || `speaker ${card.id}`;
 
 /** Anything a keystroke could legitimately be typed into. */
 const isEditable = (el) =>
@@ -238,6 +165,13 @@ export class TimelineEditor {
 
       <div class="mmd-settings"></div>
 
+      <div class="mmd-tabbed">
+      <div class="mmd-tabs">
+        <button class="mmd-tab mmd-on" data-tab="timeline">TIMELINE</button>
+        <button class="mmd-tab" data-tab="cast">CAST <span class="mmd-tab-count"></span></button>
+      </div>
+
+      <div class="mmd-panel" data-panel="timeline">
       <div class="mmd-stage">
         <div class="mmd-labels">
           ${TRACKS.map((t) => `<div class="mmd-label" data-for="${t.key}">${t.label}</div>`).join("")}
@@ -267,27 +201,32 @@ export class TimelineEditor {
         <div class="mmd-seg-fields"></div>
       </div>
 
-      <div class="mmd-prompt mmd-cast-box">
-        <label class="mmd-switch" title="Off, nobody speaks: the cast and the block's DIALOGUE row disappear and nothing spoken is compiled. Most clips have no dialogue, and the fields are noise until they do.">
-          <input class="mmd-speech" type="checkbox"> CAST
-          <span class="mmd-hint">who speaks in this clip, described once — a block's DIALOGUE row picks between them</span>
-        </label>
-        <div class="mmd-cast-body">
-          <div class="mmd-cast"></div>
-          <button class="mmd-cast-add">+ add speaker</button>
+      <div class="mmd-globals">
+        <div class="mmd-prompt">
+          <label>GLOBAL PROMPT</label>
+          <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
+        </div>
+
+        <div class="mmd-prompt">
+          <label title="non_diegetic_music: score only the audience hears. Instrumentation, tempo and dynamics -- not mood words. Left empty it compiles to N/A.">GLOBAL MUSIC <span class="mmd-hint">audience only, never the characters</span></label>
+          <textarea class="mmd-music" placeholder="Sparse piano notes at a slow tempo, joined by low strings that fade out"></textarea>
         </div>
       </div>
-
-      <div class="mmd-prompt">
-        <label>GLOBAL PROMPT</label>
-        <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
       </div>
 
-      <div class="mmd-prompt">
-        <label title="non_diegetic_music: score only the audience hears. Instrumentation, tempo and dynamics -- not mood words. Left empty it compiles to N/A.">GLOBAL MUSIC <span class="mmd-hint">audience only, never the characters</span></label>
-        <textarea class="mmd-music" placeholder="Sparse piano notes at a slow tempo, joined by low strings that fade out"></textarea>
+      <div class="mmd-panel mmd-hide" data-panel="cast"></div>
       </div>`;
 
+    // The two globals are one row, so they resize as one. Dragging one alone left a tall
+    // box beside a short one -- a layout nobody chose, just the one the last drag happened
+    // to leave behind.
+    this.pairHeights(".mmd-global", ".mmd-music");
+
+    this.bar = this.root.querySelector(".mmd-bar");
+    this.tabs = this.root.querySelector(".mmd-tabs");
+    this.panels = [...this.root.querySelectorAll(".mmd-panel")];
+    /** Where the cast editor mounts, when the host gives us one. */
+    this.castPanel = this.root.querySelector('[data-panel="cast"]');
     this.settings = this.root.querySelector(".mmd-settings");
     this.stage = this.root.querySelector(".mmd-scroll");
     this.canvas = this.root.querySelector(".mmd-canvas");
@@ -298,9 +237,6 @@ export class TimelineEditor {
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
     this.scrub = this.root.querySelector(".mmd-scrub");
-    this.cast = this.root.querySelector(".mmd-cast");
-    this.castBox = this.root.querySelector(".mmd-cast-box");
-    this.speech = this.root.querySelector(".mmd-speech");
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.global = this.root.querySelector(".mmd-global");
@@ -430,36 +366,9 @@ export class TimelineEditor {
       if (preset) this.usePreset(preset);
     });
 
-    this.speech.addEventListener("change", () => {
-      const timeline = this.read();
-      timeline.speech = this.speech.checked;
-      // The first speaker comes free: turning dialogue on and finding an empty list with
-      // nothing to pick in the block's picker is a switch that appears to do nothing.
-      if (timeline.speech && !cast(timeline).length) timeline.speakers = [{ id: 1, voice: "" }];
-      this.panelShape = null;
-      this.commit(timeline);
-      if (timeline.speech) this.cast.querySelector("input")?.focus();
-    });
-
-    this.root.querySelector(".mmd-cast-add")
-      .addEventListener("click", () => this.addSpeaker());
-    this.cast.addEventListener("input", (event) => {
-      const row = event.target.closest("[data-speaker]");
-      if (row && event.target.tagName === "INPUT") {
-        this.setVoice(Number(row.dataset.speaker), event.target.value);
-      }
-    });
-    this.cast.addEventListener("change", (event) => {
-      const row = event.target.closest("[data-speaker]");
-      if (row && event.target.classList.contains("mmd-cast-subject")) {
-        this.bindSpeaker(Number(row.dataset.speaker), Number(event.target.value));
-      }
-    });
-    this.cast.addEventListener("click", (event) => {
-      const row = event.target.closest("[data-speaker]");
-      if (row && event.target.closest(".mmd-cast-drop")) {
-        this.dropSpeaker(Number(row.dataset.speaker));
-      }
+    this.tabs.addEventListener("click", (event) => {
+      const tab = event.target.closest(".mmd-tab");
+      if (tab) this.showTab(tab.dataset.tab);
     });
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
@@ -545,7 +454,7 @@ export class TimelineEditor {
       const response = await api.fetchApi("/minimax_director/compile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeline }),
+        body: JSON.stringify({ timeline, cast: this.castJSON?.() || "" }),
       });
       if (!response.ok) throw new Error(`compile failed: ${response.status}`);
       result = await response.json();
@@ -636,28 +545,6 @@ export class TimelineEditor {
     this.commit(timeline);
   }
 
-  // -- the cast ------------------------------------------------------------
-
-  /** Add a speaker nobody has used, and put the caret in their description. */
-  addSpeaker() {
-    const timeline = this.read();
-    const taken = cast(timeline).map((person) => person.number);
-    const number = Math.max(0, ...taken) + 1;
-    timeline.speakers = [...cast(timeline).map(asRecord), { id: number, voice: "" }];
-    this.commit(timeline);
-    this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
-  }
-
-  /** Written live, like the prompt boxes: the block's speaker picker reads from this. */
-  setVoice(number, voice) {
-    this.snapshotTyping();
-    const timeline = this.read();
-    timeline.speakers = cast(timeline).map((person) =>
-      ({ ...asRecord(person), voice: person.number === number ? voice : person.voice }));
-    this.write(timeline);
-    this.paintPicker(timeline);
-  }
-
   /**
    * Refresh the block's speaker list without a render.
    *
@@ -666,88 +553,154 @@ export class TimelineEditor {
    * description is being typed, and left alone it went on calling them undescribed.
    */
   paintPicker(timeline) {
-    const picker = this.segFields.querySelector(".mmd-f-ids");
-    if (!picker || picker === document.activeElement || !this.selection) return;
+    const chips = this.segFields.querySelector(".mmd-f-chips");
+    if (!chips || !this.selection) return;
     const { track, index } = this.selection;
     const ids = items(timeline, track)[index]?.lines?.[0]?.ids;
-    picker.innerHTML = speakerOptions(timeline, ids);
-  }
-
-  /** Point a cast member at a `<Subject n>`, or at nobody. */
-  bindSpeaker(number, subject) {
-    const timeline = this.read();
-    timeline.speakers = cast(timeline).map((person) =>
-      ({ ...asRecord(person), subject: person.number === number ? subject : person.subject }));
-    this.commit(timeline);
+    chips.innerHTML = this.chips(timeline, ids);
   }
 
   /**
-   * Remove a speaker from the cast.
+   * Who speaks this line, as faces rather than a dropdown.
    *
-   * Lines keep their number. Renumbering to close the gap would silently reassign every
-   * line that used a later speaker -- a different person saying the same words -- and the
-   * only thing lost by leaving the gap is tidiness in a list nobody reads for its numbers.
+   * Two clicks make a chorus -- the guide's `(S1,S2)` -- which a single-select could only
+   * express through a "several speakers…" mode and a box of comma-separated numbers.
    */
-  dropSpeaker(number) {
-    const timeline = this.read();
-    const speaking = items(timeline, "shots")
-      .some((shot) => (shot.lines || []).some((line) =>
-        line.text?.trim() && speakerNumbers(line.ids).includes(number)));
-    if (speaking && !confirm(
-      `Speaker ${number} has lines. Remove them from the cast anyway? The lines keep the `
-      + `number and the picker will show it as "not in the cast".`)) return;
-
-    timeline.speakers = cast(timeline)
-      .filter((person) => person.number !== number)
-      .map(asRecord);
-    this.commit(timeline);
+  /**
+   * Show one panel of the node.
+   *
+   * The cast is a list of people, not part of the timeline, and it is read while writing
+   * dialogue rather than continuously -- so it takes the same space rather than its own.
+   * A tab costs nothing when you are not looking at it, which is the whole point on a
+   * node this tall.
+   */
+  showTab(name) {
+    // Measured on the way out, while the timeline is still laid out: the cast then opens
+    // at the same height instead of the node jumping to a different one and back.
+    this.rememberPanelHeight();
+    this.tab = name;
+    for (const tab of this.tabs.querySelectorAll(".mmd-tab")) {
+      tab.classList.toggle("mmd-on", tab.dataset.tab === name);
+    }
+    for (const panel of this.panels) {
+      panel.classList.toggle("mmd-hide", panel.dataset.panel !== name);
+    }
+    this.onTab?.(name);
   }
 
-  renderCast(timeline) {
-    const on = timeline.speech !== false;
-    if (this.speech !== document.activeElement) this.speech.checked = on;
-    this.castBox.classList.toggle("mmd-off", !on);
+  /** The height the cast list should open at: the room the timeline was using. */
+  rememberPanelHeight() {
+    const timeline = this.panels.find((panel) => panel.dataset.panel === "timeline");
+    const height = timeline && !timeline.classList.contains("mmd-hide")
+      ? timeline.offsetHeight : 0;
+    if (height > 0) this.root.style.setProperty("--mmd-cast-height", `${height - 72}px`);
+  }
 
-    const people = cast(timeline);
-    const focused = document.activeElement;
-    const held = focused?.closest?.("[data-speaker]")?.dataset.speaker;
+  /** How many people are in the cast, shown on the tab so it is not a mystery door. */
+  paintTabCount(count) {
+    const badge = this.tabs.querySelector(".mmd-tab-count");
+    if (badge) badge.textContent = count ? `· ${count}` : "";
+  }
 
-    // Rebuilt only when the list itself changed. Redrawing it on every keystroke would
-    // take the caret out of the box being typed into.
-    const shape = people.map((person) => `${person.number}/${person.subject}`).join(",")
-      + `|${subjectsOf(timeline).map((subject) => subject.name).join("|")}`;
-    if (this.castShape !== shape) {
-      this.castShape = shape;
-      // The `is` picker only exists once something is there to point at. A clip with no
-      // named subjects has nothing to bind a voice to, and an empty dropdown on every row
-      // would be a question with no answers.
-      const subjects = subjectsOf(timeline);
-      const bind = (person) => !subjects.length ? "" : `
-          <label class="mmd-cast-is" title="Bind this voice to a person defined by an attached file. The guide writes a speaking subject as <Subject 1> (S1), so the picture and the voice are known to be the same person rather than two things in one shot.">is
-            <select class="mmd-cast-subject">
-              <option value="0"${person.subject ? "" : " selected"}>— nobody in particular</option>
-              ${subjects.map((subject) => {
-                const short = subject.name.length > 30 ? `${subject.name.slice(0, 29)}…` : subject.name;
-                return `<option value="${subject.index}"${person.subject === subject.index ? " selected" : ""}>&lt;Subject ${subject.index}&gt; ${short}</option>`;
-              }).join("")}
-            </select>
-          </label>`;
+  /** Keep two resizable boxes at one height: whichever is dragged, both follow. */
+  pairHeights(...selectors) {
+    const boxes = selectors
+      .map((selector) => this.root.querySelector(selector))
+      .filter(Boolean);
+    if (boxes.length < 2) return;
 
-      this.cast.innerHTML = people.map((person) => `
-        <div class="mmd-cast-row" data-speaker="${person.number}">
-          <span class="mmd-cast-n">${person.number}</span>
-          <input type="text" placeholder="how they sound: age, gender, pitch, timbre, accent"
-                 value="${String(person.voice).replace(/"/g, "&quot;")}">
-          ${bind(person)}
-          <button class="mmd-cast-drop" title="Remove from the cast">✕</button>
-        </div>`).join("")
-        || `<div class="mmd-cast-empty">No one speaks yet. Add a speaker to write dialogue.</div>`;
-    } else {
-      for (const person of people) {
-        const box = this.cast.querySelector(`[data-speaker="${person.number}"] input`);
-        if (box && String(person.number) !== held) box.value = person.voice;
-      }
+    let syncing = false;
+    const observer = new ResizeObserver((entries) => {
+      // Writing the height provokes the observer again; one frame of quiet ends it.
+      if (syncing) return;
+      const dragged = entries[entries.length - 1].target;
+      const height = getComputedStyle(dragged).height;
+      syncing = true;
+      for (const box of boxes) if (box !== dragged) box.style.height = height;
+      requestAnimationFrame(() => { syncing = false; });
+    });
+    for (const box of boxes) observer.observe(box);
+  }
+
+  /**
+   * Make room for the node's own sockets, which this element is drawn on top of.
+   *
+   * The editor is pulled up to the title so the band of empty node beside ten input
+   * labels stops being wasted -- but a DOM widget covers the canvas, so the strips the
+   * sockets and their labels occupy have to stay visually clear *and* let a click
+   * through. Only the toolbar and the settings row fit up there; the timeline stage is
+   * full width, so it waits until the band is over.
+   *
+   * @param {number} height  how much of the element the sockets reach down, in px
+   */
+  setBand(height) {
+    const banded = height > 0;
+    this.root.classList.toggle("mmd-banded", banded);
+    if (!banded) return;
+
+    // The tab strip belongs to the panel below it now, not to the band: it is the panel's
+    // own header, and a header that floats away from what it heads reads as a mistake.
+    const above = [this.bar, this.settings];
+    const rows = above.reduce((sum, el) => sum + (el?.offsetHeight || 0), 0)
+      + (parseFloat(getComputedStyle(this.root).rowGap) || 0) * above.length;
+    this.root.style.setProperty("--mmd-band-gap", `${Math.max(0, Math.round(height - rows))}px`);
+  }
+
+  /** Whether anybody speaks: the cast node's switch, with no cast node meaning no. */
+  speaks() {
+    const cast = this.castOf?.();
+    return !!cast && cast.speech !== false;
+  }
+
+  chips(timeline, ids) {
+    const chosen = speakerNumbers(ids);
+    const cast = this.castOf?.();
+    if (!cast) {
+      return `<span class="mmd-f-nobody">no cast node connected — add a
+        <b>MiniMax Director — Cast</b> and wire its <b>cast</b> output here</span>`;
     }
+    if (!cast.cards.length) {
+      return `<span class="mmd-f-nobody">nobody in the cast yet — add a character on the
+        cast node</span>`;
+    }
+
+    const files = filesOf(timeline);
+    const fileOf = (card) =>
+      files.find((item) => (item.media.filename || "") === card.file) || null;
+
+    // A line may name somebody the cast no longer has: removing a card leaves the lines
+    // that quoted them alone, on purpose. The chip stays and says so, because a picker
+    // that disagrees with the document it is editing is worse than an awkward chip.
+    const orphans = chosen.filter((number) =>
+      !cast.cards.some((card) => card.id === number));
+
+    return cast.cards.map((card) => `
+      <button class="mmd-f-chip${chosen.includes(card.id) ? " mmd-on" : ""}"
+              data-speaker="${card.id}"
+              title="${card.voice ? String(card.voice).replace(/"/g, "&quot;") : "no voice described yet"}">
+        ${this.face(fileOf(card))}
+        <span>${nameOf(card)}</span>
+      </button>`).join("")
+      + orphans.map((number) => `
+      <button class="mmd-f-chip mmd-on mmd-f-orphan" data-speaker="${number}"
+              title="This line names a speaker the cast no longer has. Click to drop them.">
+        <span class="mmd-face mmd-face-none">?</span><span>S${number} — not in the cast</span>
+      </button>`).join("");
+  }
+
+  /**
+   * A person's face, as small as it needs to be.
+   *
+   * A video cannot be a CSS background, so it stays a real element and a media fragment
+   * asks the browser for a frame a little way in -- frame zero of a cut is often black.
+   */
+  face(file) {
+    const src = file ? media.url(file.media) : null;
+    if (!src) return `<span class="mmd-face mmd-face-none">?</span>`;
+    if (file.media.kind === "video") {
+      return `<video class="mmd-face" src="${src}#t=0.6" muted preload="metadata"></video>`;
+    }
+    return `<span class="mmd-face" style="background-image:url('${src}')"></span>`;
   }
 
   /**
@@ -1513,6 +1466,7 @@ export class TimelineEditor {
       `${rendered % 17 === 5 ? "valid" : "INVALID"}`;
     this.end.style.left = `${this.extent() * scale}px`;
     this.renderSettings(timeline);
+    this.rememberPanelHeight();
 
     // The numbers under the timeline are the only exact reading of what a drag is doing;
     // a resize with them frozen is a resize done by eye.
@@ -1597,7 +1551,6 @@ export class TimelineEditor {
     }
 
     this.renderPlayhead(extent);
-    this.renderCast(timeline);
     this.renderPanel(timeline);
     this.renderSettings(timeline);
   }
@@ -1821,7 +1774,7 @@ export class TimelineEditor {
     // guards below exist so a render mid-keystroke does not eat what is being typed --
     // but when the selection itself changed, the field is about a different block and
     // keeping the old text is the bug, not the protection.
-    const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${timeline.speech === false ? 0 : 1}`
+    const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
 
@@ -1850,14 +1803,6 @@ export class TimelineEditor {
         <input class="mmd-f-subject" type="text" placeholder="what this file is, and what must stay the same"
                value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
       </label>
-      <label class="mmd-f-wide" title="Name the one thing this file is here to supply -- a face, a jacket, a colour grade -- and it becomes a <Subject n> of its own, tracked apart from the picture it came from. Leave empty when the whole file is the reference.">supplies
-        <input class="mmd-f-subject-name" type="text" placeholder="the man's face"
-               value="${String(item.media.subject || "").replace(/"/g, "&quot;")}">
-      </label>
-      ${!String(item.media.subject || "").trim() ? "" : `
-      <label title="How much of that one thing survives. Usually attribute_transfer -- the feature moves onto a different subject -- while the picture it came from is only a weak_reference.">keep it
-        <select class="mmd-f-subject-keep">${retentionOptions(item.media.subject_retention || item.media.retention)}</select>
-      </label>`}
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
@@ -1870,7 +1815,7 @@ export class TimelineEditor {
     // words go inside `<d>` with a language tag and nothing else, everything about the
     // speaker stays outside it. A shot with two people talking gets a block each -- which
     // is what a timeline is for.
-    const line = (track !== "shots" || timeline.speech === false) ? "" : (() => {
+    const line = (track !== "shots" || !this.speaks()) ? "" : (() => {
       const said = item.lines?.[0] || {};
       const value = (key, fallback = "") =>
         String(said[key] ?? fallback).replace(/"/g, "&quot;");
@@ -1878,13 +1823,8 @@ export class TimelineEditor {
       <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
         <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
       </label>
-      <label title="Who says this line. The same speaker in two blocks is the same voice to the model, which is the whole reason the number exists.">speaker
-        <select class="mmd-f-ids">${speakerOptions(this.read(), said.ids)}</select>
-      </label>
-      ${speakerNumbers(said.ids).length < 2 ? "" : `
-      <label title="Which speakers say it together, by number.">numbers
-        <input class="mmd-f-ids-many" type="text" value="${speakerNumbers(said.ids).join(",")}">
-      </label>`}
+      <div class="mmd-f-chips" title="Who says this line. Click a face; click two and they say it together, which is the guide's (S1,S2) form.">${
+        this.chips(timeline, said.ids)}</div>
       <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
         <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
       </label>
@@ -1953,7 +1893,7 @@ export class TimelineEditor {
     // Rebuilding the markup on every render would destroy whatever is being typed, so
     // it happens only when the panel is actually a different shape. Everything else is
     // an in-place value update below.
-    const shape = `${track}:${index}:${item.media ? 1 : 0}:${timeline.speech === false ? 0 : 1}`
+    const shape = `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
     if (this.panelShape !== shape) {
@@ -2070,40 +2010,21 @@ export class TimelineEditor {
           ?.addEventListener("input", (e) => patchLine({ [key]: e.target.value }, true));
       }
 
-      this.segFields.querySelector(".mmd-f-ids")?.addEventListener("change", (e) => {
-        const chosen = e.target.value;
+      // Clicking a face adds or removes that person from the line. A chorus is two chips
+      // lit at once, so the group form needs no mode of its own; the last one cannot be
+      // turned off, because a line spoken by nobody is not a line.
+      this.segFields.querySelector(".mmd-f-chips")?.addEventListener("click", (e) => {
+        const chip = e.target.closest(".mmd-f-chip");
+        if (!chip) return;
+        const who = Number(chip.dataset.speaker);
         const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[0]?.ids);
-        if (chosen === "new") {
-          // Added to the cast as well, or the picker would offer a speaker the document
-          // does not have and the description would have nowhere to be written.
-          const people = cast(this.read());
-          const number = Math.max(0, ...people.map((person) => person.number)) + 1;
-          const next = this.read();
-          next.speakers = [...people.map(asRecord), { id: number, voice: "" }];
-          const target = items(next, track)[index];
-          if (target) {
-            target.lines = [{ ids: "", delivery: "says", language: "English", text: "",
-                              ...(target.lines?.[0] || {}), ids: speakerIds([number]) }];
-          }
-          this.commit(next);
-          this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
-          return;
-        } else if (chosen === "several") {
-          // Paired with somebody who exists. Inventing the next number would name a
-          // speaker the cast has never heard of.
-          const taken = cast(this.read()).map((person) => person.number);
-          const second = taken.find((n) => n !== current[0]);
-          if (second === undefined) return;
-          patchLine({ ids: speakerIds([...new Set([current[0], second])].sort((a, b) => a - b)) });
-        } else {
-          patchLine({ ids: speakerIds([Number(chosen)]) });
-        }
+        const next = current.includes(who)
+          ? current.filter((number) => number !== who)
+          : [...current, who].sort((a, b) => a - b);
+        if (!next.length) return;
+        patchLine({ ids: speakerIds(next) });
         this.panelShape = null;
         this.render();
-      });
-
-      this.segFields.querySelector(".mmd-f-ids-many")?.addEventListener("input", (e) => {
-        patchLine({ ids: speakerIds(speakerNumbers(e.target.value)) }, true);
       });
       this.segFields.querySelector(".mmd-f-camera")
         ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
@@ -2113,10 +2034,6 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
-      this.segFields.querySelector(".mmd-f-subject-name")
-        ?.addEventListener("input", (e) => patchMedia({ subject: e.target.value }, true));
-      this.segFields.querySelector(".mmd-f-subject-keep")
-        ?.addEventListener("change", (e) => patchMedia({ subject_retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
@@ -2141,13 +2058,9 @@ export class TimelineEditor {
     // Undo and a switch of selection both land here; the row itself is built once.
     const said = item.lines?.[0] || {};
     put(".mmd-f-line", said.text ?? "");
-    // The picker's own labels come from other blocks, so they go stale as voices are
-    // described elsewhere. Rebuilt on every render, never while it is the focused control.
-    const picker = this.segFields.querySelector(".mmd-f-ids");
-    if (picker && picker !== document.activeElement) {
-      picker.innerHTML = speakerOptions(timeline, said.ids);
-    }
-    put(".mmd-f-ids-many", speakerNumbers(said.ids).join(","));
+    // The chips carry names and faces owned by the cast, so they go stale as the cast is
+    // edited. Rebuilt on every render: they hold no caret to lose.
+    this.paintPicker(timeline);
     put(".mmd-f-delivery", said.delivery ?? "says");
     put(".mmd-f-language", said.language ?? "English");
 

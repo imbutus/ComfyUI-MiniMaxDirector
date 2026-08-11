@@ -79,28 +79,128 @@ const CSS = `
    entirely rather than greying out: a disabled form still asks to be read. */
 .mmd-switch { display:flex; align-items:center; gap:7px; cursor:pointer; }
 .mmd-switch input { margin:0; cursor:pointer; accent-color:#6ea8c4; }
-.mmd-cast-box.mmd-off .mmd-cast-body { display:none; }
+/* Speech off hides the voices, not the people: a character can be in a clip without ever
+   saying anything, and hiding the whole list took the subjects with it. */
+.mmd-cast-box.mmd-off .mmd-card-voice,
+.mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
+.mmd-cast-foot { display:flex; align-items:center; gap:12px; }
+.mmd-cast-foot .mmd-grow { flex:1; }
+/* Living under the sockets. The editor starts at the node's title now, so its first two
+   rows share the band with the input and output labels the canvas draws beneath it: they
+   keep clear of both columns, and the padding passes clicks through to the sockets. */
+/* Margin rather than padding: padding insets the contents but the row's own background
+   still paints across the socket labels. And the element covers the canvas, so the strips
+   it leaves empty have to hand their clicks back to the sockets underneath. */
+.mmd-banded .mmd-bar, .mmd-banded .mmd-settings {
+  margin-left:176px; margin-right:152px; }
+.mmd-banded { pointer-events:none; }
+.mmd-banded > * { pointer-events:auto; }
+/* The tabbed region is what clears the sockets: it is one element, header and all. */
+.mmd-banded .mmd-tabbed { margin-top:var(--mmd-band-gap, 0px); }
 
-/* The cast: a short list of people, not a form. Numbered on the left so the number in the
-   block's picker and the number here are visibly the same thing. */
-.mmd-cast { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
-.mmd-cast-row { display:flex; align-items:center; gap:7px; }
-.mmd-cast-n { flex:0 0 auto; min-width:16px; text-align:center; font-size:11px;
-  color:#9ca3af; font-variant-numeric:tabular-nums; }
-.mmd-cast-row input { flex:1 1 auto; background:#1c1f26; color:#e5e7eb;
-  border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit; }
-.mmd-cast-row input:hover { border-color:#4b5563; }
-.mmd-cast-row input:focus { border-color:#6ea8c4; outline:none; }
-.mmd-cast-is { flex:0 0 auto; display:flex; align-items:center; gap:5px; color:#6b7280;
-  font-size:11px; }
-.mmd-cast-is select { background:#1c1f26; color:#e5e7eb; border:1px solid #333a45;
-  border-radius:5px; padding:3px 5px; font:inherit; font-size:11px; max-width:230px;
-  cursor:pointer; }
-.mmd-cast-is select:hover { border-color:#4b5563; }
+/* One element, header and all. Loose boxes on the node's own grey read as a pile of
+   unrelated fields; a surface with a border around them says the tabs switch *this*. */
+.mmd-tabbed { display:flex; flex-direction:column; gap:7px; flex:0 0 auto;
+  background:#191c22; border:1px solid #2c313c; border-radius:9px; padding:8px; }
+
+/* A segmented control, not folder tabs. A tab implies the panel is attached to it, and
+   this one cannot be: the strip sits inset inside the socket band while the panel below
+   runs the full width, so the two never line up and the join reads as a mistake. */
+.mmd-tabs { display:inline-flex; gap:2px; flex:0 0 auto; align-self:flex-start;
+  background:#15181e; border:1px solid #2c313c; border-radius:7px; padding:2px; }
+.mmd-tab { background:transparent; color:#8b93a1; border:0; border-radius:5px;
+  padding:4px 16px; cursor:pointer; font:inherit; font-size:11px; letter-spacing:.08em; }
+.mmd-tab:hover { color:#cdd3dd; background:#232833; }
+.mmd-tab.mmd-on { color:#e5e7eb; background:#2f6d8f; }
+.mmd-tab-count { opacity:.75; letter-spacing:0; }
+/* Content-sized, like everything else in this column. A panel that stretched to fill the
+   node fed the resize observer that grows the node, and the two chased each other. */
+.mmd-panel { display:flex; flex-direction:column; gap:7px; flex:0 0 auto; }
+/* The cast opens at the height the timeline was using -- a tab that changed the node's
+   height made the whole graph jump every time you looked at the cast -- and from there it
+   is a box you drag, like the prompt boxes. The list scrolls inside whatever height it is
+   given, so a cast of ten never pushes the node past the screen. */
+.mmd-panel[data-panel="cast"] { overflow:hidden; }
+.mmd-panel .mmd-cast-node { overflow:hidden; }
+/* The list is a box you drag by the corner, like the prompt boxes below the timeline --
+   same grip, same result. It opens at the height the timeline was using and scrolls
+   inside whatever height it is left at, so the node grows when you ask it to and not
+   because somebody added a card. */
+.mmd-panel .mmd-cast { height:var(--mmd-cast-height, 360px); min-height:90px;
+  resize:vertical; overflow-y:auto; padding-right:4px; }
+.mmd-panel .mmd-cast-foot { padding-top:6px; }
+/* The cast editor is a whole widget elsewhere; inside a tab it is just a section. */
+.mmd-panel .mmd-cast-node .mmd-stamp { display:none; }
+
+/* Two globals, side by side. They are both short and neither needs 1380px, and stacked
+   they cost a whole box of node height on a screen that has none to spare. */
+.mmd-globals { display:flex; gap:7px; align-items:stretch; flex:0 0 auto; }
+.mmd-globals > .mmd-prompt { flex:1 1 0; min-width:0; }
+
+/* The cast on its own node: no timeline above it, so the box is the whole widget. */
+.mmd-cast-node { gap:0; }
+/* Not stretched to fill the node: the node is sized *from* this box, and a box that
+   grows to whatever height it is given makes that measurement always agree with itself. */
+.mmd-cast-node .mmd-prompt { flex:0 0 auto; }
+.mmd-cast-node .mmd-stamp { color:#4b5563; font-size:9px; font-variant-numeric:tabular-nums; }
+.mmd-hide { display:none; }
+
+/* The cast: one card per person, not a form. A face, a name, what stays the same and how
+   they sound sit on one card because they are one person -- spread across the block panel
+   and a list of numbered rows, nothing on screen said they were related at all. */
+.mmd-cast { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+.mmd-card { display:flex; gap:9px; align-items:flex-start; background:#1c1f26;
+  border:1px solid #2c313c; border-radius:8px; padding:8px; }
+.mmd-card-body { flex:1 1 auto; display:flex; flex-direction:column; gap:5px;
+  min-width:0; }
+.mmd-card-top { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.mmd-card input, .mmd-card select { background:#15181e; color:#e5e7eb;
+  border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit;
+  min-width:0; }
+.mmd-card input:hover, .mmd-card select:hover { border-color:#4b5563; }
+.mmd-card input:focus, .mmd-card select:focus { border-color:#6ea8c4; outline:none; }
+.mmd-card-name { flex:0 0 160px; font-weight:600; letter-spacing:.04em; }
+.mmd-card-desc, .mmd-card-description, .mmd-card-voice { width:100%; }
+.mmd-card-badge { flex:0 0 auto; background:#2f6d8f; color:#eaf2f6; border-radius:4px;
+  padding:2px 6px; font-size:10px; letter-spacing:.05em; }
+.mmd-card-subject { background:#2c313c; color:#9ca3af; }
+.mmd-card-from, .mmd-card-keep { flex:0 0 auto; display:flex; align-items:center;
+  gap:5px; color:#6b7280; font-size:11px; }
+.mmd-card-from select { max-width:210px; font-size:11px; cursor:pointer; }
+.mmd-card-keep select { font-size:11px; cursor:pointer; }
+.mmd-card-speak { align-self:flex-start; background:transparent; color:#8b93a1;
+  border:1px dashed #3a4150; border-radius:5px; padding:3px 8px; cursor:pointer;
+  font:inherit; font-size:11px; }
+.mmd-card-speak:hover { color:#e5e7eb; border-color:#6ea8c4; }
+
+/* The face is the point of the card: it answers "which one is S1?" by showing you. A
+   video cannot be a background image, so it stays an element and both wear the same rule. */
+.mmd-face { flex:0 0 auto; width:56px; height:56px; border-radius:6px; object-fit:cover;
+  background:#15181e center/cover no-repeat; border:1px solid #333a45; display:block; }
+.mmd-face-none { display:flex; align-items:center; justify-content:center; color:#4b5563;
+  font-size:16px; }
 .mmd-cast-drop { flex:0 0 auto; background:transparent; color:#6b7280; border:0;
   cursor:pointer; font:inherit; padding:2px 5px; border-radius:4px; }
 .mmd-cast-drop:hover { background:#3a2422; color:#f3d3cf; }
 .mmd-cast-empty { color:#6b7280; font-size:11px; padding:2px 0; }
+
+/* Who speaks a line, as faces. Two lit at once is the guide's (S1,S2) chorus, which the
+   old single-select could only reach through a mode and a box of comma-separated numbers. */
+/* Scoped through .mmd-seg-fields on purpose: the panel's own button rule is the red
+   "detach media" style, and it is one step more specific than a bare class. */
+.mmd-f-chips { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.mmd-seg-fields .mmd-f-chip { display:flex; align-items:center; gap:6px;
+  background:#1c1f26; border:1px solid #333a45; border-radius:99px;
+  padding:2px 10px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
+.mmd-seg-fields .mmd-f-chip:hover { background:#232833; border-color:#4b5563;
+  color:#cdd3dd; }
+.mmd-seg-fields .mmd-f-chip .mmd-face { width:22px; height:22px; border-radius:99px;
+  border:0; }
+.mmd-seg-fields .mmd-f-chip.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
+  background:#22303a; }
+.mmd-seg-fields .mmd-f-chip.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
+  background:#2a1e1d; }
+.mmd-f-nobody { color:#6b7280; font-size:11px; }
 .mmd-cast-add { align-self:flex-start; margin-top:5px; background:#2c313c; color:#e5e7eb;
   border:1px solid #3a4150; border-radius:5px; padding:4px 9px; cursor:pointer;
   font:inherit; font-size:11px; }
