@@ -1906,9 +1906,11 @@ export class TimelineEditor {
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
         + group("camera", cameras)
-        + group("dialogue", line)
         + group("file", subject
-            + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""));
+            + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""))
+        // Last, because it is the longest row and the only one that is usually absent --
+        // and because the cast it draws from sits directly below the panel.
+        + group("dialogue", line);
 
       const secsEl = this.segFields.querySelector(".mmd-f-secs");
       const lenEl = this.segFields.querySelector(".mmd-f-len");
