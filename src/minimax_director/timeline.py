@@ -97,8 +97,64 @@ class Reference:
         return f"<{self.kind.capitalize()} {self.index}>"
 
 
+def _speech(data: dict[str, Any]) -> bool:
+    """Whether this document has dialogue, stated or inferred.
+
+    A document written before the switch existed has no flag, so the answer is whether it
+    actually contains spoken words -- which is what the author would have said if asked.
+    """
+    stated = data.get("speech")
+    if isinstance(stated, bool):
+        return stated
+    shots = data.get("shots") if isinstance(data.get("shots"), list) else []
+    return any(
+        str(line.get("text", "")).strip()
+        for shot in shots if isinstance(shot, dict)
+        for line in (shot.get("lines") or []) if isinstance(line, dict)
+    )
+
+
+def _speakers(data: dict[str, Any]) -> list["Speaker"]:
+    """The cast, read from the document or reconstructed from an older one.
+
+    Before the cast existed, the voice lived on each line. Those documents are read by
+    taking the first description given for each number, which is the same speaker the
+    author meant and the same string the prompt used to carry.
+    """
+    listed = data.get("speakers")
+    if isinstance(listed, list) and listed:
+        found = []
+        for item in listed:
+            if not isinstance(item, dict):
+                continue
+            try:
+                number = int(item.get("id", 0))
+            except (TypeError, ValueError):
+                continue
+            if number > 0:
+                found.append(Speaker(id=number, voice=str(item.get("voice", ""))))
+        if found:
+            return sorted(found, key=lambda speaker: speaker.id)
+
+    recovered: dict[int, str] = {}
+    for shot in data.get("shots", []) if isinstance(data.get("shots"), list) else []:
+        for line in _lines(shot.get("lines") if isinstance(shot, dict) else None):
+            described = line.speaker.strip()
+            if not described:
+                continue
+            for number in line.numbers:
+                recovered.setdefault(number, described)
+    return [Speaker(id=number, voice=voice) for number, voice in sorted(recovered.items())]
+
+
 def _lines(data: Any) -> tuple["Line", ...]:
-    """Read the dialogue on a shot. Anything unreadable is dropped, never guessed at."""
+    """Read the dialogue on a shot. Anything unreadable is dropped, never guessed at.
+
+    A line with no words is kept rather than filtered out here. It contributes nothing to
+    the prompt -- `Line.render` returns an empty string -- but the editor writes one as
+    soon as a voice or a speaker is chosen, and dropping it at the door would leave `lint`
+    unable to say that the half-filled row exists.
+    """
     if not isinstance(data, list):
         return ()
     return tuple(
@@ -110,7 +166,7 @@ def _lines(data: Any) -> tuple["Line", ...]:
             language=str(item.get("language", "English")),
         )
         for item in data
-        if isinstance(item, dict) and str(item.get("text", "")).strip()
+        if isinstance(item, dict)
     )
 
 
@@ -138,6 +194,19 @@ def _sentences(parts: Iterable[str]) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class Speaker:
+    """One person in the clip: a number, and how they sound.
+
+    Kept on the document rather than on each line because a speaker is not a property of
+    one shot. Describing the same `S1` two different ways in two blocks used to be
+    possible, and to the model that reads as two people wearing one label.
+    """
+
+    id: int
+    voice: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class Line:
     """One spoken line, in the exact shape H3's guide asks for.
 
@@ -150,8 +219,9 @@ class Line:
     text: str
     """What is actually said. Never touched: punctuation and language are the author's."""
     speaker: str = ""
-    """Who says it, and how they sound -- age, gender, pitch, timbre, accent, on-screen or
-    not. The guide asks for enough to fix an identity the first time a speaker appears."""
+    """Legacy: the voice description, when it was written on the line rather than on the
+    document. Documents written before the cast existed still carry it, and it is used as
+    a fallback so they compile exactly as they did."""
     ids: str = "S1"
     """`S1`, or `S1,S2` for a group speaking together."""
     delivery: str = "says"
@@ -159,15 +229,30 @@ class Line:
     language: str = "English"
     """The `[English]` tag inside `<d>`. The words keep their own language; this names it."""
 
-    def render(self) -> str:
-        """`The woman (S1) says: <d>[English] ...</d>`"""
+    @property
+    def numbers(self) -> tuple[int, ...]:
+        """`"S1,S2"` -> `(1, 2)`. Unreadable ids fall back to speaker 1."""
+        found = []
+        for part in self.ids.split(","):
+            digits = "".join(character for character in part if character.isdigit())
+            if digits:
+                found.append(int(digits))
+        return tuple(found) or (1,)
+
+    def render(self, voice: str = "") -> str:
+        """`The woman (S1) says: <d>[English] ...</d>`
+
+        `voice` is the cast's description of whoever is speaking; the line's own is the
+        fallback for documents written before the cast existed.
+        """
         said = self.text.strip()
         if not said:
             return ""
-        who = " ".join(part for part in (self.speaker.strip(), f"({self.ids.strip() or 'S1'})") if part)
+        who = (voice or self.speaker).strip()
+        label = f"({self.ids.strip() or 'S1'})"
         verb = self.delivery.strip() or "says"
         tag = self.language.strip() or "English"
-        return f"{who} {verb}: <d>[{tag}] {said}</d>"
+        return f"{f'{who} {label}' if who else label} {verb}: <d>[{tag}] {said}</d>"
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,15 +276,22 @@ class Shot:
     def end(self) -> int:
         return self.start + self.length
 
-    def text(self) -> str:
+    def text(self, voices: dict[int, str] | None = None) -> str:
         """Prompt, the camera sentence, then the dialogue -- in that order.
 
         Dialogue comes last because the guide describes a shot as composition, action and
         camera first, with speech landing inside the scene that was just established.
+
+        `voices` is the document's cast, keyed by speaker number. Passing it in rather than
+        holding it here keeps a shot a thing that knows only about itself. `None` means the
+        clip has no dialogue, so the lines are skipped entirely.
         """
         prose = CAMERA_PROSE.get(self.camera, self.camera).strip()
         parts = [self.prompt.strip(), prose]
-        parts.extend(line.render() for line in self.lines)
+        for line in self.lines if voices is not None else ():
+            described = " and ".join(
+                filter(None, ((voices or {}).get(number, "") for number in line.numbers)))
+            parts.append(line.render(described))
         return _sentences(part for part in parts if part)
 
 
@@ -252,6 +344,15 @@ class Timeline:
     cues: list[Cue] = field(default_factory=list)
     moves: list[Move] = field(default_factory=list)
     references: list[Reference] = field(default_factory=list)
+    speakers: list[Speaker] = field(default_factory=list)
+    """Everyone who talks, described once. See `Speaker`."""
+    speech: bool = True
+    """Whether this clip has spoken dialogue at all.
+
+    Off, the editor hides the cast and the dialogue row, and nothing spoken is compiled --
+    a switch that only hid the controls would leave lines in the prompt with nothing on
+    screen saying so. Most clips have no dialogue, and the fields are noise until they do.
+    """
     music: str = ""
     """`non_diegetic_music`: score only the audience hears. Empty compiles to `N/A`.
 
@@ -305,6 +406,18 @@ class Timeline:
         for shot in self.shots:
             for line in shot.lines:
                 yield line.speaker
+        for speaker in self.speakers:
+            yield speaker.voice
+
+    def voices(self) -> dict[int, str] | None:
+        """The cast, keyed by number, ready for `Shot.text` -- or None when speech is off."""
+        if not self.speech:
+            return None
+        return {
+            speaker.id: speaker.voice.strip()
+            for speaker in self.speakers
+            if speaker.voice.strip()
+        }
 
     # -- serialisation -----------------------------------------------------
 
@@ -350,6 +463,8 @@ class Timeline:
                 )
                 for item in data.get("references", [])
             ],
+            speakers=_speakers(data),
+            speech=_speech(data),
             duration=int(data.get("duration", 0)),
             fps=int(data.get("fps", lattice.FPS)),
         )
@@ -369,6 +484,10 @@ class Timeline:
             "duration": self.duration,
             "global_prompt": self.global_prompt,
             "music": self.music,
+            "speech": self.speech,
+            "speakers": [
+                {"id": speaker.id, "voice": speaker.voice} for speaker in self.speakers
+            ],
             "shots": [
                 {
                     "start": shot.start,

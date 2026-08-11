@@ -93,12 +93,28 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 Select it and the panel below shows:
 
 - **SEGMENT PROMPT** — what happens in it
-- **start** — the frame it begins on
-- **seconds** and **frames** — two views of the same length; type in either, the other
-  follows. The document stores frames only.
-- **camera** — the move; CAMERA blocks only. A shot describes what is on screen, a
+- **TIMING** — `start`, `end` and `length` in frames, each with a read-only seconds
+  reading beside it. Frames are what the document stores and what H3 is given.
+- **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
-- **detach media** — removes the file without removing the block
+- **DIALOGUE** — MAIN blocks only: the `line`, the `speaker` who says it, `how` it is
+  said, and its `language`. Who the speakers *are* is written once in the CAST box
+  further down, not here — see below.
+- **FILE** — blocks carrying one: `used as`, `supplies`, `describes`, `keep`, and
+  **detach media**, which removes the file without removing the block
+
+### The cast
+
+**CAST** sits beside GLOBAL PROMPT: one row per person who speaks, holding a number and
+how they sound — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the voice
+from that description, so an empty one is a voice nobody chose and the linter says so.
+
+It lives on the document rather than on each line because a speaker is not a property of
+one shot. Describing the same `S1` two different ways in two blocks was possible before,
+and to the model that reads as two people sharing one label.
+
+Removing a speaker leaves the lines that used their number alone. Renumbering to close the
+gap would quietly reassign every later line to a different person.
 
 Double-click a block to edit its text in place. Drag its edges to resize, its middle to
 move, and drag a box over several to select them together. `Delete` removes the

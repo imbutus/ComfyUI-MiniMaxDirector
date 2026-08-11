@@ -287,6 +287,7 @@ def _join(parts: list[str]) -> str:
 def _description(timeline: Timeline) -> str:
     """The main body: every shot in playback order, camera and sound written into it."""
     tokens = attachments.tokens_by_segment(timeline)
+    voices = timeline.voices()
     shots = timeline.ordered_shots()
     moves = timeline.ordered_moves()
     cues = timeline.ordered_cues()
@@ -295,7 +296,7 @@ def _description(timeline: Timeline) -> str:
     preamble = timeline.global_prompt.strip()
 
     for number, shot in enumerate(shots, start=1):
-        body = _with_tokens(shot.text(), tokens.get(("shots", shot.start), []))
+        body = _with_tokens(shot.text(voices), tokens.get(("shots", shot.start), []))
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
         sound = " ".join(
             _sentence(_cue_text(cue, tokens)) for cue in _cues_in(cues, shot)

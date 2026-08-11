@@ -12,8 +12,11 @@ from minimax_director.timeline import Timeline
 
 
 def spoken(**line):
+    """A one-shot clip with the dialogue switch on -- the state the editor produces once
+    anything in the dialogue row has been touched."""
     return Timeline.from_dict({
         "duration": 124,
+        "speech": True,
         "shots": [{"start": 0, "length": 124, "prompt": "A woman sits at a desk.",
                    "lines": [line]}],
     })
@@ -331,3 +334,47 @@ def test_an_empty_shot_is_not_given_punctuation_around_nothing():
     timeline = Timeline.from_dict({
         "shots": [{"start": 0, "length": 24, "prompt": "   "}]})
     assert "[Shot 1]." not in compile_timeline(timeline).prompt
+
+
+def test_a_voice_with_nothing_said_is_a_warning_not_a_line():
+    timeline = spoken(text="", speaker="a young woman", ids="S2")
+    assert "<d>" not in compile_timeline(timeline).prompt
+    assert any("nothing is said" in text for text in messages(timeline))
+
+
+def test_an_untouched_dialogue_row_says_nothing_at_all():
+    timeline = spoken(text="")
+    assert not any("nothing is said" in text for text in messages(timeline))
+
+
+# -- the dialogue switch -----------------------------------------------------
+
+
+def test_speech_off_leaves_the_words_out():
+    timeline = Timeline.from_dict({
+        "duration": 124, "speech": False,
+        "speakers": [{"id": 1, "voice": "a woman"}],
+        "shots": [{"start": 0, "length": 124, "prompt": "A room.",
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert "<d>" not in prompt
+    assert "A room." in prompt
+
+
+def test_a_document_with_dialogue_defaults_to_speech_on():
+    """Written before the switch existed: the answer is what it already contains."""
+    assert Timeline.from_dict({"shots": [
+        {"start": 0, "length": 24, "prompt": "x",
+         "lines": [{"text": "Hello."}]}]}).speech
+
+
+def test_a_document_without_dialogue_defaults_to_speech_off():
+    assert not Timeline.from_dict({"shots": [
+        {"start": 0, "length": 24, "prompt": "x"}]}).speech
+
+
+def test_an_explicit_switch_beats_the_contents():
+    assert not Timeline.from_dict({"speech": False, "shots": [
+        {"start": 0, "length": 24, "prompt": "x",
+         "lines": [{"text": "Hello."}]}]}).speech

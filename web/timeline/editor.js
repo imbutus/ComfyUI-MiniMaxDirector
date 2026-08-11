@@ -16,7 +16,7 @@ import * as media from "./media.js";
 import { PRESETS, load as loadPreset } from "./presets.js";
 import {
   CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling,
-  emptyTimeline, formatSeconds,
+  emptyTimeline, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours,
   remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
 } from "./model.js";
@@ -82,6 +82,45 @@ const retentionOptions = (current) => {
   return names
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
     .join("");
+};
+
+/** The document's cast, as `{ number, voice }`, in speaking order. */
+const cast = (timeline) =>
+  (Array.isArray(timeline.speakers) ? timeline.speakers : [])
+    .map((speaker) => ({ number: Number(speaker.id) || 0, voice: String(speaker.voice || "") }))
+    .filter((speaker) => speaker.number > 0)
+    .sort((a, b) => a.number - b.number);
+
+/**
+ * The cast as `<option>`s, plus the two ways to leave the list.
+ *
+ * `several speakers…` is a mode rather than a value: picking it reveals a box for the
+ * numbers, because a group is the only case where one line has more than one speaker and
+ * a dropdown cannot express it.
+ */
+const speakerOptions = (timeline, ids) => {
+  const numbers = speakerNumbers(ids);
+  const many = numbers.length > 1;
+  const people = cast(timeline);
+  if (!people.some((person) => person.number === numbers[0])) {
+    people.push({ number: numbers[0], voice: "" });
+    people.sort((a, b) => a.number - b.number);
+  }
+
+  // A bare `1` in a dropdown is a riddle. Until a voice is described the entry says what
+  // it is instead, and the description replaces it the moment there is one.
+  const label = ({ number, voice }) => {
+    const short = voice.length > 34 ? `${voice.slice(0, 33)}…` : voice;
+    return short ? `${number} · ${short}` : `speaker ${number} — no voice described`;
+  };
+  const option = (value, text, on) =>
+    `<option value="${value}"${on ? " selected" : ""}>${text}</option>`;
+
+  return people.map((person) =>
+      option(String(person.number), label(person), !many && person.number === numbers[0]))
+    .join("")
+    + option("new", "new speaker", false)
+    + option("several", "several speakers…", many);
 };
 
 /** Anything a keystroke could legitimately be typed into. */
@@ -189,6 +228,17 @@ export class TimelineEditor {
         <div class="mmd-seg-fields"></div>
       </div>
 
+      <div class="mmd-prompt mmd-cast-box">
+        <label class="mmd-switch" title="Off, nobody speaks: the cast and the block's DIALOGUE row disappear and nothing spoken is compiled. Most clips have no dialogue, and the fields are noise until they do.">
+          <input class="mmd-speech" type="checkbox"> CAST
+          <span class="mmd-hint">who speaks in this clip, described once — a block's DIALOGUE row picks between them</span>
+        </label>
+        <div class="mmd-cast-body">
+          <div class="mmd-cast"></div>
+          <button class="mmd-cast-add">+ add speaker</button>
+        </div>
+      </div>
+
       <div class="mmd-prompt">
         <label>GLOBAL PROMPT</label>
         <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
@@ -209,6 +259,9 @@ export class TimelineEditor {
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
     this.scrub = this.root.querySelector(".mmd-scrub");
+    this.cast = this.root.querySelector(".mmd-cast");
+    this.castBox = this.root.querySelector(".mmd-cast-box");
+    this.speech = this.root.querySelector(".mmd-speech");
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.global = this.root.querySelector(".mmd-global");
@@ -337,6 +390,30 @@ export class TimelineEditor {
       const preset = PRESETS[Number(event.target.value)];
       event.target.value = "";
       if (preset) this.usePreset(preset);
+    });
+
+    this.speech.addEventListener("change", () => {
+      const timeline = this.read();
+      timeline.speech = this.speech.checked;
+      // The first speaker comes free: turning dialogue on and finding an empty list with
+      // nothing to pick in the block's picker is a switch that appears to do nothing.
+      if (timeline.speech && !cast(timeline).length) timeline.speakers = [{ id: 1, voice: "" }];
+      this.panelShape = null;
+      this.commit(timeline);
+      if (timeline.speech) this.cast.querySelector("input")?.focus();
+    });
+
+    this.root.querySelector(".mmd-cast-add")
+      .addEventListener("click", () => this.addSpeaker());
+    this.cast.addEventListener("input", (event) => {
+      const row = event.target.closest("[data-speaker]");
+      if (row) this.setVoice(Number(row.dataset.speaker), event.target.value);
+    });
+    this.cast.addEventListener("click", (event) => {
+      const row = event.target.closest("[data-speaker]");
+      if (row && event.target.closest(".mmd-cast-drop")) {
+        this.dropSpeaker(Number(row.dataset.speaker));
+      }
     });
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
@@ -511,6 +588,79 @@ export class TimelineEditor {
     const timeline = this.read();
     this.selection = { track, index: add(timeline, track, 1.5, this.playhead) };
     this.commit(timeline);
+  }
+
+  // -- the cast ------------------------------------------------------------
+
+  /** Add a speaker nobody has used, and put the caret in their description. */
+  addSpeaker() {
+    const timeline = this.read();
+    const taken = cast(timeline).map((person) => person.number);
+    const number = Math.max(0, ...taken) + 1;
+    timeline.speakers = [...cast(timeline).map((p) => ({ id: p.number, voice: p.voice })),
+                         { id: number, voice: "" }];
+    this.commit(timeline);
+    this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
+  }
+
+  /** Written live, like the prompt boxes: the block captions read from this too. */
+  setVoice(number, voice) {
+    this.snapshotTyping();
+    const timeline = this.read();
+    timeline.speakers = cast(timeline)
+      .map((person) => ({ id: person.number, voice: person.number === number ? voice : person.voice }));
+    this.write(timeline);
+  }
+
+  /**
+   * Remove a speaker from the cast.
+   *
+   * Lines keep their number. Renumbering to close the gap would silently reassign every
+   * line that used a later speaker -- a different person saying the same words -- and the
+   * only thing lost by leaving the gap is tidiness in a list nobody reads for its numbers.
+   */
+  dropSpeaker(number) {
+    const timeline = this.read();
+    const speaking = items(timeline, "shots")
+      .some((shot) => (shot.lines || []).some((line) =>
+        line.text?.trim() && speakerNumbers(line.ids).includes(number)));
+    if (speaking && !confirm(
+      `Speaker ${number} has lines. Remove them from the cast anyway?`)) return;
+
+    timeline.speakers = cast(timeline)
+      .filter((person) => person.number !== number)
+      .map((person) => ({ id: person.number, voice: person.voice }));
+    this.commit(timeline);
+  }
+
+  renderCast(timeline) {
+    const on = timeline.speech !== false;
+    if (this.speech !== document.activeElement) this.speech.checked = on;
+    this.castBox.classList.toggle("mmd-off", !on);
+
+    const people = cast(timeline);
+    const focused = document.activeElement;
+    const held = focused?.closest?.("[data-speaker]")?.dataset.speaker;
+
+    // Rebuilt only when the list itself changed. Redrawing it on every keystroke would
+    // take the caret out of the box being typed into.
+    const shape = people.map((person) => person.number).join(",");
+    if (this.castShape !== shape) {
+      this.castShape = shape;
+      this.cast.innerHTML = people.map((person) => `
+        <div class="mmd-cast-row" data-speaker="${person.number}">
+          <span class="mmd-cast-n">${person.number}</span>
+          <input type="text" placeholder="how they sound: age, gender, pitch, timbre, accent"
+                 value="${String(person.voice).replace(/"/g, "&quot;")}">
+          <button class="mmd-cast-drop" title="Remove from the cast">✕</button>
+        </div>`).join("")
+        || `<div class="mmd-cast-empty">No one speaks yet. Add a speaker to write dialogue.</div>`;
+    } else {
+      for (const person of people) {
+        const box = this.cast.querySelector(`[data-speaker="${person.number}"] input`);
+        if (box && String(person.number) !== held) box.value = person.voice;
+      }
+    }
   }
 
   /**
@@ -689,9 +839,16 @@ export class TimelineEditor {
     const timeline = this.read();
     const firstImage = kind === "image"
       && !items(timeline, track).some((entry) => entry.media?.kind === "image");
-    // Always a new segment, never a swap. Dropping the file onto whatever happened to
-    // be selected silently destroyed the media already there -- and "add" should add.
-    const target = add(timeline, track, 2, this.playhead);
+
+    // A selected block on the right track with nothing attached takes the file; anything
+    // else gets a block of its own. The rule used to be "always a new segment, never a
+    // swap", which came from dropping a file onto a block that already had one and
+    // destroying it -- a block with none has nothing to destroy, and a preset that says
+    // "one block waiting for an image" had no way to be true.
+    const empty = this.selection?.track === track
+      && items(timeline, track)[this.selection.index]
+      && !items(timeline, track)[this.selection.index].media;
+    const target = empty ? this.selection.index : add(timeline, track, 2, this.playhead);
     const item = items(timeline, track)[target];
     item.media = record;
     this.selection = { track, index: target };
@@ -1374,6 +1531,7 @@ export class TimelineEditor {
     }
 
     this.renderPlayhead(extent);
+    this.renderCast(timeline);
     this.renderPanel(timeline);
     this.renderSettings(timeline);
   }
@@ -1597,8 +1755,9 @@ export class TimelineEditor {
     // guards below exist so a render mid-keystroke does not eat what is being typed --
     // but when the selection itself changed, the field is about a different block and
     // keeping the old text is the bug, not the protection.
-    const changed = this.panelShape !==
-      `${track}:${index}:${item.media ? 1 : 0}:${item.media?.subject?.trim() ? 1 : 0}`;
+    const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${timeline.speech === false ? 0 : 1}`
+      + `:${item.media?.subject?.trim() ? 1 : 0}`
+      + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
 
     this.segPrompt.disabled = false;
     if (changed || document.activeElement !== this.segPrompt) {
@@ -1645,7 +1804,7 @@ export class TimelineEditor {
     // words go inside `<d>` with a language tag and nothing else, everything about the
     // speaker stays outside it. A shot with two people talking gets a block each -- which
     // is what a timeline is for.
-    const line = track !== "shots" ? "" : (() => {
+    const line = (track !== "shots" || timeline.speech === false) ? "" : (() => {
       const said = item.lines?.[0] || {};
       const value = (key, fallback = "") =>
         String(said[key] ?? fallback).replace(/"/g, "&quot;");
@@ -1653,12 +1812,13 @@ export class TimelineEditor {
       <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
         <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
       </label>
-      <label class="mmd-f-wide" title="Who is speaking and how they sound: age, gender, pitch, timbre, accent, on screen or off. H3 needs this the first time a voice appears.">voice
-        <input class="mmd-f-speaker" type="text" placeholder="a young woman with a quiet, breathy voice" value="${value("speaker")}">
+      <label title="Who says this line. The same speaker in two blocks is the same voice to the model, which is the whole reason the number exists.">speaker
+        <select class="mmd-f-ids">${speakerOptions(this.read(), said.ids)}</select>
       </label>
-      <label title="S1, or S1,S2 for a group speaking together.">id
-        <input class="mmd-f-ids" type="text" value="${value("ids", "S1")}">
-      </label>
+      ${speakerNumbers(said.ids).length < 2 ? "" : `
+      <label title="Which speakers say it together, by number.">numbers
+        <input class="mmd-f-ids-many" type="text" value="${speakerNumbers(said.ids).join(",")}">
+      </label>`}
       <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
         <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
       </label>
@@ -1680,9 +1840,16 @@ export class TimelineEditor {
       if (!target) return;
       const said = { ids: "S1", delivery: "says", language: "English", text: "",
                      ...(target.lines?.[0] || {}), ...change };
-      // A block with nothing said carries no dialogue at all, rather than an empty
-      // record the compiler would have to know to ignore.
-      target.lines = said.text.trim() ? [said] : [];
+
+      // Dropped only when nothing has been said *and* nothing has been decided. Keying it
+      // on the words alone meant picking a speaker or describing a voice before typing the
+      // line was silently discarded -- the control moved and the document did not.
+      // The compiler still ignores a line with no words, so a half-filled row cannot reach
+      // the prompt; it just survives long enough to be finished.
+      const blank = !said.text.trim() && !String(said.speaker || "").trim()
+        && speakerNumbers(said.ids).join() === "1"
+        && said.delivery === "says" && said.language === "English";
+      target.lines = blank ? [] : [said];
       if (!live) return this.commit(next);
       this.snapshotTyping();
       this.write(next);
@@ -1720,8 +1887,9 @@ export class TimelineEditor {
     // Rebuilding the markup on every render would destroy whatever is being typed, so
     // it happens only when the panel is actually a different shape. Everything else is
     // an in-place value update below.
-    const shape =
-      `${track}:${index}:${item.media ? 1 : 0}:${item.media?.subject?.trim() ? 1 : 0}`;
+    const shape = `${track}:${index}:${item.media ? 1 : 0}:${timeline.speech === false ? 0 : 1}`
+      + `:${item.media?.subject?.trim() ? 1 : 0}`
+      + `:${speakerNumbers(item.lines?.[0]?.ids).length > 1 ? 1 : 0}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       // Three groups on three rows: when a block moves, what is said in it, and what
@@ -1827,12 +1995,46 @@ export class TimelineEditor {
         if (value !== null && Number.isFinite(value)) setStart(value);
       });
       for (const [selector, key] of [
-        [".mmd-f-line", "text"], [".mmd-f-speaker", "speaker"], [".mmd-f-ids", "ids"],
+        [".mmd-f-line", "text"],
         [".mmd-f-delivery", "delivery"], [".mmd-f-language", "language"],
       ]) {
         this.segFields.querySelector(selector)
           ?.addEventListener("input", (e) => patchLine({ [key]: e.target.value }, true));
       }
+
+      this.segFields.querySelector(".mmd-f-ids")?.addEventListener("change", (e) => {
+        const chosen = e.target.value;
+        const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[0]?.ids);
+        if (chosen === "new") {
+          // Added to the cast as well, or the picker would offer a speaker the document
+          // does not have and the description would have nowhere to be written.
+          const people = cast(this.read());
+          const number = Math.max(0, ...people.map((person) => person.number)) + 1;
+          const next = this.read();
+          next.speakers = [...people.map((p) => ({ id: p.number, voice: p.voice })),
+                           { id: number, voice: "" }];
+          const target = items(next, track)[index];
+          if (target) {
+            target.lines = [{ ids: "", delivery: "says", language: "English", text: "",
+                              ...(target.lines?.[0] || {}), ids: speakerIds([number]) }];
+          }
+          this.commit(next);
+          this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
+          return;
+        } else if (chosen === "several") {
+          const taken = cast(this.read()).map((person) => person.number);
+          const second = [...taken, 0].find((n) => n !== current[0]) || Math.max(0, ...taken) + 1;
+          patchLine({ ids: speakerIds([...new Set([current[0], second])].sort((a, b) => a - b)) });
+        } else {
+          patchLine({ ids: speakerIds([Number(chosen)]) });
+        }
+        this.panelShape = null;
+        this.render();
+      });
+
+      this.segFields.querySelector(".mmd-f-ids-many")?.addEventListener("input", (e) => {
+        patchLine({ ids: speakerIds(speakerNumbers(e.target.value)) }, true);
+      });
       this.segFields.querySelector(".mmd-f-camera")
         ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
       this.segFields.querySelector(".mmd-f-subject")
@@ -1869,8 +2071,13 @@ export class TimelineEditor {
     // Undo and a switch of selection both land here; the row itself is built once.
     const said = item.lines?.[0] || {};
     put(".mmd-f-line", said.text ?? "");
-    put(".mmd-f-speaker", said.speaker ?? "");
-    put(".mmd-f-ids", said.ids ?? "S1");
+    // The picker's own labels come from other blocks, so they go stale as voices are
+    // described elsewhere. Rebuilt on every render, never while it is the focused control.
+    const picker = this.segFields.querySelector(".mmd-f-ids");
+    if (picker && picker !== document.activeElement) {
+      picker.innerHTML = speakerOptions(timeline, said.ids);
+    }
+    put(".mmd-f-ids-many", speakerNumbers(said.ids).join(","));
     put(".mmd-f-delivery", said.delivery ?? "says");
     put(".mmd-f-language", said.language ?? "English");
 

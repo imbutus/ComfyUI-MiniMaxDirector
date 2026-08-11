@@ -23,6 +23,10 @@ export const PRESETS = [
         "Live-action, a single medium close-up, soft even key light, shallow depth of "
         + "field, no cuts.",
       music: "",
+      speech: true,
+      speakers: [
+        { id: 1, voice: "A woman in her thirties with a warm, even voice at a measured pace" },
+      ],
       shots: [{
         start: 0,
         length: 192,
@@ -33,7 +37,6 @@ export const PRESETS = [
         lines: [{
           text: "MiniMax H3 makes the voice and the picture in one pass. Nothing here was "
               + "dubbed on afterwards.",
-          speaker: "A woman in her thirties with a warm, even voice at a measured pace",
           ids: "S1",
           delivery: "says",
           language: "English",
@@ -78,6 +81,11 @@ export const PRESETS = [
       duration: 192,
       global_prompt: "Live-action, two people at a table indoors, soft window light.",
       music: "",
+      speech: true,
+      speakers: [
+        { id: 1, voice: "A man in his fifties with a low, gravelled voice speaking slowly" },
+        { id: 2, voice: "A woman in her forties with a clear, level voice" },
+      ],
       shots: [
         {
           start: 0,
@@ -85,7 +93,6 @@ export const PRESETS = [
           prompt: "A man sits across a table, leaning forward on his elbows, looking off to the left of frame.",
           lines: [{
             text: "You already know what I am going to ask.",
-            speaker: "A man in his fifties with a low, gravelled voice speaking slowly",
             ids: "S1", delivery: "says", language: "English",
           }],
         },
@@ -95,7 +102,6 @@ export const PRESETS = [
           prompt: "the woman opposite him, hands flat on the table, meeting his eyes",
           lines: [{
             text: "And you already know the answer.",
-            speaker: "A woman in her forties with a clear, level voice",
             ids: "S2", delivery: "answers", language: "English",
           }],
         },
@@ -109,7 +115,7 @@ export const PRESETS = [
   },
   {
     name: "Reference shot",
-    hint: "One block waiting for an image — attach it, then fill describes and keep",
+    hint: "One block waiting for an image — select it, press Add Image, then fill describes and keep",
     build: () => ({
       duration: 124,
       global_prompt: "Live-action, cinematic, the look and grade of the reference kept throughout.",
@@ -128,5 +134,5 @@ export const PRESETS = [
 
 /** A preset as a full document, ready to write into the widget. */
 export function load(preset) {
-  return { version: 1, fps: FPS, references: [], ...preset.build() };
+  return { version: 1, fps: FPS, references: [], speakers: [], speech: false, ...preset.build() };
 }

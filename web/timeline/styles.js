@@ -75,6 +75,30 @@ const CSS = `
 .mmd-settings .mmd-f-locked > .mmd-mirror,
 .mmd-seg-fields .mmd-f-locked > .mmd-mirror { margin-left:0; }
 .mmd-f-locked > .mmd-unit { margin-left:0; }
+/* One box for everything about speech, with a switch on it. Off, the body goes away
+   entirely rather than greying out: a disabled form still asks to be read. */
+.mmd-switch { display:flex; align-items:center; gap:7px; cursor:pointer; }
+.mmd-switch input { margin:0; cursor:pointer; accent-color:#6ea8c4; }
+.mmd-cast-box.mmd-off .mmd-cast-body { display:none; }
+
+/* The cast: a short list of people, not a form. Numbered on the left so the number in the
+   block's picker and the number here are visibly the same thing. */
+.mmd-cast { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
+.mmd-cast-row { display:flex; align-items:center; gap:7px; }
+.mmd-cast-n { flex:0 0 auto; min-width:16px; text-align:center; font-size:11px;
+  color:#9ca3af; font-variant-numeric:tabular-nums; }
+.mmd-cast-row input { flex:1 1 auto; background:#1c1f26; color:#e5e7eb;
+  border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit; }
+.mmd-cast-row input:hover { border-color:#4b5563; }
+.mmd-cast-row input:focus { border-color:#6ea8c4; outline:none; }
+.mmd-cast-drop { flex:0 0 auto; background:transparent; color:#6b7280; border:0;
+  cursor:pointer; font:inherit; padding:2px 5px; border-radius:4px; }
+.mmd-cast-drop:hover { background:#3a2422; color:#f3d3cf; }
+.mmd-cast-empty { color:#6b7280; font-size:11px; padding:2px 0; }
+.mmd-cast-add { align-self:flex-start; margin-top:5px; background:#2c313c; color:#e5e7eb;
+  border:1px solid #3a4150; border-radius:5px; padding:4px 9px; cursor:pointer;
+  font:inherit; font-size:11px; }
+.mmd-cast-add:hover { background:#3d4553; border-color:#5a6474; }
 .mmd-prompt { transition:border-color .12s ease; }
 .mmd-prompt:focus-within { border-color:#3f5a6b; }
 .mmd-bar .mmd-preset { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
@@ -272,6 +296,9 @@ const CSS = `
 .mmd-seg-fields .mmd-f-wide { flex:1 1 320px; }
 .mmd-seg-fields .mmd-f-wide input { width:100%; }
 .mmd-seg-fields .mmd-f-retention { width:auto; }
+/* The cast list carries a description, not a code, so it needs the room to show one. */
+.mmd-seg-fields .mmd-f-ids { width:auto; max-width:240px; }
+.mmd-seg-fields .mmd-f-ids-many { width:70px; }
 /* The same weight the clip-settings row gives its units -- one look for one kind of
    thing, wherever it appears. */
 .mmd-seg-fields .mmd-unit { color:#e5e7eb; }

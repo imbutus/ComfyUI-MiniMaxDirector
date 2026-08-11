@@ -79,11 +79,28 @@ export function emptyTimeline() {
     fps: FPS,
     global_prompt: "",
     music: "",
+    // Off on a blank canvas: most clips have no dialogue, and the cast and the block's
+    // dialogue row are noise until one does.
+    speech: false,
+    speakers: [],
     shots: [],
     moves: [],
     cues: [],
     references: [],
   };
+}
+
+/** `"S1,S2"` -> `[1, 2]`. Anything unreadable is speaker 1. */
+export function speakerNumbers(ids) {
+  const found = String(ids || "")
+    .split(",")
+    .map((part) => parseInt(part.replace(/[^0-9]/g, ""), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return found.length ? found : [1];
+}
+
+export function speakerIds(numbers) {
+  return numbers.map((n) => `S${n}`).join(",");
 }
 
 /** Parse a widget payload; anything unreadable degrades to an empty timeline. */
@@ -97,6 +114,35 @@ export function parse(text) {
     for (const move of Array.isArray(timeline.moves) ? timeline.moves : []) {
       if (!move.camera) move.camera = "static";
     }
+
+    // Before the cast existed the voice was written on each line. Those documents are read
+    // by lifting the first description given for each number up to the document, which is
+    // the same speaker the author meant -- and mirrors what `_speakers` does in Python, so
+    // the editor and the compiler never disagree about who is in a clip.
+    // A document written before the switch existed answers for itself: it has dialogue
+    // if it contains spoken words. Mirrors `_speech` in timeline.py.
+    if (typeof timeline.speech !== "boolean") {
+      timeline.speech = (Array.isArray(timeline.shots) ? timeline.shots : [])
+        .some((shot) => (shot.lines || []).some((line) => String(line.text || "").trim()));
+    }
+
+    if (!Array.isArray(timeline.speakers)) timeline.speakers = [];
+    if (!timeline.speakers.length) {
+      const found = new Map();
+      for (const shot of Array.isArray(timeline.shots) ? timeline.shots : []) {
+        for (const line of shot.lines || []) {
+          const described = String(line.speaker || "").trim();
+          if (!described) continue;
+          for (const number of speakerNumbers(line.ids)) {
+            if (!found.has(number)) found.set(number, described);
+          }
+        }
+      }
+      timeline.speakers = [...found.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([id, voice]) => ({ id, voice }));
+    }
+
     return timeline;
   } catch {
     return emptyTimeline();

@@ -102,21 +102,36 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
     for the identifying detail the *first* time a speaker appears, and a clip whose S1 is
     introduced in shot three has two shots of an unknown voice before it.
     """
-    introduced: set[str] = set()
+    voices = timeline.voices()
+    # Nothing to check on a clip with the dialogue switch off: the lines are not compiled,
+    # so an unfinished one is a control left as it was found rather than a mistake.
+    if voices is None:
+        return
+
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         for line in shot.lines:
-            ids = {part.strip() for part in line.ids.split(",") if part.strip()}
-            described = bool(line.speaker.strip())
-            if described:
-                introduced |= ids
+            # Who is talking, with nothing to say. The voice and the speaker describe the
+            # performer; without words there is no performance, and the block compiles as
+            # if the row had never been filled in -- which looks like the editor ignoring
+            # you rather than a sentence waiting to be written.
+            if not line.text.strip():
+                if line.numbers != (1,) or any(voices.get(n) for n in line.numbers):
+                    yield Issue(
+                        "warning",
+                        f"[Shot {number}] has a voice but nothing is said. Type the words "
+                        f"into `line`, or the dialogue is left out of the prompt.",
+                    )
                 continue
-            unknown = sorted(ids - introduced)
+            unknown = [
+                f"S{n}" for n in line.numbers
+                if not voices.get(n) and not line.speaker.strip()
+            ]
             if not unknown:
                 continue
             yield Issue(
                 "warning",
                 f"[Shot {number}] {_join_ids(unknown)} speaks with no description, so the "
-                f"voice is whatever the model picks. Say who it is on the block: age, "
+                f"voice is whatever the model picks. Describe them in the cast: age, "
                 f"gender, pitch, timbre, accent.",
             )
 
