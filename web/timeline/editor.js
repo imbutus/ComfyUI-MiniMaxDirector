@@ -1639,7 +1639,7 @@ export class TimelineEditor {
   /** The settings row, built once. */
   buildSettings() {
     this.settings.innerHTML = `
-      <label title="Length of the whole piece, in frames. H3 only accepts 17n+5, so the arrows step a whole lattice slot."><span class="mmd-key">duration</span><input class="s-duration" type="number" min="${PHASE}" step="${STRIDE}"><span class="mmd-unit">frames</span></label>
+      <label title="Length of the whole piece, in frames. H3 only accepts 17n+5, so the arrows step a whole lattice slot."><span class="mmd-key">duration</span><input class="s-duration" type="number" min="${PHASE}" step="${STRIDE}"><span class="mmd-unit">f</span></label>
       <label class="mmd-f-locked" title="The same length in seconds. Read-only: the lattice is counted in frames, and a rounded second typed back would not land on it."><span class="mmd-key">=</span><span class="mmd-mirror s-duration-secs"></span><span class="mmd-unit">s</span></label>
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label title="Output width, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
@@ -1909,11 +1909,11 @@ export class TimelineEditor {
         !body.trim() ? "" : `<div class="mmd-f-group"><span class="mmd-f-tag">${tag}</span>${body}</div>`;
 
       this.segFields.innerHTML = group("timing", `
-        <label title="The first frame of this block -- frames are the unit the document stores.">start <input class="mmd-f-start" type="number" min="0" step="1"><span class="mmd-unit">frames</span></label>
+        <label title="The first frame of this block -- frames are the unit the document stores.">start <input class="mmd-f-start" type="number" min="0" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The same instant in seconds. Read-only: frames are what H3 is given, and a rounded second typed back would move the block."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-start-secs"></span><span class="mmd-unit">s</span></label>
-        <label title="The frame this block ends on. Editing it moves the end, not the start -- the same as dragging the right grip.">end <input class="mmd-f-end" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
+        <label title="The frame this block ends on. Editing it moves the end, not the start -- the same as dragging the right grip.">end <input class="mmd-f-end" type="number" min="1" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The end in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-end-secs"></span><span class="mmd-unit">s</span></label>
-        <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">frames</span></label>
+        <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
         + group("camera", cameras)
         + group("file", subject

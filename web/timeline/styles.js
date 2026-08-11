@@ -74,7 +74,12 @@ const CSS = `
 .mmd-f-locked > .mmd-key { margin:0 4px; }
 .mmd-settings .mmd-f-locked > .mmd-mirror,
 .mmd-seg-fields .mmd-f-locked > .mmd-mirror { margin-left:0; }
-.mmd-f-locked > .mmd-unit { margin-left:0; }
+/* A unit still needs the space a written measurement has: "36 f", not "36f". Only the
+   spinner's box sat against the number before, which read as part of it. */
+.mmd-settings label > .mmd-unit, .mmd-seg-fields label > .mmd-unit { margin-left:4px; }
+/* Except after an equals sign, where the space around the sign is the whole reading. */
+.mmd-settings .mmd-f-locked > .mmd-unit,
+.mmd-seg-fields .mmd-f-locked > .mmd-unit { margin-left:0; }
 /* One box for everything about speech, with a switch on it. Off, the body goes away
    entirely rather than greying out: a disabled form still asks to be read. */
 .mmd-switch { display:flex; align-items:center; gap:7px; cursor:pointer; }
