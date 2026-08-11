@@ -91,6 +91,12 @@ const CSS = `
   border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit; }
 .mmd-cast-row input:hover { border-color:#4b5563; }
 .mmd-cast-row input:focus { border-color:#6ea8c4; outline:none; }
+.mmd-cast-is { flex:0 0 auto; display:flex; align-items:center; gap:5px; color:#6b7280;
+  font-size:11px; }
+.mmd-cast-is select { background:#1c1f26; color:#e5e7eb; border:1px solid #333a45;
+  border-radius:5px; padding:3px 5px; font:inherit; font-size:11px; max-width:230px;
+  cursor:pointer; }
+.mmd-cast-is select:hover { border-color:#4b5563; }
 .mmd-cast-drop { flex:0 0 auto; background:transparent; color:#6b7280; border:0;
   cursor:pointer; font:inherit; padding:2px 5px; border-radius:4px; }
 .mmd-cast-drop:hover { background:#3a2422; color:#f3d3cf; }

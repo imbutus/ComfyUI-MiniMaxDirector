@@ -132,7 +132,12 @@ def _speakers(data: dict[str, Any]) -> list["Speaker"]:
             except (TypeError, ValueError):
                 continue
             if number > 0:
-                found.append(Speaker(id=number, voice=str(item.get("voice", ""))))
+                try:
+                    subject = int(item.get("subject", 0) or 0)
+                except (TypeError, ValueError):
+                    subject = 0
+                found.append(Speaker(
+                    id=number, voice=str(item.get("voice", "")), subject=max(0, subject)))
         if found:
             return sorted(found, key=lambda speaker: speaker.id)
 
@@ -204,6 +209,15 @@ class Speaker:
 
     id: int
     voice: str = ""
+    subject: int = 0
+    """The `<Subject n>` this person is, when they were defined by an attached file.
+
+    The guide: `<Subject N>` identifies the referenced subject, `(Sx)` the actual speaker,
+    and when the subject speaks you write both -- `<Subject 1> (S1) says: ...`. Only a
+    voice description without one, which is the form for a speaker no reference defines.
+
+    Zero means unbound. The number is the subject's index, not the picture's: a photograph
+    is not who is talking, the person lifted out of it is."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -486,7 +500,8 @@ class Timeline:
             "music": self.music,
             "speech": self.speech,
             "speakers": [
-                {"id": speaker.id, "voice": speaker.voice} for speaker in self.speakers
+                {"id": speaker.id, "voice": speaker.voice, "subject": speaker.subject}
+                for speaker in self.speakers
             ],
             "shots": [
                 {

@@ -378,3 +378,36 @@ def test_an_explicit_switch_beats_the_contents():
     assert not Timeline.from_dict({"speech": False, "shots": [
         {"start": 0, "length": 24, "prompt": "x",
          "lines": [{"text": "Hello."}]}]}).speech
+
+
+def test_a_speaker_bound_to_a_subject_is_written_as_the_guide_asks():
+    """`<Subject 1> (S1) says: …` — the picture and the voice are one person."""
+    timeline = Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "speakers": [{"id": 1, "voice": "a man with a low voice", "subject": 1}],
+        "shots": [{"start": 0, "length": 124, "prompt": "A man at a desk.",
+                   "media": {"kind": "image", "filename": "f.png", "description": "a face sheet",
+                             "subject": "the man's face"},
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+    assert "<Subject 1> (S1) says: <d>[English] Hello.</d>" in compile_timeline(timeline).prompt
+
+
+def test_an_unbound_speaker_still_uses_their_description():
+    timeline = Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "speakers": [{"id": 1, "voice": "a man with a low voice"}],
+        "shots": [{"start": 0, "length": 124, "prompt": "A man at a desk.",
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+    assert "a man with a low voice (S1) says:" in compile_timeline(timeline).prompt
+
+
+def test_a_binding_to_a_subject_that_does_not_exist_is_ignored():
+    timeline = Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "speakers": [{"id": 1, "voice": "a man with a low voice", "subject": 4}],
+        "shots": [{"start": 0, "length": 124, "prompt": "A man at a desk.",
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+    assert "a man with a low voice (S1) says:" in compile_timeline(timeline).prompt

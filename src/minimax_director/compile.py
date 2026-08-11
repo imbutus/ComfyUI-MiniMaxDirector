@@ -287,7 +287,7 @@ def _join(parts: list[str]) -> str:
 def _description(timeline: Timeline) -> str:
     """The main body: every shot in playback order, camera and sound written into it."""
     tokens = attachments.tokens_by_segment(timeline)
-    voices = timeline.voices()
+    voices = _voices(timeline)
     shots = timeline.ordered_shots()
     moves = timeline.ordered_moves()
     cues = timeline.ordered_cues()
@@ -393,6 +393,26 @@ def _moves_in(moves: list[Move], shot: Shot) -> list[Move]:
 
 def _lands_in(move: Move, shots: list[Shot]) -> bool:
     return any(move.start < shot.end and move.end > shot.start for shot in shots)
+
+
+def _voices(timeline: Timeline) -> dict[int, str] | None:
+    """What to print before each speaker's `(Sx)`.
+
+    A description for a speaker no reference defines, and the subject's own token for one
+    that a file does: the guide asks for `<Subject 1> (S1) says: ...` when the subject on
+    screen is the one talking, so that the picture and the voice are known to be the same
+    person rather than two things that happen to be in the same shot.
+    """
+    voices = timeline.voices()
+    if voices is None:
+        return None
+
+    subjects = {subject.index: subject.token for subject in attachments.subjects(timeline)}
+    for speaker in timeline.speakers:
+        token = subjects.get(speaker.subject)
+        if token:
+            voices[speaker.id] = token
+    return voices
 
 
 def _timecode(frame: int, fps: int) -> str:

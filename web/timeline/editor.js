@@ -84,10 +84,40 @@ const retentionOptions = (current) => {
     .join("");
 };
 
+/**
+ * The `<Subject n>` labels this document defines, in the order the compiler numbers them.
+ *
+ * Mirrors `attachments.subjects` in Python: one per attached file whose `supplies` names
+ * something, images before videos. Written twice rather than shared because the two run in
+ * different languages, and checked against each other by the compiled prompt itself.
+ */
+const subjectsOf = (timeline) => {
+  const found = [];
+  for (const shot of items(timeline, "shots")) {
+    if (shot.media?.kind === "image" && String(shot.media.subject || "").trim()) {
+      found.push({ index: found.length + 1, name: shot.media.subject.trim() });
+    }
+  }
+  for (const shot of items(timeline, "shots")) {
+    if (shot.media?.kind === "video" && String(shot.media.subject || "").trim()) {
+      found.push({ index: found.length + 1, name: shot.media.subject.trim() });
+    }
+  }
+  return found;
+};
+
+/** A cast entry back in the shape the document stores. */
+const asRecord = (person) =>
+  ({ id: person.number, voice: person.voice, subject: person.subject || 0 });
+
 /** The document's cast, as `{ number, voice }`, in speaking order. */
 const cast = (timeline) =>
   (Array.isArray(timeline.speakers) ? timeline.speakers : [])
-    .map((speaker) => ({ number: Number(speaker.id) || 0, voice: String(speaker.voice || "") }))
+    .map((speaker) => ({
+      number: Number(speaker.id) || 0,
+      voice: String(speaker.voice || ""),
+      subject: Number(speaker.subject) || 0,
+    }))
     .filter((speaker) => speaker.number > 0)
     .sort((a, b) => a.number - b.number);
 
@@ -102,7 +132,11 @@ const speakerOptions = (timeline, ids) => {
   const numbers = speakerNumbers(ids);
   const many = numbers.length > 1;
   const people = cast(timeline);
-  if (!people.some((person) => person.number === numbers[0])) {
+  // A line can name a speaker the cast no longer has -- removing someone leaves the lines
+  // that quoted them alone, on purpose. The row stays, saying so: dropping it would show a
+  // picker that disagrees with the document it is editing.
+  const orphan = !people.some((person) => person.number === numbers[0]);
+  if (orphan) {
     people.push({ number: numbers[0], voice: "" });
     people.sort((a, b) => a.number - b.number);
   }
@@ -111,16 +145,23 @@ const speakerOptions = (timeline, ids) => {
   // it is instead, and the description replaces it the moment there is one.
   const label = ({ number, voice }) => {
     const short = voice.length > 34 ? `${voice.slice(0, 33)}…` : voice;
-    return short ? `${number} · ${short}` : `speaker ${number} — no voice described`;
+    if (short) return `${number} · ${short}`;
+    return orphan && number === numbers[0]
+      ? `speaker ${number} — not in the cast`
+      : `speaker ${number} — no voice described`;
   };
   const option = (value, text, on) =>
     `<option value="${value}"${on ? " selected" : ""}>${text}</option>`;
+
+  // A group needs two people to be a group. Offered with a cast of one it produced a line
+  // spoken by a speaker the clip does not have.
+  const grouping = many || cast(timeline).length > 1;
 
   return people.map((person) =>
       option(String(person.number), label(person), !many && person.number === numbers[0]))
     .join("")
     + option("new", "new speaker", false)
-    + option("several", "several speakers…", many);
+    + (grouping ? option("several", "several speakers…", many) : "");
 };
 
 /** Anything a keystroke could legitimately be typed into. */
@@ -407,7 +448,15 @@ export class TimelineEditor {
       .addEventListener("click", () => this.addSpeaker());
     this.cast.addEventListener("input", (event) => {
       const row = event.target.closest("[data-speaker]");
-      if (row) this.setVoice(Number(row.dataset.speaker), event.target.value);
+      if (row && event.target.tagName === "INPUT") {
+        this.setVoice(Number(row.dataset.speaker), event.target.value);
+      }
+    });
+    this.cast.addEventListener("change", (event) => {
+      const row = event.target.closest("[data-speaker]");
+      if (row && event.target.classList.contains("mmd-cast-subject")) {
+        this.bindSpeaker(Number(row.dataset.speaker), Number(event.target.value));
+      }
     });
     this.cast.addEventListener("click", (event) => {
       const row = event.target.closest("[data-speaker]");
@@ -597,19 +646,42 @@ export class TimelineEditor {
     const timeline = this.read();
     const taken = cast(timeline).map((person) => person.number);
     const number = Math.max(0, ...taken) + 1;
-    timeline.speakers = [...cast(timeline).map((p) => ({ id: p.number, voice: p.voice })),
-                         { id: number, voice: "" }];
+    timeline.speakers = [...cast(timeline).map(asRecord), { id: number, voice: "" }];
     this.commit(timeline);
     this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
   }
 
-  /** Written live, like the prompt boxes: the block captions read from this too. */
+  /** Written live, like the prompt boxes: the block's speaker picker reads from this. */
   setVoice(number, voice) {
     this.snapshotTyping();
     const timeline = this.read();
-    timeline.speakers = cast(timeline)
-      .map((person) => ({ id: person.number, voice: person.number === number ? voice : person.voice }));
+    timeline.speakers = cast(timeline).map((person) =>
+      ({ ...asRecord(person), voice: person.number === number ? voice : person.voice }));
     this.write(timeline);
+    this.paintPicker(timeline);
+  }
+
+  /**
+   * Refresh the block's speaker list without a render.
+   *
+   * A full render would rebuild the cast row being typed into and take the caret with it,
+   * which is why `setVoice` only writes -- but the picker names the person whose
+   * description is being typed, and left alone it went on calling them undescribed.
+   */
+  paintPicker(timeline) {
+    const picker = this.segFields.querySelector(".mmd-f-ids");
+    if (!picker || picker === document.activeElement || !this.selection) return;
+    const { track, index } = this.selection;
+    const ids = items(timeline, track)[index]?.lines?.[0]?.ids;
+    picker.innerHTML = speakerOptions(timeline, ids);
+  }
+
+  /** Point a cast member at a `<Subject n>`, or at nobody. */
+  bindSpeaker(number, subject) {
+    const timeline = this.read();
+    timeline.speakers = cast(timeline).map((person) =>
+      ({ ...asRecord(person), subject: person.number === number ? subject : person.subject }));
+    this.commit(timeline);
   }
 
   /**
@@ -625,11 +697,12 @@ export class TimelineEditor {
       .some((shot) => (shot.lines || []).some((line) =>
         line.text?.trim() && speakerNumbers(line.ids).includes(number)));
     if (speaking && !confirm(
-      `Speaker ${number} has lines. Remove them from the cast anyway?`)) return;
+      `Speaker ${number} has lines. Remove them from the cast anyway? The lines keep the `
+      + `number and the picker will show it as "not in the cast".`)) return;
 
     timeline.speakers = cast(timeline)
       .filter((person) => person.number !== number)
-      .map((person) => ({ id: person.number, voice: person.voice }));
+      .map(asRecord);
     this.commit(timeline);
   }
 
@@ -644,14 +717,31 @@ export class TimelineEditor {
 
     // Rebuilt only when the list itself changed. Redrawing it on every keystroke would
     // take the caret out of the box being typed into.
-    const shape = people.map((person) => person.number).join(",");
+    const shape = people.map((person) => `${person.number}/${person.subject}`).join(",")
+      + `|${subjectsOf(timeline).map((subject) => subject.name).join("|")}`;
     if (this.castShape !== shape) {
       this.castShape = shape;
+      // The `is` picker only exists once something is there to point at. A clip with no
+      // named subjects has nothing to bind a voice to, and an empty dropdown on every row
+      // would be a question with no answers.
+      const subjects = subjectsOf(timeline);
+      const bind = (person) => !subjects.length ? "" : `
+          <label class="mmd-cast-is" title="Bind this voice to a person defined by an attached file. The guide writes a speaking subject as <Subject 1> (S1), so the picture and the voice are known to be the same person rather than two things in one shot.">is
+            <select class="mmd-cast-subject">
+              <option value="0"${person.subject ? "" : " selected"}>— nobody in particular</option>
+              ${subjects.map((subject) => {
+                const short = subject.name.length > 30 ? `${subject.name.slice(0, 29)}…` : subject.name;
+                return `<option value="${subject.index}"${person.subject === subject.index ? " selected" : ""}>&lt;Subject ${subject.index}&gt; ${short}</option>`;
+              }).join("")}
+            </select>
+          </label>`;
+
       this.cast.innerHTML = people.map((person) => `
         <div class="mmd-cast-row" data-speaker="${person.number}">
           <span class="mmd-cast-n">${person.number}</span>
           <input type="text" placeholder="how they sound: age, gender, pitch, timbre, accent"
                  value="${String(person.voice).replace(/"/g, "&quot;")}">
+          ${bind(person)}
           <button class="mmd-cast-drop" title="Remove from the cast">✕</button>
         </div>`).join("")
         || `<div class="mmd-cast-empty">No one speaks yet. Add a speaker to write dialogue.</div>`;
@@ -2013,8 +2103,7 @@ export class TimelineEditor {
           const people = cast(this.read());
           const number = Math.max(0, ...people.map((person) => person.number)) + 1;
           const next = this.read();
-          next.speakers = [...people.map((p) => ({ id: p.number, voice: p.voice })),
-                           { id: number, voice: "" }];
+          next.speakers = [...people.map(asRecord), { id: number, voice: "" }];
           const target = items(next, track)[index];
           if (target) {
             target.lines = [{ ids: "", delivery: "says", language: "English", text: "",
@@ -2024,8 +2113,11 @@ export class TimelineEditor {
           this.cast.querySelector(`[data-speaker="${number}"] input`)?.focus();
           return;
         } else if (chosen === "several") {
+          // Paired with somebody who exists. Inventing the next number would name a
+          // speaker the cast has never heard of.
           const taken = cast(this.read()).map((person) => person.number);
-          const second = [...taken, 0].find((n) => n !== current[0]) || Math.max(0, ...taken) + 1;
+          const second = taken.find((n) => n !== current[0]);
+          if (second === undefined) return;
           patchLine({ ids: speakerIds([...new Set([current[0], second])].sort((a, b) => a - b)) });
         } else {
           patchLine({ ids: speakerIds([Number(chosen)]) });
