@@ -149,7 +149,12 @@ applies to all of them: `camera` / `amplitude` / `speed` when they are all camer
 `enter with` when they are all shots, `used as` and `keep file` when they all carry a file
 of one kind. Each picker starts on *leave as is* and writes nothing until you choose.
 
-Two actions live there as well:
+**Timing** is always there, whatever the mix, because a frame count means the same thing
+on every track: `same length` gives every selected block one length (each still stopped by
+its own neighbours), and **close the gaps** butts them up against each other, track by
+track, leaving the first of each where it is.
+
+Two more actions, for shots:
 
 - **merge into one shot** — adjacent shots become one, prose joined, dialogue kept in the
   order it was heard. This is what MiniMax asks for when a cut only changes the distance

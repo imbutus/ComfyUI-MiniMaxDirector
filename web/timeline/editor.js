@@ -1872,11 +1872,19 @@ export class TimelineEditor {
             ${retentionsFor(files).map((v) => `<option value="${v}">${v}</option>`).join("")}
           </select>
         </label>`)
+      + group("timing", `
+        <label title="Give every selected block the same length. Each is still stopped by the block after it on its own track -- two segments cannot describe the same frames.">same length
+          <input class="mmd-b-length" type="number" min="1" step="1" placeholder="frames">
+          <span class="mmd-unit">f</span>
+        </label>
+        <button class="mmd-f-bulk mmd-b-close"
+          title="Move the selected blocks up against the one before them, track by track, so there is no gap between them. The first of each track stays where it is."
+          >close the gaps</button>`)
       + group("do", `
         ${only("moves") || only("shots") || files ? "" : `
-        <span class="mmd-f-note">Nothing to set: these blocks are on different tracks, or
-        do not all carry a file of one kind. Only what applies to every selected block is
-        offered.</span>`}
+        <span class="mmd-f-note">These blocks are on different tracks, or do not all carry
+        a file of one kind, so only timing is offered: a shot's transition means nothing to
+        an audio cue.</span>`}
         <button class="mmd-f-bulk mmd-b-merge"${joined ? "" : " disabled"}
           title="${joined
             ? "One shot instead of several. The prose is joined and the span is kept -- which is what MiniMax asks for when a cut only changes the distance or the angle."
@@ -1919,10 +1927,55 @@ export class TimelineEditor {
       if (target.media) target.media = { ...target.media, retention: value };
     });
 
+    // Length is typed, so it commits on change rather than per keystroke: a half-typed
+    // "1" would resize every selected block to one frame on the way to 120.
+    this.segFields.querySelector(".mmd-b-length")?.addEventListener("change", (event) => {
+      const wanted = Math.round(Number(event.target.value));
+      if (!Number.isFinite(wanted) || wanted < 1) return;
+      const next = this.read();
+      for (const { track, index } of this.selected) {
+        const target = items(next, track)[index];
+        if (!target) continue;
+        // The same ceiling a typed length obeys on one block: neighbours still bound it.
+        const room = neighbours(next, track, index)[1] - target.start;
+        target.length = Math.max(1, Math.min(wanted, room));
+        stretchFor(next, target);
+      }
+      event.target.value = "";
+      this.panelShape = null;
+      this.commit(next);
+    });
+
+    this.segFields.querySelector(".mmd-b-close")
+      ?.addEventListener("click", () => this.closeGaps());
+
     this.segFields.querySelector(".mmd-b-merge")
       ?.addEventListener("click", () => this.mergeShots());
     this.segFields.querySelector(".mmd-b-carry")
       ?.addEventListener("click", () => this.carryThrough());
+  }
+
+  /**
+   * Butt the selected blocks up against the one before them, track by track.
+   *
+   * The first block of each track stays where it is -- something has to, or the whole
+   * selection would slide to zero and the answer would depend on which block you happened
+   * to click first. Lengths are untouched: this closes gaps, it does not resize anything.
+   */
+  closeGaps() {
+    const next = this.read();
+    for (const { key: track } of TRACKS) {
+      const chosen = this.selected
+        .filter((entry) => entry.track === track)
+        .map((entry) => items(next, track)[entry.index])
+        .filter(Boolean)
+        .sort((a, b) => a.start - b.start);
+      for (let at = 1; at < chosen.length; at += 1) {
+        chosen[at].start = chosen[at - 1].start + chosen[at - 1].length;
+      }
+    }
+    this.panelShape = null;
+    this.commit(next);
   }
 
   /**
