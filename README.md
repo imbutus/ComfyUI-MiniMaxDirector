@@ -124,6 +124,8 @@ it from the Workflows sidebar. It wires up:
 
 - **MiniMax Director** — the timeline you work in.
 - **MiniMax Director — Prompt** — the compiled prompt, beside it, updating as you type.
+- **report** — the linter's findings, under it. Almost every "why did it do that" is
+  answered by those two panels.
 - the loaders, sampler, both VAE decodes, `CreateVideo` and `SaveVideo` — everything
   needed to get an mp4 with sound out the other end.
 

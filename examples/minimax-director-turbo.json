@@ -1,8 +1,8 @@
 {
   "id": "minimax-director-example",
   "revision": 0,
-  "last_node_id": 19,
-  "last_link_id": 21,
+  "last_node_id": 20,
+  "last_link_id": 22,
   "nodes": [
     {
       "id": 1,
@@ -268,7 +268,9 @@
           "name": "report",
           "type": "STRING",
           "slot_index": 4,
-          "links": []
+          "links": [
+            22
+          ]
         }
       ],
       "properties": {
@@ -668,6 +670,34 @@
       },
       "widgets_values": [],
       "title": "prompt — what the model actually receives"
+    },
+    {
+      "id": 20,
+      "type": "PreviewAny",
+      "pos": [
+        2380,
+        876
+      ],
+      "size": [
+        520,
+        300
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 22
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "report — what the linter found"
     }
   ],
   "links": [
@@ -828,6 +858,14 @@
       6,
       2,
       17,
+      0,
+      "STRING"
+    ],
+    [
+      22,
+      6,
+      4,
+      20,
       0,
       "STRING"
     ]

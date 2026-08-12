@@ -381,8 +381,9 @@ own line **above** `[Shot 1]` rather than folded into it.
 | `length` | frames, after rounding up to the lattice |
 | `report` | linter findings: unmentioned references, gaps, overlaps, padding added |
 
-Wire `prompt` and `report` to a preview node while you are learning the tool. Almost
-every "why did it do that" question is answered by looking at them.
+Both are already wired in the shipped workflow: the compiled prompt to the right of the
+director, the linter's findings underneath it. Almost every "why did it do that" question
+is answered by looking at those two panels.
 
 `report` also carries the checks MiniMax's guides hand out for free, each a warning and
 never a refusal:
