@@ -12,7 +12,7 @@ import { parse, serialize } from "./timeline/model.js";
 import { TimelineEditor } from "./timeline/editor.js";
 import { CastEditor, EMPTY as EMPTY_CAST, parseCast } from "./timeline/cast.js";
 import { install } from "./timeline/styles.js";
-import { BUILD } from "./build.js";
+import { BUILD, VERSION } from "./build.js";
 
 const NODE = "MiniMaxDirector";
 const PROMPT_NODE = "MiniMaxDirectorPrompt";
@@ -201,6 +201,9 @@ function attach(node) {
     inside.onChange = () => {
       editor.schedulePreview();
       editor.paintPicker(editor.read());
+      // The blocks carry the cast now -- a transfer chip names the card and who receives
+      // it -- so a cast edit has to reach the timeline, not just the prompt.
+      editor.render();
       editor.paintTabCount(parseCast(cast.value).cards.length);
       fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
     };
@@ -257,6 +260,7 @@ function attach(node) {
     Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
   ]);
 
+  stampTitle(node);
   growWithPrompts(node, editor);
   fitAfterLoad(node, editor);
 
@@ -565,7 +569,9 @@ function fitAfterLoad(node, editor) {
  * Only on load. Panning afterwards is the author's business.
  */
 /** Where the director's top-left corner should sit on screen, in pixels. */
-const MARGIN = [116, 146];
+const MARGIN = [170, 258];
+/** The zoom a workflow opens at: the whole director readable without scrolling to it. */
+const OPENING_ZOOM = 0.91;
 
 /** Node ids already framed in this page session. See `centreOnNode`. */
 const FRAMED = new Set();
@@ -596,6 +602,11 @@ function centreOnNode(node) {
     && corner[1] > 0 && corner[1] < element.clientHeight;
   if (showing && !first) return;
 
+  // The zoom is set too, not only the position. A workflow stores the scale it was saved
+  // at, which is somebody else's window; opening at a known one means the node is the same
+  // size every time it is opened, which is what a screenshot or a recording needs.
+  if (first) view.scale = OPENING_ZOOM;
+
   // The corner rather than the middle. Centring is right for a node that fits on screen;
   // this one is a workspace taller than most windows, so centring it put the toolbar and
   // the clip settings above the top edge -- the two things you reach for first.
@@ -619,6 +630,30 @@ function centreOnNode(node) {
  * `offsetHeight` rather than a bounding rect: the widget sits inside a CSS transform, so
  * a rect is in screen pixels while the node's size is in graph units.
  */
+/**
+ * The pack's version, written along the node's own title bar.
+ *
+ * Drawn rather than written into `node.title`: a title is saved with the graph, so a
+ * workflow shared after an upgrade would go on claiming the version it was built with.
+ * This is painted every frame from the running code, which is the only honest answer to
+ * "what am I looking at?" -- and the title bar is where you already look for the name.
+ */
+function stampTitle(node) {
+  const drawn = node.onDrawForeground;
+  node.onDrawForeground = function (ctx) {
+    const result = drawn?.apply(this, arguments);
+    if (this.flags?.collapsed) return result;
+    ctx.save();
+    ctx.font = "10px system-ui, sans-serif";
+    ctx.fillStyle = "#7b8494";
+    ctx.textAlign = "right";
+    // The title band sits above the node's own origin, so this is a negative y.
+    ctx.fillText(`v${VERSION} · ${BUILD}`, this.size[0] - 10, -10);
+    ctx.restore();
+    return result;
+  };
+}
+
 function growWithPrompts(node, editor) {
   for (const box of editor.root.children) {
     let last = box.offsetHeight;

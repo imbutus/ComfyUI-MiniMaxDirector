@@ -39,6 +39,7 @@ export function parseCast(text) {
           file: String(card.file || ""),
           description: String(card.description || ""),
           keep: String(card.keep || ""),
+          onto: String(card.onto || ""),
           voice: String(card.voice || ""),
         })),
     };
@@ -123,7 +124,7 @@ export class CastEditor {
     this.list.addEventListener("input", (event) => {
       const card = event.target.closest("[data-card]");
       if (!card) return;
-      const key = ["name", "description", "voice"]
+      const key = ["name", "description", "voice", "onto"]
         .find((name) => event.target.classList.contains(`mmd-card-${name}`));
       if (key) this.patch(Number(card.dataset.card), { [key]: event.target.value }, true);
     });
@@ -135,6 +136,10 @@ export class CastEditor {
         this.patch(position, { keep: event.target.value });
       } else if (event.target.classList.contains("mmd-card-file")) {
         this.patch(position, { file: event.target.value });
+      } else if (event.target.classList.contains("mmd-card-onto-pick")) {
+        const chosen = event.target.value;
+        event.target.value = "";
+        if (chosen) this.patch(position, { onto: chosen });
       }
     });
     this.list.addEventListener("click", (event) => {
@@ -183,6 +188,7 @@ export class CastEditor {
       file: first ? first.media.filename || "" : "",
       description: "",
       keep: "",
+      onto: "",
       voice: "",
     });
     this.commit(state);
@@ -257,9 +263,13 @@ export class CastEditor {
 
     // Rebuilt only when the list itself changed, or a caret would be taken out of the box
     // being typed into on every keystroke.
-    const shape = state.cards.map((card) => `${card.id}/${card.file}`).join(",")
+    const shape = state.cards.map((card) => `${card.id}/${card.file}/${card.keep}`).join(",")
       + `|${files.map((file) => file.token + file.media.filename).join("|")}`
-      + `|${timeline ? "" : "none"}`;
+      + `|${timeline ? "" : "none"}`
+      // The `onto` suggestions are the other cards and the shots, so a rename or a
+      // reworded shot has to reach the list rather than waiting for the next rebuild.
+      + `|${state.cards.map((card) => card.name).join("/")}`
+      + `|${(timeline?.shots || []).map((shot) => (shot.prompt || "").slice(0, 24)).join("/")}`;
 
     if (this.shape !== shape) {
       this.shape = shape;
@@ -289,7 +299,25 @@ export class CastEditor {
               ${!file ? "" : `
               <label class="mmd-card-keep" title="How much of this person survives into the video -- their own marker, not the file's: the photo may be fully_preserved while the face taken from it is an attribute_transfer onto somebody else. Compiled as subject_retention.">keep them
                 <select class="mmd-card-retention">${retentionOptions(card.keep)}</select>
-              </label>`}
+              </label>
+              ${card.keep !== "attribute_transfer" ? "" : `
+              <label class="mmd-card-onto-box" title="Who receives what is taken from this person. attribute_transfer means a feature moves onto somebody else, and the guide asks for the target to be named -- otherwise the prompt says a face is transferred and never says onto whom. Pick another character, or describe whoever the shot is about.">onto
+                <input class="mmd-card-onto" type="text"
+                       placeholder="the man at the desk"
+                       value="${value(card.onto)}">
+                <select class="mmd-card-onto-pick" title="The other people in this clip, and what each shot is about. Picking one writes it into the box; the box takes anything else.">
+                  <option value="">pick…</option>
+                  ${state.cards
+                    .filter((other, at) => at !== position && String(other.name || "").trim())
+                    .map((other) => `<option value="${value(other.name)}">${value(other.name)}</option>`)
+                    .join("")}
+                  ${(timeline?.shots || [])
+                    .map((shot) => String(shot.prompt || "").trim().split(/[,.]/)[0])
+                    .filter(Boolean)
+                    .map((subject) => `<option value="${value(subject)}">${value(subject)}</option>`)
+                    .join("")}
+                </select>
+              </label>`}`}
               <span class="mmd-grow"></span>
               <button class="mmd-cast-drop" title="Remove from the cast">${ICON.trash}</button>
             </div>
@@ -333,6 +361,7 @@ export class CastEditor {
         [".mmd-card-name", card.name],
         [".mmd-card-description", card.description],
         [".mmd-card-voice", card.voice],
+        [".mmd-card-onto", card.onto],
       ]) {
         const box = row.querySelector(selector);
         if (box && box !== document.activeElement) box.value = String(text || "");

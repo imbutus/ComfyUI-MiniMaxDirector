@@ -97,11 +97,13 @@ const CSS = `
    still paints across the socket labels. And the element covers the canvas, so the strips
    it leaves empty have to hand their clicks back to the sockets underneath. */
 .mmd-banded .mmd-bar, .mmd-banded .mmd-settings {
-  margin-left:176px; margin-right:152px; }
+  margin-left:176px; margin-right:176px; }
 .mmd-banded { pointer-events:none; }
 .mmd-banded > * { pointer-events:auto; }
-/* The tabbed region is what clears the sockets: it is one element, header and all. */
-.mmd-banded .mmd-tabbed { margin-top:var(--mmd-band-gap, 0px); }
+/* The leftover height of the socket band sits *above* the toolbar rather than below it,
+   so the two inset rows finish level with the last socket instead of leaving a strip of
+   empty node between them and the panel. Same total height either way. */
+.mmd-banded .mmd-bar { margin-top:var(--mmd-band-gap, 0px); }
 
 /* One element, header and all. Loose boxes on the node's own grey read as a pile of
    unrelated fields; a surface with a border around them says the tabs switch *this*. */
@@ -207,6 +209,17 @@ const CSS = `
    red the toolbar's Delete uses -- and it sits at the far end of the row, away from the
    fields you type in. */
 .mmd-card-top .mmd-grow { flex:1; }
+/* Only there for a transfer, and it belongs beside the marker that asks for it. */
+.mmd-card-onto-box { display:flex; align-items:center; gap:5px; flex:1 1 160px;
+  min-width:120px; color:#8b93a1; }
+.mmd-card-onto-box .mmd-card-onto { flex:1 1 auto; min-width:0; }
+.mmd-card-onto-box .mmd-card-onto-pick { flex:0 0 auto; width:auto; max-width:120px; }
+/* The transfer chip: an instruction rather than a filename, so it is coloured rather than
+   black, and reads in the direction the feature travels. Amber with no target, because a
+   transfer onto nobody is a question the prompt cannot answer. */
+.mmd-seg .mmd-chip-move { background:rgba(47,109,143,.9); color:#e8f3f9;
+  border-radius:4px 4px 0 0; }
+.mmd-seg .mmd-chip-open { background:rgba(122,86,26,.95); color:#f6e6c8; }
 .mmd-cast-drop { flex:0 0 auto; background:#3a2422; color:#f3d3cf;
   border:1px solid #5c332d; cursor:pointer; font:inherit; padding:3px 7px;
   border-radius:5px; display:inline-flex; align-items:center;
@@ -243,7 +256,6 @@ const CSS = `
 .mmd-prompt { transition:border-color .12s ease; }
 .mmd-prompt:focus-within { border-color:#3f5a6b; }
 .mmd-bar .mmd-grow { flex:1; }
-.mmd-bar .mmd-len { color:#9ca3af; font-variant-numeric:tabular-nums; }
 
 /* stage: fixed label column + scrolling track area ------------------------ */
 /* The stage is exactly as tall as its tracks. Letting it absorb the leftover height
@@ -340,14 +352,18 @@ const CSS = `
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;
   -webkit-text-stroke:2.5px #000; paint-order:stroke fill;
   text-shadow:0 1px 3px rgba(0,0,0,.9); pointer-events:none; }
-.mmd-seg .mmd-chip { position:absolute; left:0; bottom:0; padding:1px 5px; font-size:9px;
+.mmd-seg .mmd-chips { position:absolute; left:0; bottom:0; display:flex; gap:3px;
+  max-width:100%; overflow:hidden; pointer-events:none; }
+.mmd-seg .mmd-chip { padding:1px 5px; font-size:9px;
   background:rgba(0,0,0,.72); color:#fff; border-top-right-radius:4px;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   pointer-events:none; }
 /* A control shares the bottom row, so the filename gives it the corner rather than running
    underneath it. */
-.mmd-seg:has(.mmd-cam-pick) .mmd-chip { max-width:calc(100% - 118px); }
-.mmd-seg:has(.mmd-keep-pick) .mmd-chip { max-width:calc(100% - 150px); }
+.mmd-seg:has(.mmd-cam-pick) .mmd-chips { max-width:calc(100% - 118px); }
+.mmd-seg:has(.mmd-keep-pick) .mmd-chips { max-width:calc(100% - 150px); }
+.mmd-seg .mmd-chips > .mmd-chip { overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
 /* The camera chip is a control, not a label, so it takes clicks -- the media chip stays
    transparent to them so a click there still grabs the block. */
 /* A real dropdown, always on the block, so the move is both readable and changeable
@@ -401,6 +417,9 @@ const CSS = `
 .mmd-settings .mmd-unit, .mmd-settings .mmd-value { color:#e5e7eb; }
 .mmd-settings .mmd-hint { color:#6b7280; font-size:11px; }
 .mmd-settings .mmd-grow { flex:1; }
+/* As wide as what is in it. Stretched to the node's width, the row was mostly an empty
+   bar with six controls parked at one end of it. */
+.mmd-settings { align-self:flex-start; }
 
 .mmd-settings .mmd-build { color:#4b5563; font-size:10px; font-variant-numeric:tabular-nums; }
 
@@ -453,9 +472,14 @@ const CSS = `
 .mmd-f-line-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
 /* A row with no words in it is a row about nothing: who speaks, how, and in what language
    all describe a line that does not exist yet. They wash out until it does -- still there,
-   still clickable, just not competing with the one box that is asking to be filled. */
+   still clickable, just not competing with the one box that is asking to be filled. The
+   box itself keeps its own weight, and so does the group's surface once anything is said:
+   a dialogue group with nothing in it sinks back into the panel it sits on. */
 .mmd-f-line-row.mmd-f-quiet > *:not(.mmd-f-wide) { opacity:.4; }
 .mmd-f-line-row.mmd-f-quiet:focus-within > * { opacity:1; }
+.mmd-f-group.mmd-f-quiet { background:#15181e; border-color:#1f232b; }
+.mmd-f-group.mmd-f-quiet > .mmd-f-tag { opacity:.55; }
+.mmd-f-group.mmd-f-quiet:focus-within { background:#191c23; border-color:#262b34; }
 .mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-delline {
   background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-delline:hover {

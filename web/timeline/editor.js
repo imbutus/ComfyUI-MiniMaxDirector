@@ -10,7 +10,6 @@
  */
 
 import { api } from "../../../scripts/api.js";
-import { BUILD, VERSION } from "../build.js";
 import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
@@ -133,7 +132,6 @@ export class TimelineEditor {
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <button data-reset="1" title="Empty the timeline: every block, the global prompt and the music. Cmd/Ctrl+Z puts it back.">${ICON.reset} Clear</button>
         <span class="mmd-grow"></span>
-        <span class="mmd-len"></span>
       </div>
 
       <div class="mmd-settings"></div>
@@ -210,7 +208,6 @@ export class TimelineEditor {
     this.ruler = this.root.querySelector(".mmd-ruler");
     this.head = this.root.querySelector(".mmd-playhead");
     this.end = this.root.querySelector(".mmd-end");
-    this.readout = this.root.querySelector(".mmd-len");
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
     this.scrub = this.root.querySelector(".mmd-scrub");
@@ -1415,10 +1412,6 @@ export class TimelineEditor {
       node.style.width = `${Math.max(item.length * scale, 14)}px`;
     }
 
-    const rendered = length(timeline);
-    this.readout.textContent =
-      `${rendered} frames · ${formatSeconds(toSeconds(rendered))}s · ` +
-      `${rendered % 17 === 5 ? "valid" : "INVALID"}`;
     this.end.style.left = `${this.extent() * scale}px`;
     this.renderSettings(timeline);
     this.rememberPanelHeight();
@@ -1487,13 +1480,9 @@ export class TimelineEditor {
     }
     const timeline = this.read();
     const extent = this.extent();
-    const rendered = length(timeline);
     const scale = this.scale();
     this.canvas.style.width = `${this.width() + TAIL}px`;
     this.end.style.left = `${extent * scale}px`;
-    this.readout.textContent =
-      `${rendered} frames · ${formatSeconds(toSeconds(rendered))}s · ` +
-      `${rendered % 17 === 5 ? "valid" : "INVALID"}`;
 
     this.renderRuler(extent, scale);
 
@@ -1526,7 +1515,9 @@ export class TimelineEditor {
   renderPlayhead(total) {
     const scale = this.scale();
     this.head.style.left = `${this.playhead * scale}px`;
-    this.clock.textContent = `${toSeconds(this.playhead).toFixed(2)}s`;
+    // Frames first: the document is cut in frames, every field types frames, and a
+    // reading in seconds alone could not be typed back into any of them.
+    this.clock.textContent = `${this.playhead} f = ${toSeconds(this.playhead).toFixed(2)}s`;
     this.scrub.value = String(Math.round((this.playhead / Math.max(total, 1)) * 1000));
   }
 
@@ -1582,9 +1573,12 @@ export class TimelineEditor {
     // The lattice appears here and nowhere else. A typed duration is left alone; this
     // says what will actually be generated, which is where the 17-frame grid bites.
     const asked = timeline.duration || span(timeline);
+    // Only when the number typed is not the number generated. Saying "renders 124 frames"
+    // beside a duration box reading 124 was the same fact twice; the rounding is the part
+    // that is news, and it is the only part H3's lattice actually surprises you with.
     this.settings.querySelector(".mmd-renders").textContent =
-      `renders ${rendered} frames · ${(rendered / FPS).toFixed(2)}s` +
-      (rendered !== asked ? ` (${asked}f rounded up)` : "");
+      rendered !== asked ? `renders ${rendered} f = ${(rendered / FPS).toFixed(2)}s` +
+        ` · ${asked} f rounded up` : "";
   }
 
   /** The settings row, built once. */
@@ -1598,9 +1592,7 @@ export class TimelineEditor {
       <label title="How reference images are fitted. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time."><span class="mmd-key">resize</span>
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
-      <span class="mmd-grow"></span>
-      <span class="mmd-renders"></span>
-      <span class="mmd-build" title="minimax-director ${VERSION}, build ${BUILD}">v${VERSION} · ${BUILD}</span>`;
+      <span class="mmd-renders"></span>`;
 
     const frames = (input) => Math.max(0, Math.round(Number(input.value)));
 
@@ -1623,6 +1615,14 @@ export class TimelineEditor {
     this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
     this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);
+  }
+
+  /** Cast cards drawn from this block's file whose feature moves onto somebody else. */
+  transfersFrom(item) {
+    const file = item.media?.filename;
+    if (!file) return [];
+    return (this.castOf?.()?.cards || []).filter(
+      (card) => card.file === file && card.keep === "attribute_transfer");
   }
 
   segment(track, index, item, scale) {
@@ -1648,11 +1648,34 @@ export class TimelineEditor {
     caption.textContent = item.prompt?.trim() || (track === "moves" ? "" : item.camera || "");
     node.appendChild(caption);
 
+    // One strip along the bottom edge, because there are two kinds of thing to say about
+    // a block's file and they used to be written in the same corner on top of each other:
+    // which file it is, and what is lifted out of it and carried onto somebody else.
+    const chips = [];
     if (item.media?.filename) {
-      const chip = document.createElement("span");
-      chip.className = "mmd-chip";
-      chip.textContent = `${item.media.kind.toUpperCase()} · ${item.media.filename}`;
-      node.appendChild(chip);
+      chips.push({ text: `${item.media.kind.toUpperCase()} · ${item.media.filename}`,
+                   className: "mmd-chip" });
+    }
+    for (const card of this.transfersFrom(item)) {
+      chips.push({
+        text: `${card.name || `S${card.id}`} → ${card.onto || "?"}`,
+        className: `mmd-chip mmd-chip-move${card.onto ? "" : " mmd-chip-open"}`,
+        title: card.onto
+          ? `${card.description || "this person"} is transferred onto ${card.onto}`
+          : "attribute_transfer with no target: say who receives it on the cast card",
+      });
+    }
+    if (chips.length) {
+      const strip = document.createElement("div");
+      strip.className = "mmd-chips";
+      for (const spec of chips) {
+        const chip = document.createElement("span");
+        chip.className = spec.className;
+        chip.textContent = spec.text;
+        if (spec.title) chip.title = spec.title;
+        strip.appendChild(chip);
+      }
+      node.appendChild(strip);
     }
 
     // The move itself, on the block that plays it -- as the control, not a label of one.
@@ -1742,9 +1765,10 @@ export class TimelineEditor {
       this.segPrompt.value = item.prompt || "";
     }
 
+    const end = item.end ?? item.start + item.length;
     this.range.textContent =
-      `Start: ${toSeconds(item.start).toFixed(2)} | End: ${toSeconds(item.end ?? item.start + item.length).toFixed(2)}` +
-      ` | Length: ${toSeconds(item.length).toFixed(2)}`;
+      `Start: ${item.start} f | End: ${end} f | Length: ${item.length} f` +
+      ` = ${toSeconds(item.length).toFixed(2)}s`;
 
     // Only the CAMERA track. A shot used to carry one too, which meant the same sentence
     // could be written in two places -- inline on the shot's line, or in the Camera:
@@ -1996,8 +2020,12 @@ export class TimelineEditor {
         lines?.addEventListener("input", (e) => {
           if (!e.target.matches(selector)) return;
           if (key === "text") {
-            e.target.closest(".mmd-f-line-row")
-              ?.classList.toggle("mmd-f-quiet", !e.target.value.trim());
+            const row = e.target.closest(".mmd-f-line-row");
+            row?.classList.toggle("mmd-f-quiet", !e.target.value.trim());
+            row?.closest(".mmd-f-group")?.classList.toggle(
+              "mmd-f-quiet",
+              ![...(row?.closest(".mmd-f-lines")?.querySelectorAll(".mmd-f-line") || [])]
+                .some((box) => box.value.trim()));
           }
           patchLine({ [key]: e.target.value }, true, rowOf(e.target));
         });
@@ -2083,6 +2111,10 @@ export class TimelineEditor {
       // Nothing said yet, nothing to say it about: the speaker, the delivery and the
       // language are dimmed until there are words for them to describe.
       row.classList.toggle("mmd-f-quiet", !String(said.text ?? "").trim());
+      // And the group's own surface, once every row in it is empty: a box that holds
+      // nothing should not look like a box that holds something.
+      row.closest(".mmd-f-group")?.classList.toggle(
+        "mmd-f-quiet", !(item.lines || []).some((line) => String(line.text || "").trim()));
       write(".mmd-f-delivery", said.delivery ?? "says");
       write(".mmd-f-language", said.language ?? "English");
     });
