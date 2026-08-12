@@ -268,6 +268,7 @@ function attach(node) {
     setValue: () => {},
   });
   widget.serializeValue = () => undefined;
+  refuseWidthStamp(widget);
 
   // Up into the socket band: ten input labels reserved 200px of node that nothing was
   // ever drawn in.
@@ -345,13 +346,15 @@ function attachPromptView(node) {
     <label>COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span></label>
     <pre class="mmd-prompt-text" tabindex="0"></pre>`;
 
-  node.addDOMWidget(PROMPT_VIEW, "minimax_director_prompt", root, {
+  const view = node.addDOMWidget(PROMPT_VIEW, "minimax_director_prompt", root, {
     getMinHeight: () => 120,
     hideOnZoom: false,
     serialize: false,
     getValue: () => undefined,
     setValue: () => {},
-  }).serializeValue = () => undefined;
+  });
+  view.serializeValue = () => undefined;
+  refuseWidthStamp(view);
 
   node.promptView = root.querySelector(".mmd-prompt-text");
   node.setSize([
@@ -447,6 +450,7 @@ function attachCast(node) {
     setValue: () => {},
   });
   widget.serializeValue = () => undefined;
+  refuseWidthStamp(widget);
 
   node.setSize([
     Math.max(node.size?.[0] ?? 0, CAST_SIZE[0]),
@@ -689,6 +693,27 @@ function stampTitle(node) {
     ctx.restore();
     return result;
   };
+}
+
+/**
+ * Keep the editor as wide as the node, whatever else writes to the widget.
+ *
+ * ComfyUI sizes a DOM widget's element as `(widget.width ?? node.width) - margin * 2`.
+ * `widget.width` is normally never set -- but opening the node properties panel renders
+ * the same widget objects in its own column and stamps that column's width onto them, so
+ * a 1380px editor was squeezed into 318px, wrapping the toolbar into a stack and (through
+ * the resize observer below) inflating the node to a thousand pixels tall.
+ *
+ * A setter that drops the value rather than a per-frame correction: this runs once, and
+ * there is nothing left to fight over afterwards. The panel's own row is laid out by the
+ * panel and never reads this back.
+ */
+function refuseWidthStamp(widget) {
+  Object.defineProperty(widget, "width", {
+    configurable: true,
+    get: () => undefined,
+    set: () => {},
+  });
 }
 
 function growWithPrompts(node, editor) {
