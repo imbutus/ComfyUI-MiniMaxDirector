@@ -149,33 +149,70 @@ export function decorate(node, media) {
   }
 }
 
-/** Decode the clip and draw its envelope. Silent on failure -- it is decoration. */
-async function waveform(canvas, src) {
-  try {
+/** Envelopes already computed, by URL. See `peaksOf`. */
+const ENVELOPES = new Map();
+
+/** How many buckets an envelope is stored at: far more than any block is wide on screen,
+ *  so redrawing at a new width resamples rather than re-reads the file. */
+const BUCKETS = 2000;
+
+/**
+ * The clip's envelope, decoded once per file per session.
+ *
+ * Every render rebuilds the track's elements, and this used to re-download and re-decode
+ * the whole file each time -- for an eight-minute mp3 that is seconds of work and a
+ * waveform that visibly vanishes and comes back on every click. The promise is cached
+ * rather than the result, so ten blocks drawn in the same frame share one decode instead
+ * of starting ten.
+ */
+function peaksOf(src) {
+  if (ENVELOPES.has(src)) return ENVELOPES.get(src);
+  const work = (async () => {
     const bytes = await (await fetch(src)).arrayBuffer();
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const audio = await ctx.decodeAudioData(bytes);
-    const samples = audio.getChannelData(0);
-
-    const width = Math.max(1, canvas.clientWidth || 200);
-    const height = Math.max(1, canvas.clientHeight || 30);
-    canvas.width = width;
-    canvas.height = height;
-
-    const paint = canvas.getContext("2d");
-    paint.fillStyle = "#7fbf6a";
-    const step = Math.max(1, Math.floor(samples.length / width));
-
-    for (let x = 0; x < width; x++) {
-      let peak = 0;
-      for (let i = 0; i < step; i++) {
-        peak = Math.max(peak, Math.abs(samples[x * step + i] || 0));
+    try {
+      const audio = await ctx.decodeAudioData(bytes);
+      const samples = audio.getChannelData(0);
+      const step = Math.max(1, Math.floor(samples.length / BUCKETS));
+      const peaks = new Float32Array(BUCKETS);
+      for (let bucket = 0; bucket < BUCKETS; bucket++) {
+        let peak = 0;
+        for (let i = 0; i < step; i++) {
+          peak = Math.max(peak, Math.abs(samples[bucket * step + i] || 0));
+        }
+        peaks[bucket] = peak;
       }
-      const bar = Math.max(1, peak * height);
-      paint.fillRect(x, (height - bar) / 2, 1, bar);
+      return peaks;
+    } finally {
+      ctx.close();
     }
-    ctx.close();
-  } catch {
-    /* an undecodable file simply shows no waveform */
+  })();
+  // A failed decode is cached too: retrying it on every render is the same stall, only
+  // without ever producing a waveform.
+  ENVELOPES.set(src, work.catch(() => null));
+  return ENVELOPES.get(src);
+}
+
+/** Draw the envelope. Silent on failure -- it is decoration. */
+async function waveform(canvas, src) {
+  const peaks = await peaksOf(src);
+  if (!peaks || !canvas.isConnected) return;
+
+  const width = Math.max(1, canvas.clientWidth || 200);
+  const height = Math.max(1, canvas.clientHeight || 30);
+  canvas.width = width;
+  canvas.height = height;
+
+  const paint = canvas.getContext("2d");
+  paint.fillStyle = "#7fbf6a";
+  const step = peaks.length / width;
+
+  for (let x = 0; x < width; x++) {
+    let peak = 0;
+    for (let i = Math.floor(x * step); i < Math.floor((x + 1) * step); i++) {
+      peak = Math.max(peak, peaks[i] || 0);
+    }
+    const bar = Math.max(1, peak * height);
+    paint.fillRect(x, (height - bar) / 2, 1, bar);
   }
 }
