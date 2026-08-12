@@ -247,8 +247,34 @@ def test_a_named_subject_gets_its_own_definition_naming_its_source():
 def test_a_subject_carries_its_own_retention():
     prompt = compile_timeline(with_subject(subject_retention="attribute_transfer")).prompt
     assert "<Subject 1> (appears in [Shot 1]): attribute_transfer - the man's face." in prompt
-    # The picture it came from keeps its own, which is a different claim.
-    assert "<Picture 1> (appears in [Shot 1]): weak_reference" in prompt
+
+
+def test_a_picture_that_only_defines_somebody_has_no_entry_of_its_own():
+    """The guide: an image used only to define a character gets no standalone entry --
+    its source is cited inside the subject it defines. Two entries said the photograph
+    itself was a weak reference *and* that a face was lifted out of it, which is one
+    reference described twice."""
+    prompt = compile_timeline(with_subject()).prompt
+    assert "<Subject 1> is the man's face, from <Picture 1>." in prompt
+    assert "<Picture 1> is" not in prompt
+    assert "<Picture 1> (appears in [Shot 1])" not in prompt
+
+
+def test_a_frame_anchor_keeps_its_entry_even_when_it_defines_somebody():
+    """A first frame is *in* the video, not behind it: it is a concrete frame the model
+    has to reproduce, so it stays analysed however many people are drawn from it."""
+    prompt = compile_timeline(with_subject(role="first frame")).prompt
+    assert "<Picture 1> is" in prompt
+    assert "<Subject 1> is the man's face, from <Picture 1>." in prompt
+
+
+def test_a_transfer_names_who_receives_it():
+    """`attribute_transfer` moves a feature onto somebody; the guide wants that somebody
+    named, or the prompt says a face travels and never says where it lands."""
+    prompt = compile_timeline(with_subject(
+        subject_retention="attribute_transfer", onto="the woman at the desk")).prompt
+    assert ("<Subject 1> (appears in [Shot 1]): attribute_transfer - the man's face, "
+            "transferred onto the woman at the desk.") in prompt
 
 
 def test_a_subject_without_its_own_marker_follows_the_file():

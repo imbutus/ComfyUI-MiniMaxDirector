@@ -149,6 +149,20 @@ def _render_reference(timeline: Timeline) -> str:
     return "\n\n".join(fields)
 
 
+def _only_defines(timeline: Timeline, item) -> bool:
+    """Is this file here purely to define somebody, rather than to be a frame of the video?
+
+    The guide: "If an image is used only to define a character, scene, costume, or style,
+    do not create a standalone picture entry. Instead, cite the image source inside the
+    corresponding `<Subject N>` definition." A file used as a frame anchor, a continuation
+    source or an edit target is a different thing -- it is in the video, not behind it --
+    and keeps its own entry however many people are drawn from it.
+    """
+    if str(item.record.get("role", "reference") or "reference") != "reference":
+        return False
+    return any(subject.source == item.token for subject in attachments.subjects(timeline))
+
+
 def _subject_definitions(timeline: Timeline) -> str:
     """One line per attached file: what its token denotes and what to follow.
 
@@ -159,6 +173,8 @@ def _subject_definitions(timeline: Timeline) -> str:
     """
     lines = []
     for item in attachments.collect(timeline):
+        if _only_defines(timeline, item):
+            continue
         described = _described(item)
         lines.append(f"{item.token} is {described}.")
     for subject in attachments.subjects(timeline):
@@ -220,13 +236,23 @@ def _retention_analysis(timeline: Timeline) -> str:
     """One line per token: where it appears, how much of it survives, and why."""
     lines = []
     for item in attachments.collect(timeline):
+        # Nothing to analyse for a file that has no entry of its own: it was cited inside
+        # the subject it defines, and that subject's own line is below.
+        if _only_defines(timeline, item):
+            continue
         marker = _retention(item)
         where = _appears_in(timeline, item)
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
     for subject in attachments.subjects(timeline):
         where = _appears_in(timeline, subject)
+        # `attribute_transfer` means the feature lands on somebody else, and the guide
+        # wants that somebody named -- otherwise the prompt says a face moves and never
+        # says onto whom, which the model resolves by guessing.
+        onto = str(subject.record.get("onto") or "").strip().rstrip(".")
+        moved = f", transferred onto {onto}" if onto else ""
         lines.append(
-            f"{subject.token}{where}: {_retention(subject)} - {subject.name.rstrip('.')}.")
+            f"{subject.token}{where}: {_retention(subject)} - "
+            f"{subject.name.rstrip('.')}{moved}.")
     return "\n".join(lines)
 
 

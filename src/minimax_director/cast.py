@@ -84,6 +84,7 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
                 entries.append({
                     "name": described,
                     "subject_retention": str(card.get("keep", "")),
+                    "onto": str(card.get("onto", "")).strip(),
                     "uid": tag,
                 })
 

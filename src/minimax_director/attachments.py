@@ -125,7 +125,8 @@ def _named(record: dict[str, Any]) -> list[dict[str, Any]]:
     if not name:
         return []
     return [{"retention": record.get("retention"), "name": name,
-             "subject_retention": record.get("subject_retention")}]
+             "subject_retention": record.get("subject_retention"),
+             "onto": record.get("onto")}]
 
 
 def subjects(timeline: Timeline) -> list[Subject]:
