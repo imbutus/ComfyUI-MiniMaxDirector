@@ -172,6 +172,18 @@ export function length(timeline) {
 }
 
 /**
+ * The clip as it is edited: the duration as typed, else the content. Not snapped.
+ *
+ * `length` is what H3 renders, which is this rounded up to the lattice. Editing against
+ * the rounded number put up to sixteen frames of empty timeline past the last block --
+ * a gap nobody asked for, next to a duration box reading the number they did ask for.
+ * The padding is a fact about the render, and the settings row is where it is said.
+ */
+export function extent(timeline) {
+  return Math.max(timeline.duration || 0, span(timeline));
+}
+
+/**
  * The hard right edge nothing may cross.
  *
  * An explicit duration pins the clip, and segments live inside it: set the length of the
@@ -179,7 +191,7 @@ export function length(timeline) {
  * nothing to bump into and blocks grow the timeline as they go.
  */
 export function ceiling(timeline) {
-  return timeline.duration > 0 ? length(timeline) : Infinity;
+  return timeline.duration > 0 ? timeline.duration : Infinity;
 }
 
 /**

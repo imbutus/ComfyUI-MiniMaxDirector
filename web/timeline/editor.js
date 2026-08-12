@@ -15,7 +15,7 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
   CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling,
-  emptyTimeline, formatSeconds, speakerIds, speakerNumbers,
+  emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours,
   remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
   filesOf,
@@ -962,10 +962,11 @@ export class TimelineEditor {
     return this.width() / Math.max(this.extent(), 1);
   }
 
-  /** Frames the view covers: the clip, or the content if it runs past it. */
+  /** Frames the view covers: the clip as typed, or the content if it runs past it.
+   *  Not the rendered length -- rounding up to the lattice here drew up to sixteen
+   *  frames of empty track past the last block, for a duration nobody entered. */
   extent() {
-    const timeline = this.read();
-    return Math.max(length(timeline), span(timeline), 1);
+    return Math.max(clipExtent(this.read()), 1);
   }
 
   // -- gestures ------------------------------------------------------------
@@ -1282,7 +1283,7 @@ export class TimelineEditor {
     const moving = new Set(
       (this.drag?.group ?? []).map((member) => `${member.track}:${member.index}`));
 
-    const marks = [this.playhead, 0, length(timeline)];
+    const marks = [this.playhead, 0, clipExtent(timeline)];
     for (const { key } of TRACKS) {
       items(timeline, key).forEach((item, index) => {
         if (key === this.drag?.track && moving.has(`${key}:${index}`)) return;

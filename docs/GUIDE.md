@@ -92,7 +92,9 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 
 The settings row says `renders 124 f = 5.17s · 120 f rounded up` only when the number
 generated is not the number you typed. The rounding is the news; repeating a duration you
-can already read in the box beside it was the same fact twice.
+can already read in the box beside it was the same fact twice. The padding is said there
+and nowhere else — the timeline itself ends where the clip does, not where the lattice
+lands, so a clip of 196 frames is 196 frames of track with nothing empty on the end.
 
 ### The three tabs
 
