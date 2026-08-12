@@ -856,7 +856,12 @@ export class TimelineEditor {
       ? this.selection.index
       : add(timeline, track, 1 / FPS, this.playhead);
     const item = items(timeline, track)[target];
-    item.media = record;
+    // What is displayed is what is stored. The select shows the first marker of its set
+    // whether or not the record carries one, and a compiler falling back to a different
+    // default -- or reading an audio file's silence as "not a copy" -- put a value on
+    // screen that the prompt did not use. The default is written down instead, and the
+    // linter is what argues with it.
+    item.media = { retention: retentionsFor(record.kind)[0], role: ROLES[0], ...record };
 
     if (measured !== null) {
       // Everything the block can have: the neighbour it would otherwise overlap, and the

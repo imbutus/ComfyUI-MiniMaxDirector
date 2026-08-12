@@ -320,7 +320,10 @@ def _summary(timeline: Timeline) -> str:
     shots = len(timeline.ordered_shots())
     scene = timeline.global_prompt.strip().rstrip(".")
 
-    opening = f"[{_task_types(timeline)}] A {_count(shots)} clip"
+    # "A 0-shot clip" is arithmetic, not English. Nothing on the timeline yet is a clip
+    # whose shot count is not a fact worth stating.
+    opening = f"[{_task_types(timeline)}] A {_count(shots)} clip" if shots else (
+        f"[{_task_types(timeline)}] A clip")
     if scene:
         opening += f" of {scene[0].lower()}{scene[1:]}"
     if tokens:
@@ -401,14 +404,8 @@ def _retention(item) -> str:
         marker = str(item.record.get("retention", "")).strip()
     if marker in markers:
         return marker
-    if markers is AUDIO_RETENTIONS:
-        # A voice-timbre reference is by definition not a copy, and the guide's own
-        # example marks it `reference` -- so an audio bound as a voice with nothing said
-        # about it is not silently promoted to "this is the final audio track".
-        if marker in RETENTION_ACROSS:
-            return RETENTION_ACROSS[marker]
-        if item.record.get("voices"):
-            return "reference"
+    if markers is AUDIO_RETENTIONS and marker in RETENTION_ACROSS:
+        return RETENTION_ACROSS[marker]
     return markers[0]
 
 

@@ -259,7 +259,8 @@ def voiced(**card):
         ],
         "cues": [
             {"start": 0, "length": 24, "prompt": "Her voice.",
-             "media": {"kind": "audio", "filename": "voice.wav"}},
+             "media": {"kind": "audio", "filename": "voice.wav",
+                       "retention": "reference"}},
         ],
     }
     one = {"id": 1, "uid": "c1", "name": "WOMAN", "file": "face.png",
