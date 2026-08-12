@@ -493,6 +493,10 @@ const CSS = `
 .mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-delline:hover {
   background:#2c313c; border-color:#4b5563; }
 .mmd-seg-fields .mmd-f-delline { padding:2px 7px; }
+/* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
+   text" broke in two and pushed its own row taller than every other row in the panel.
+   No backticks in here: this whole sheet is a JS template literal. */
+.mmd-seg-fields label { white-space:nowrap; }
 .mmd-seg-fields .mmd-f-wide { flex:1 1 320px; }
 .mmd-seg-fields .mmd-f-wide input { width:100%; }
 .mmd-seg-fields .mmd-f-retention { width:auto; }
