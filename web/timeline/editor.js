@@ -14,10 +14,10 @@ import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling,
+  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours,
-  remove, reshape, span, toSeconds, FPS, STRIDE, PHASE,
+  remove, reshape, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
   filesOf,
 } from "./model.js";
 
@@ -1607,7 +1607,13 @@ export class TimelineEditor {
       });
     };
 
-    bind(".s-duration", (next, node) => { next.duration = frames(node); });
+    // Typed lengths land on the lattice too: 144 is not a length H3 can render, and a box
+    // reading 144 beside a clip that generates 158 is the same lie the timeline used to
+    // tell. Zero stays zero -- that is "follow the content", not a length.
+    bind(".s-duration", (next, node) => {
+      const asked = frames(node);
+      next.duration = asked ? snapUp(asked) : 0;
+    });
 
     const setWidget = (name, raw) => {
       const w = this.widgets[name];
@@ -1888,8 +1894,7 @@ export class TimelineEditor {
       const next = this.read();
       const target = items(next, track)[index];
       Object.assign(target, change);
-      const end = target.start + target.length;
-      if (end > ceiling(next)) next.duration = end;
+      stretchFor(next, target);
       this.write(next);
       this.render();
     };

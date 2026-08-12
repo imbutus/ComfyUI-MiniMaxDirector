@@ -229,9 +229,28 @@ export function add(timeline, track, seconds = 1.5, at = null) {
   if (track === "moves") item.camera = "static";
   list.push(item);
 
-  const end = start + item.length;
-  if (end > ceiling(timeline)) timeline.duration = end;
+  stretchFor(timeline, item);
   return list.length - 1;
+}
+
+/**
+ * Grow the clip to hold a segment that runs past its end, landing on the lattice.
+ *
+ * H3 only renders lengths of `17n+5`, so a clip built to 144 frames is generated as 158
+ * whatever the editor says. Stretching to the raw end left fourteen frames past the last
+ * block with no shot describing them -- frames that are in the output. The block that
+ * pushed the clip takes them instead: the timeline is then exactly what renders, and
+ * every frame of it is described by something.
+ *
+ * Only for content that grows the clip. A duration typed by hand is a decision about the
+ * length of the piece, and blocks are not resized behind it.
+ */
+export function stretchFor(timeline, item) {
+  const end = item.start + item.length;
+  if (end <= ceiling(timeline)) return;
+  const snapped = snapUp(end);
+  item.length += snapped - end;
+  timeline.duration = snapped;
 }
 
 export function remove(timeline, track, index) {
