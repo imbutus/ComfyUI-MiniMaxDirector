@@ -9,7 +9,8 @@ retention_analysis:
 <Picture 1> (appears in [Shot 1]): fully_preserved - the basket of golden croissants on a marble cafe table.
 <Picture 2> (appears in [Shot 2]): fully_preserved - the raccoon, grey and black with a striped tail and a masked face.
 
-detailed_description: [Shot 1] Live-action, cinematic, warm morning sunlight on a cafe terrace. A basket of golden croissants sits on a marble cafe table. <Picture 1>. The camera pushes in with small amplitude at slow speed. [Shot 2] At 00:02.667, the camera cuts to a raccoon rising over the red wooden fence, both paws on the rail. <Picture 2>.
+detailed_description: Live-action, cinematic, warm morning sunlight on a cafe terrace.
+[Shot 1] A basket of golden croissants sits on a marble cafe table. <Picture 1>. The camera pushes in with small amplitude at slow speed. [Shot 2] At 00:02.667, the camera cuts to a raccoon rising over the red wooden fence, both paws on the rail. <Picture 2>.
 
 overall_soundscape: A quiet sunny cafe terrace.
 

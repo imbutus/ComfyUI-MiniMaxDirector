@@ -14,7 +14,7 @@
 
 import { install } from "./styles.js";
 import * as media from "./media.js";
-import { RETENTIONS, filesOf } from "./model.js";
+import { RETENTIONS, audioOf, filesOf } from "./model.js";
 import { BUILD } from "../build.js";
 import { ICON } from "./icons.js";
 
@@ -46,6 +46,11 @@ export function parseCast(text) {
           keep: String(card.keep || RETENTIONS[0]),
           onto: String(card.onto || ""),
           voice: String(card.voice || ""),
+          // A second asset for the same person, and a third: the guide allows one subject
+          // to be defined by several files, each supplying a different thing. A still says
+          // what somebody looks like and can say nothing about how they move or sound.
+          motion_from: String(card.motion_from || ""),
+          voice_from: String(card.voice_from || ""),
         })),
     };
   } catch {
@@ -141,6 +146,10 @@ export class CastEditor {
         this.patch(position, { keep: event.target.value });
       } else if (event.target.classList.contains("mmd-card-file")) {
         this.patch(position, { file: event.target.value });
+      } else if (event.target.classList.contains("mmd-card-motion")) {
+        this.patch(position, { motion_from: event.target.value });
+      } else if (event.target.classList.contains("mmd-card-voice-from")) {
+        this.patch(position, { voice_from: event.target.value });
       } else if (event.target.classList.contains("mmd-card-onto-pick")) {
         const chosen = event.target.value;
         event.target.value = "";
@@ -195,6 +204,8 @@ export class CastEditor {
       keep: RETENTIONS[0],
       onto: "",
       voice: "",
+      motion_from: "",
+      voice_from: "",
     });
     this.commit(state);
     this.list.querySelector(`[data-card="${state.cards.length - 1}"] .mmd-card-name`)
@@ -261,6 +272,11 @@ export class CastEditor {
     const state = this.read();
     const timeline = this.timeline();
     const files = filesOf(timeline || {});
+    // A person's motion can only come from something that moves, and their timbre only
+    // from something audible -- so the two extra pickers are drawn from their own lists
+    // rather than from every file on the timeline.
+    const clips = files.filter((file) => file.media.kind === "video");
+    const heard = audioOf(timeline || {});
     const numbers = numbering(timeline, state.cards);
 
     this.speech.checked = state.speech !== false;
@@ -268,8 +284,11 @@ export class CastEditor {
 
     // Rebuilt only when the list itself changed, or a caret would be taken out of the box
     // being typed into on every keystroke.
-    const shape = state.cards.map((card) => `${card.id}/${card.file}/${card.keep}`).join(",")
+    const shape = state.cards
+      .map((card) => `${card.id}/${card.file}/${card.keep}/${card.motion_from}/${card.voice_from}`)
+      .join(",")
       + `|${files.map((file) => file.token + file.media.filename).join("|")}`
+      + `|${heard.map((file) => file.token + file.media.filename).join("|")}`
       + `|${timeline ? "" : "none"}`
       // The `onto` suggestions are the other cards and the shots, so a rename or a
       // reworded shot has to reach the list rather than waiting for the next rebuild.
@@ -305,6 +324,16 @@ export class CastEditor {
               <label class="mmd-card-keep" title="How much of this person survives into the video -- their own marker, not the file's: the photo may be fully_preserved while the face taken from it is an attribute_transfer onto somebody else. Compiled as subject_retention.">keep them
                 <select class="mmd-card-retention">${retentionOptions(card.keep)}</select>
               </label>
+              ${!clips.length ? "" : `
+              <label class="mmd-card-from" title="A second file for the same person, supplying how they move rather than what they look like. The guide allows one subject to be defined by several assets, each with a job of its own -- a still cannot say anything about a walk.">motion from
+                <select class="mmd-card-motion">
+                  <option value=""${card.motion_from ? "" : " selected"}>— none</option>
+                  ${clips.map((item) => `
+                  <option value="${value(item.media.filename)}"${
+                    item.media.filename === card.motion_from ? " selected" : ""}
+                    >${item.token.replace("<", "&lt;")} ${item.media.filename || ""}</option>`).join("")}
+                </select>
+              </label>`}
               ${card.keep !== "attribute_transfer" ? "" : `
               <label class="mmd-card-onto-box" title="Who receives what is taken from this person. attribute_transfer means a feature moves onto somebody else, and the guide asks for the target to be named -- otherwise the prompt says a face is transferred and never says onto whom. Pick another character, or describe whoever the shot is about.">onto
                 <input class="mmd-card-onto" type="text"
@@ -330,9 +359,21 @@ export class CastEditor {
             <input class="mmd-card-description" type="text"
                    placeholder="what they look like, and what must stay the same"
                    value="${value(card.description)}">`}
-            <input class="mmd-card-voice" type="text"
-                   placeholder="how they sound: age, gender, pitch, timbre, accent"
-                   value="${value(card.voice)}">
+            <div class="mmd-card-voice-row">
+              <input class="mmd-card-voice" type="text"
+                     placeholder="how they sound: age, gender, pitch, timbre, accent"
+                     value="${value(card.voice)}">
+              ${!heard.length ? "" : `
+              <label class="mmd-card-from" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
+                <select class="mmd-card-voice-from">
+                  <option value=""${card.voice_from ? "" : " selected"}>— words only</option>
+                  ${heard.map((item) => `
+                  <option value="${value(item.media.filename)}"${
+                    item.media.filename === card.voice_from ? " selected" : ""}
+                    >${item.token.replace("<", "&lt;")} ${item.media.filename || ""}</option>`).join("")}
+                </select>
+              </label>`}
+            </div>
           </div>
         </div>`;
       }).join("") || (timeline

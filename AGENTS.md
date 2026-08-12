@@ -87,11 +87,14 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   "global_prompt": "Style and scene constants for the whole clip.",
   "shots": [
     { "start": 0, "length": 41, "prompt": "…", "camera": "dolly_in",
+      "transition": "cut", "screen_text": "OPEN 24H",
       "lines": [ { "text": "I get off at the next station.", "ids": "S1",
-                   "delivery": "says", "language": "English" } ],
+                   "delivery": "says", "language": "English",
+                   "offscreen": false, "carries": false } ],
       "media": { "kind": "image", "filename": "a.png", "subfolder": "" } }
   ],
-  "moves": [ { "start": 0, "length": 41, "camera": "pan_right", "prompt": "…" } ],
+  "moves": [ { "start": 0, "length": 41, "camera": "pan_right", "prompt": "…",
+               "amplitude": "large", "speed": "fast" } ],
   "cues":  [ { "start": 0, "length": 41, "prompt": "…", "media": { "kind": "audio", … } } ],
   "references": []
 }
@@ -118,12 +121,26 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   guide's `(S1)` or `(S1,S2)`, `delivery` the verb, `language` the tag. Two speakers on
   one line is a chorus; two lines is a conversation. A wordless line is kept, not dropped
   at the door, so `lint` can say the half-filled row exists.
+- `offscreen` on a line is a voiceover, and writes **both** halves of the guide's fixed
+  form: the exact phrase `says in an off-screen voiceover`, and the clause required after
+  every one -- lips remain completely closed.
+- `carries` says the line does not end inside its block. Which tag that becomes is not
+  authored: `<scenetrans>` on both sides of the cut when a shot follows, `<cutoff>` when
+  none does. `Shot.text` takes `carried` and `cutoff` for exactly this, because neither
+  fact is visible from inside a shot.
+- `amplitude` and `speed` on a move are the guide's other two camera dimensions. **Absent
+  is not empty**: absent means a document from before the fields existed, whose camera
+  value carried both inside its sentence, and `_dynamics` / `LEGACY_AMPLITUDE_SPEED` fill
+  in what it meant. Empty is an author saying medium and normal out loud.
+- `transition` defaults to `cut` and is ignored on the first shot, which is entered from
+  nowhere. `screen_text` is quoted verbatim into the shot's prose.
 
 ## The cast document
 
 A second widget, parsed by `cast.py` and folded into the timeline before compiling. One
 card per person: `name`, `file` (which attachment they are drawn from), `description`,
-`voice`, `keep` (their own `subject_retention`), `onto`, and a stable `uid`.
+`voice`, `keep` (their own `subject_retention`), `onto`, `motion_from`, `voice_from`, and
+a stable `uid`.
 
 - A card **with** a file and a description appends a subject to that file's `subjects`;
   every card appends a speaker. Both ends carry the card's `uid`, so the `<Subject n>` a
@@ -138,25 +155,56 @@ card per person: `name`, `file` (which attachment they are drawn from), `descrip
   subject is drawn from it. That is the guide's rule: an image used only to define a
   character is cited inside the `<Subject n>` line instead. A frame anchor, a continuation
   source or an edit target keeps its entry however many people it defines.
+- `motion_from` and `voice_from` are the guide's many-to-many case (§2.1): one subject
+  defined by several assets. Both are **filenames**, for the same reason `file` is --
+  `<Video 1>` is computed from where blocks sit -- and `compile.py` resolves them to
+  tokens at the last moment. `motion_from` lands on the subject entry as `motion_file`
+  and changes the subject's sentence to name what each asset supplies; `voice_from` lands
+  on the speaker and marks the audio's own record with a `voices` entry, which is what
+  lets `_retention` tell "nothing was said" from "this is a timbre reference".
 
 ## What the compiler emits
 
+Two formats, chosen by whether anything is attached -- never by a widget. Nothing attached
+is the base guide's three fields; anything attached routes the graph to
+`MiniMaxH3ReferenceToVideo` and takes its six-section form.
+
 ```
-<global_prompt>
+integrated_multimodal_description: [Shot 1] <global> <shot text> <tokens> <camera> <sound>
+[Shot 2] At 00:01.708, the camera cuts to <shot text> …
 
-Timeline:                    ← or "SHOT 1: …" when dialect == "shots"
-[0s-1.7s] <shot text> <tokens>
-…
+overall_soundscape: <cues that span more than one shot>
 
-Camera:
-[0s-1.7s] The camera dollies slowly in. <note>
-
-Audio:
-[0s-1.7s] <cue text> <tokens>
+non_diegetic_music: <music, or N/A>
 ```
 
-Block order is always shots → camera → audio. Camera work is its own block because a
-move can straddle a cut, and folding it into a shot line would silently pick a side.
+```
+subject_definitions:
+<Picture 1> is …
+<Subject 1> is …, from <Picture 1>.
+
+summary:
+[reference generation + audio reference] A two-shot clip of …
+
+retention_analysis:
+<Picture 1> (appears in [Shot 1]): fully_preserved - …
+
+detailed_description: <global>
+[Shot 1] <shot text> …
+
+overall_soundscape: …
+
+non_diegetic_music: …
+```
+
+The shot body is one string in both (§5.1), with one deliberate difference: the global
+prompt opens `[Shot 1]` in the base format and sits on its own line above it in the
+reference format (§5.2). That is what `_description(style_apart=)` selects.
+
+Camera work is written **inside** the shot it overlaps, not in a section of its own --
+measured 2026-08-05, a separate `Camera:` block was ignored. It stays a separate track in
+the editor because a move can straddle a cut, and folding it into a shot line at authoring
+time would silently pick a side.
 
 ## Reference numbering — the subtle part
 
@@ -218,6 +266,22 @@ no weights, in about 0.2 seconds.
 8. **A number input reads as `""` while half-typed.** `"2."` is not a number yet.
    Treating that as `0` clamps to one frame and writes the result back over what is
    being typed. Ignore values until they parse.
+9. **Every fixed vocabulary exists in two languages too.** `CAMERA_MOTION`, `RETENTIONS`,
+   `AUDIO_RETENTIONS`, `ROLES`, `TRANSITIONS`, `AMPLITUDES`, `SPEEDS` are written in
+   `timeline.py` and mirrored in `web/timeline/model.js`. A value the editor offers and
+   the compiler has never heard of does not raise -- it compiles to *itself*, the raw enum
+   key, in the middle of a sentence sent to the model as prose. `tests/test_vocabulary.py`
+   reads `model.js` as text and compares the lists.
+10. **An audio marker is not a visual marker.** H3's format defines `fully_copy /
+    partially_copy / reference / weak_reference` for `<Audio N>` and the four
+    `*_preserved` values for everything visible. They overlap only at `weak_reference`.
+    `_markers()` picks by the attachment's kind, and `RETENTION_ACROSS` translates rather
+    than resets -- which matters twice: for old documents, and for a reference video's
+    soundtrack, which shares the video's record and so carries a visual marker by nature.
+11. **A shape key that misses a conditional control shows it one selection late.** The
+    panel's `shape` string must name every fact that adds or removes markup -- today
+    whether this is the first shot (no transition) and whether the camera is static (no
+    amplitude or speed). Values alone are repainted; structure is rebuilt.
 
 ## Calling into ComfyUI
 
@@ -259,6 +323,31 @@ that the following pairs land in the same commit.
 | how ComfyUI is called (`core.py`) | the calling section here |
 | anything that fails silently when broken | add it to the invariants list here |
 | a fact moving from unverified to measured | the "never been verified" list — shrink it, do not leave it stale |
+| **any new feature at all** | the four places below, in the same commit |
+
+### Every new feature updates four places
+
+Not a checklist to consult when it seems worth it — the feature is not finished until all
+four say the same thing. A feature the docs do not mention is a feature nobody finds, and
+the info note is the only documentation most people ever read, because it is already on
+the canvas when they open the workflow.
+
+1. **The info node** — the `Note` inside `examples/minimax-director.json` *and*
+   `examples/minimax-director-turbo.json`. Both, identically; they are two copies of one
+   text and drifting them apart is how the turbo workflow ends up describing an older
+   build.
+2. **The local docs** — `docs/GUIDE.md` for anything an author can see or press,
+   `README.md` when the feature changes what the pack is, this file for schema, flow and
+   invariants.
+3. **The-project docs** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/`
+   holds the shipped copies `minimaxh3-director.json` and `minimaxh3-director-turbo.json`.
+   Their info notes are the same text as (1) and are updated in the same pass.
+4. **The recording plan** —
+   `~/Projects/experiments/the-project-promotion/socials/youtube/imbutus-media/minimax-director/actions.md`,
+   whenever the feature is something a viewer would see happen on screen.
+
+Write the JSON copies with `json.dump(..., indent=2, ensure_ascii=False)` and a trailing
+newline, so a workflow file never shows up in review as one rewritten line.
 
 If a GPU run answers one of the open questions, that answer belongs here in the same
 sitting. The value of the list is that it is honest about its own edges; a stale entry

@@ -59,3 +59,33 @@ check("middle block is fenced by both neighbours", bounds(track, "shots", 1).joi
 check("first block is fenced on the right only", bounds(track, "shots", 0).join(","), "0,30");
 check("last block is open to the right", bounds(track, "shots", 2)[1], Infinity);
 check("a moving neighbour is ignored", bounds(track, "shots", 1, [0]).join(","), "0,80");
+
+// --- the vocabularies the editor offers ------------------------------------
+import { parse, audioOf, retentionsFor, AUDIO_RETENTIONS, RETENTIONS } from "../../web/timeline/model.js";
+
+// A document from before amplitude and speed existed said "small, slow" by picking
+// `dolly_in`; reading it with both empty would change the instruction.
+const old = parse(JSON.stringify({ moves: [{ start: 0, length: 24, camera: "dolly_in" }] }));
+check("legacy dolly_in keeps its amplitude", old.moves[0].amplitude, "small");
+check("legacy dolly_in keeps its speed", old.moves[0].speed, "slow");
+
+const chosen = parse(JSON.stringify(
+  { moves: [{ start: 0, length: 24, camera: "dolly_in", amplitude: "", speed: "" }] }));
+check("medium said out loud is left alone", chosen.moves[0].amplitude, "");
+
+check("audio is graded in its own words", retentionsFor("audio")[0], AUDIO_RETENTIONS[0]);
+check("everything visible keeps the other set", retentionsFor("image")[0], RETENTIONS[0]);
+
+// Audio numbering: a reference video's own soundtrack comes before standalone cues,
+// which is the order the core node builds its reference list in.
+const withSound = {
+  shots: [{ start: 0, length: 24, media: { kind: "video", filename: "clip.mp4" } }],
+  cues: [{ start: 0, length: 24, media: { kind: "audio", filename: "bell.wav" } }],
+  moves: [],
+};
+check("a video's soundtrack is Audio 1", audioOf(withSound)[0].token, "<Audio 1>");
+check("a standalone cue continues the count", audioOf(withSound)[1].token, "<Audio 2>");
+check("and it is the file the cast binds by", audioOf(withSound)[1].media.filename, "bell.wav");
+
+if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
+console.log("model vocabulary: all checks passed");

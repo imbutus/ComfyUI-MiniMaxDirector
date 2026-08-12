@@ -187,6 +187,10 @@ const CSS = `
 .mmd-card input:focus, .mmd-card select:focus { border-color:#6ea8c4; outline:none; }
 .mmd-card-name { flex:0 0 160px; font-weight:600; letter-spacing:.04em; }
 .mmd-card-desc, .mmd-card-description, .mmd-card-voice { width:100%; }
+/* The description of a voice and the recording it can be taken from, on one line: they
+   are two answers to the same question, and stacked they read as two unrelated fields. */
+.mmd-card-voice-row { display:flex; align-items:center; gap:9px; min-width:0; }
+.mmd-card-voice-row .mmd-card-voice { flex:1 1 auto; }
 .mmd-card-badge { flex:0 0 auto; background:#2f6d8f; color:#eaf2f6; border-radius:4px;
   padding:2px 6px; font-size:10px; letter-spacing:.05em; }
 .mmd-card-subject { background:#2c313c; color:#9ca3af; }
@@ -470,6 +474,10 @@ const CSS = `
 .mmd-f-group:has(> .mmd-f-lines) { align-items:flex-start; }
 .mmd-f-group:has(> .mmd-f-lines) > .mmd-f-tag { padding-top:6px; }
 .mmd-f-line-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+/* The two switches on a row are options about the line, not fields of it, so they take
+   the size of the labels around them rather than the browser's own. */
+.mmd-f-line-row .mmd-switch { flex:0 0 auto; color:#6b7280; font-size:11px; gap:5px; }
+.mmd-f-line-row .mmd-switch input { width:12px; height:12px; }
 /* A row with no words in it is a row about nothing: who speaks, how, and in what language
    all describe a line that does not exist yet. They wash out until it does -- still there,
    still clickable, just not competing with the one box that is asking to be filled. The

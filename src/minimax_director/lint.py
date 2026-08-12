@@ -38,8 +38,155 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_subjects(timeline),
         *_check_dialogue(timeline),
         *_check_clip_lengths(timeline),
+        *_check_description_length(timeline),
+        *_check_cut_worthiness(timeline),
+        *_check_silence(timeline),
+        *_check_voice_references(timeline),
+        *_check_continuity(timeline),
     ]
     return sorted(issues, key=lambda issue: issue.level != "error")
+
+
+def _check_description_length(timeline: Timeline) -> Iterator[Issue]:
+    """The body far outside the guide's 350-500 word band for a generation task.
+
+    Ref §5.2 gives that range for generation, and exempts editing tasks and dialogue-dense
+    content, which "prioritizes fitting the complete spoken timeline rather than
+    mechanically reaching a word count". Both exemptions are honoured here, because a
+    warning that fires on work the guide explicitly allows is a warning people turn off.
+
+    A short body is the common real fault: three words per shot is a prompt H3 fills in
+    from its own priors, and the result is not what anybody asked for.
+    """
+    from .compile import _description  # local: compile imports nothing from here
+
+    if any(str(item.record.get("role", "")).strip() == "edit"
+           for item in attachments.collect(timeline)):
+        return
+    if any(line.text.strip() for shot in timeline.shots for line in shot.lines):
+        return
+
+    words = len(_description(timeline).split())
+    if not words:
+        return
+    if words < 350:
+        yield Issue(
+            "warning",
+            f"The description is {words} words. MiniMax asks for 350-500 for a generation "
+            f"task; below that the model fills in the rest from its own priors.",
+        )
+    elif words > 500:
+        yield Issue(
+            "warning",
+            f"The description is {words} words, past the 350-500 the guide asks for. "
+            f"Detail beyond it competes with itself for the model's attention.",
+        )
+
+
+FRAMING = {
+    "a", "an", "the", "of", "on", "in", "at", "shot", "angle", "view", "from",
+    "wide", "medium", "close", "closeup", "close-up", "extreme", "long", "full",
+    "tight", "slightly", "slight", "high", "low", "eye", "level", "framing",
+}
+"""Words that describe how a shot is framed rather than what is in it.
+
+Used to answer one question: do two adjacent shots say the same thing about the world?
+Anything left after these are removed is content, and two shots with identical content
+differ only in framing -- which base §4.2 says should be a camera move, not a cut."""
+
+
+def _content_words(text: str) -> tuple[str, ...]:
+    stripped = re.sub(r"[^\w\s-]", " ", text.lower())
+    return tuple(word for word in stripped.split() if word not in FRAMING)
+
+
+def _check_cut_worthiness(timeline: Timeline) -> Iterator[Issue]:
+    """Two shots in a row that describe the same thing from a different distance.
+
+    Base §4.2: "A cut should introduce new information about the subject, space, state,
+    viewpoint, or time. If only the distance or a slight angle needs to change, prefer
+    camera motion." A cut that introduces nothing costs a second of the clip and gives the
+    model licence to change everything else across it.
+    """
+    shots = timeline.ordered_shots()
+    for number, (earlier, later) in enumerate(zip(shots, shots[1:]), start=1):
+        words = _content_words(earlier.prompt)
+        if not words or words != _content_words(later.prompt):
+            continue
+        yield Issue(
+            "warning",
+            f"[Shot {number}] and [Shot {number + 1}] describe the same thing at a "
+            f"different framing. A cut should introduce something new; for distance "
+            f"alone, one shot with a camera move reads better.",
+        )
+
+
+def _check_silence(timeline: Timeline) -> Iterator[Issue]:
+    """`overall_soundscape: N/A` said without meaning it.
+
+    Base §4.6 is exact: use `N/A` "only when the user explicitly requests complete silence
+    throughout the video". An empty AUDIO track compiles to `N/A` and so states, in H3's
+    own vocabulary, that the clip is silent -- which is a much stronger claim than "nobody
+    wrote anything here yet", and it is obeyed.
+    """
+    if timeline.cues or not timeline.shots:
+        return
+    written = " ".join(timeline.prose()).lower()
+    if "silen" in written or "quiet" in written:
+        return
+    yield Issue(
+        "warning",
+        "Nothing is on the AUDIO track, so overall_soundscape compiles to N/A -- which "
+        "tells H3 the clip is completely silent. Add a cue, or say so on purpose.",
+    )
+
+
+def _check_voice_references(timeline: Timeline) -> Iterator[Issue]:
+    """A voice-timbre reference marked as a copy, and a voiceover nobody is described for.
+
+    The first is a contradiction the guide draws itself (ref §4.2): `reference` means the
+    signal is *not* copied, and it is the marker a timbre reference takes. Asking for the
+    timbre and for a 1:1 copy of the recording at once leaves the model to pick one.
+    """
+    bound = {str(speaker.voice_from).strip()
+             for speaker in timeline.speakers if str(speaker.voice_from).strip()}
+    for item in attachments.collect(timeline):
+        if item.kind != "audio":
+            continue
+        name = str(item.record.get("filename", "")).strip()
+        if name not in bound:
+            continue
+        marker = str(item.record.get("retention", "")).strip()
+        if marker in ("fully_copy", "partially_copy", "fully_preserved"):
+            yield Issue(
+                "warning",
+                f"{item.token} ({name}) is a voice reference but its keep is {marker}, "
+                f"which asks for the recording itself. Use reference: the timbre is "
+                f"followed, the signal is not copied.",
+            )
+
+
+def _check_continuity(timeline: Timeline) -> Iterator[Issue]:
+    """`carries over` and voiceover, checked against where the block actually sits."""
+    shots = timeline.ordered_shots()
+    for number, shot in enumerate(shots, start=1):
+        for line in shot.lines:
+            if not line.text.strip():
+                continue
+            # A guessed word in reused dialogue. Ref §5.4 asks for `[unclear]` and never a
+            # guess; a question mark in brackets is what a guess looks like when typed.
+            if re.search(r"\(\s*\?+\s*\)|\?{2,}", line.text):
+                yield Issue(
+                    "warning",
+                    f"[Shot {number}] a line is marked as uncertain. If the source was "
+                    f"unintelligible the guide asks for [unclear] rather than a guess.",
+                )
+            if line.carries and number == len(shots):
+                yield Issue(
+                    "warning",
+                    f"[Shot {number}] a line carries over, but nothing follows it. It "
+                    f"compiles as <cutoff> -- speech truncated by the end of the clip.",
+                )
 
 
 def _check_subjects(timeline: Timeline) -> Iterator[Issue]:

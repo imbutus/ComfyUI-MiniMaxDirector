@@ -7,8 +7,15 @@ its conditioning and a clip length the sampler will accept.
 
 H3 makes the picture and the voices in one pass, so the editor has a cast: one card per
 person, holding their face, their voice, how much of them survives from a reference, and —
-for a face swap — who the face is transferred onto. A shot then only says who speaks and
-what they say.
+for a face swap — who the face is transferred onto. A card can also take a person's motion
+from a video and their voice timbre from a recording, which is the guide's one-subject-
+several-assets case. A shot then only says who speaks and what they say.
+
+The compiler covers MiniMax's published prompt guides rather than a subset of them: the
+full camera vocabulary as motion type × amplitude × speed, voiceovers in the exact form
+the model was trained on, dialogue that crosses a cut or is cut off by the end of the
+clip, on-screen text quoted verbatim, storyboard references, the separate marker
+vocabulary audio uses, and a linter that checks the rules the guides state outright.
 
 It ships as a whole workflow, not just a node pack: `examples/minimax-director.json` is a
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes

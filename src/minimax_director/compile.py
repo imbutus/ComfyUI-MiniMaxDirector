@@ -36,7 +36,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import attachments, lattice
-from .timeline import FRAME_ROLES, RETENTIONS, ROLE_TASKS, Move, Shot, Timeline
+from .timeline import (
+    AUDIO_RETENTIONS, FRAME_ROLES, RETENTION_ACROSS, RETENTIONS, ROLE_TASKS,
+    Move, Shot, Timeline,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +145,11 @@ def _render_reference(timeline: Timeline) -> str:
         f"subject_definitions:\n{_subject_definitions(timeline)}",
         f"summary:\n{_summary(timeline)}",
         f"retention_analysis:\n{_retention_analysis(timeline)}",
-        f"detailed_description: {_description(timeline)}",
+        # §5.2: in full-reference mode the style is established "in one or two English
+        # sentences before [Shot 1]", and the guide's own example opens that way. In the
+        # base format it belongs at the head of Shot 1 instead -- two dialects, two places,
+        # and folding it into Shot 1 here was writing the base form under a ref heading.
+        f"detailed_description: {_description(timeline, style_apart=True)}",
         f"overall_soundscape: {_soundscape(timeline) or 'N/A'}",
         f"non_diegetic_music: {timeline.music.strip() or 'N/A'}",
     ]
@@ -175,13 +182,101 @@ def _subject_definitions(timeline: Timeline) -> str:
     for item in attachments.collect(timeline):
         if _only_defines(timeline, item):
             continue
+        if str(item.record.get("role", "")).strip() == "storyboard":
+            # The guide's own sentence for a shot-planning image (§2.2). It matters that
+            # this is not phrased as content: a storyboard frame is a plan of the framing,
+            # and described like an ordinary reference the model tries to reproduce it.
+            covers = _shots_named(timeline, item)
+            lines.append(
+                f"{item.token} is a storyboard reference{f' for {covers}' if covers else ''}, "
+                f"defining viewpoint, subject placement, and shot order.")
+            continue
         described = _described(item)
-        lines.append(f"{item.token} is {described}.")
+        voiced = _voice_clause(timeline, item)
+        lines.append(f"{item.token} is {described}{voiced}.")
     for subject in attachments.subjects(timeline):
         # Provenance named on the subject's own line, which is what the guide asks for
         # when a picture is only there to supply something else.
-        lines.append(f"{subject.token} is {subject.name.rstrip('.')}, from {subject.source}.")
+        lines.append(f"{subject.token} is {subject.name.rstrip('.')}"
+                     f"{_sources(timeline, subject)}.")
     return "\n".join(lines)
+
+
+def _sources(timeline: Timeline, subject) -> str:
+    """Where a subject comes from -- one asset, or several with a job each (§2.1).
+
+    One file is the ordinary case and keeps the short form. A second asset makes the
+    sentence name what each supplies, because "from <Picture 1> and <Video 1>" leaves the
+    model to decide which of them the walk comes from.
+    """
+    motion = _token_for(timeline, str(subject.record.get("motion_file", "")).strip())
+    if not motion:
+        return f", from {subject.source}"
+    return (f", whose appearance comes from {subject.source} and whose motion comes "
+            f"from {motion}")
+
+
+def _token_for(timeline: Timeline, filename: str) -> str:
+    """The token an attached file is addressed by, found from its name.
+
+    The cast binds by filename precisely because tokens move when a block is dragged, so
+    this is where the two meet -- once, at compile time, against the numbering the prompt
+    is about to use.
+    """
+    if not filename:
+        return ""
+    for item in attachments.collect(timeline):
+        if str(item.record.get("filename", "")).strip() == filename and item.kind != "audio":
+            return item.token
+    return ""
+
+
+def _voices_from(timeline: Timeline, item) -> list[tuple[str, int]]:
+    """Who this audio lends its timbre to: `(subject token or "", speaker number)`.
+
+    A card with a picture is a `<Subject n>` and the guide names it; a card that is only a
+    voice has no subject to name, and `(S1)` alone still identifies the speaker.
+    """
+    if item.kind != "audio":
+        return []
+    bound = attachments.bound(timeline)
+    found = []
+    for speaker in timeline.speakers:
+        if str(speaker.voice_from).strip() != str(item.record.get("filename", "")).strip():
+            continue
+        subject = bound.get(speaker.id)
+        found.append((subject.token if subject else "", speaker.id))
+    return found
+
+
+def _voice_clause(timeline: Timeline, item) -> str:
+    """`, and is the voice-timbre reference for <Subject 1> (S1)` -- the guide's §2.4 form.
+
+    Folded into the file's own line rather than added as a second one: two sentences both
+    opening `<Audio 1> is` read as two different claims about the same token.
+    """
+    pairs = _voices_from(timeline, item)
+    if not pairs:
+        return ""
+    named = _join([f"{token} (S{number})" if token else f"the speaker (S{number})"
+                   for token, number in pairs])
+    return f", and is the voice-timbre reference for {named}"
+
+
+def _shots_named(timeline: Timeline, item) -> str:
+    """`[Shot 1]`, or `[Shot 1] and [Shot 2]` -- every shot this file's block overlaps."""
+    if item.origin is None:
+        return ""
+    track, start = item.origin
+    if track != "shots":
+        return ""
+    here = next((shot for shot in timeline.ordered_shots() if shot.start == start), None)
+    if here is None:
+        return ""
+    covered = [f"[Shot {number}]"
+               for number, shot in enumerate(timeline.ordered_shots(), start=1)
+               if shot.start < here.end and shot.end > here.start]
+    return _join(covered)
 
 
 def _task_types(timeline: Timeline) -> str:
@@ -204,7 +299,8 @@ def _task_types(timeline: Timeline) -> str:
         if item.kind == "audio":
             # The two audio types are the same distinction the retention marker already
             # draws: copied, or merely alluded to.
-            found.add("audio reuse" if marker == "fully_preserved" else "audio reference")
+            found.add("audio reuse" if marker in ("fully_copy", "partially_copy")
+                      else "audio reference")
         elif item.kind == "video":
             found.add(ROLE_TASKS.get(role, "reference generation"))
         else:
@@ -242,6 +338,15 @@ def _retention_analysis(timeline: Timeline) -> str:
             continue
         marker = _retention(item)
         where = _appears_in(timeline, item)
+        # The guide's own gloss for a voice reference: what is followed, and what is not
+        # copied. An author's `describes` says what the recording is; this says what the
+        # model is meant to do with it, which is the question this section asks.
+        if marker == "reference" and _voices_from(timeline, item):
+            lines.append(
+                f"{item.token}{where}: {marker} - the target speaker follows "
+                f"{item.token}'s voice timbre and delivery without copying the original "
+                f"signal.")
+            continue
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
     for subject in attachments.subjects(timeline):
         where = _appears_in(timeline, subject)
@@ -265,18 +370,46 @@ def _described(item) -> str:
     return f"the {item.kind} in {name}" if name else f"an unnamed {item.kind} reference"
 
 
+def _markers(item) -> tuple[str, ...]:
+    """Which fixed vocabulary this token's marker is drawn from.
+
+    An `<Audio N>` is graded on whether the signal is copied; everything visible is graded
+    on how much of the subject survives. A subject is always visible -- a face is not
+    lifted out of a waveform -- so it takes the visual set whatever it came from.
+    """
+    if isinstance(item, attachments.Subject):
+        return RETENTIONS
+    return AUDIO_RETENTIONS if item.kind == "audio" else RETENTIONS
+
+
 def _retention(item) -> str:
     """The marker for this token.
 
     A subject gets its own: the picture may be fully preserved as a frame while the face
     lifted out of it is an `attribute_transfer` onto somebody else. Absent, it falls back
     to the file's, which is the answer for the ordinary case where they agree.
+
+    A marker from the other vocabulary is translated rather than discarded. Two cases
+    reach that branch: a document written before the audio set existed, and a reference
+    video's soundtrack, which shares the video's record and so carries a visual marker by
+    nature. Both meant something, and dropping to `fully_copy` would say something else.
     """
+    markers = _markers(item)
     key = "subject_retention" if isinstance(item, attachments.Subject) else "retention"
     marker = str(item.record.get(key, "")).strip()
-    if marker not in RETENTIONS and key == "subject_retention":
+    if marker not in markers and key == "subject_retention":
         marker = str(item.record.get("retention", "")).strip()
-    return marker if marker in RETENTIONS else RETENTIONS[0]
+    if marker in markers:
+        return marker
+    if markers is AUDIO_RETENTIONS:
+        # A voice-timbre reference is by definition not a copy, and the guide's own
+        # example marks it `reference` -- so an audio bound as a voice with nothing said
+        # about it is not silently promoted to "this is the final audio track".
+        if marker in RETENTION_ACROSS:
+            return RETENTION_ACROSS[marker]
+        if item.record.get("voices"):
+            return "reference"
+    return markers[0]
 
 
 def _appears_in(timeline: Timeline, item) -> str:
@@ -288,6 +421,9 @@ def _appears_in(timeline: Timeline, item) -> str:
     if item.origin is None:
         return ""
     role = str(item.record.get("role", "")).strip()
+    if role == "storyboard":
+        covers = _shots_named(timeline, item)
+        return f" (storyboard for {covers})" if covers else " (storyboard)"
     track, start = item.origin
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         if track == "shots" and shot.start == start:
@@ -310,8 +446,13 @@ def _join(parts: list[str]) -> str:
     return f"{', '.join(parts[:-1])} and {parts[-1]}"
 
 
-def _description(timeline: Timeline) -> str:
-    """The main body: every shot in playback order, camera and sound written into it."""
+def _description(timeline: Timeline, style_apart: bool = False) -> str:
+    """The main body: every shot in playback order, camera and sound written into it.
+
+    `style_apart` puts the global prompt on its own line above `[Shot 1]` instead of at the
+    head of it -- the full-reference dialect's shape (§5.2). The base guide asks for the
+    opposite, so which one is right depends only on which format is being written.
+    """
     tokens = attachments.tokens_by_segment(timeline)
     voices = _voices(timeline)
     shots = timeline.ordered_shots()
@@ -322,7 +463,12 @@ def _description(timeline: Timeline) -> str:
     preamble = timeline.global_prompt.strip()
 
     for number, shot in enumerate(shots, start=1):
-        body = _with_tokens(shot.text(voices), tokens.get(("shots", shot.start), []))
+        # A line the shot before left open, and whether there is anywhere for this shot's
+        # own open line to continue into. Neither is knowable from inside a shot.
+        carried = number > 1 and shots[number - 2].carries_over()
+        body = _with_tokens(
+            shot.text(voices, carried=carried, cutoff=number == len(shots)),
+            tokens.get(("shots", shot.start), []))
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
         sound = " ".join(
             _sentence(_cue_text(cue, tokens)) for cue in _cues_in(cues, shot)
@@ -331,14 +477,14 @@ def _description(timeline: Timeline) -> str:
         if number == 1:
             # The guide puts style and initial composition at the head of Shot 1, and
             # gives that shot no timestamp.
-            opening = f"{preamble} {body}".strip() if preamble else body
+            opening = body if style_apart or not preamble else f"{preamble} {body}".strip()
             parts.append(f"[Shot 1] {opening}".rstrip())
         else:
             # The author's words go in verbatim. Lowercasing the opening word would read
             # better after "cuts to", but "A single apple" and "Anna turns" are the same
             # shape to any rule, and quietly renaming a character is the worse mistake.
             cut = _timecode(shot.start, timeline.fps)
-            parts.append(f"[Shot {number}] At {cut}, the camera cuts to {body}")
+            parts.append(f"[Shot {number}] At {cut}, {shot.opener()} {body}")
 
         for addition in (camera, sound):
             if addition:
@@ -364,7 +510,10 @@ def _description(timeline: Timeline) -> str:
     if orphans:
         parts[-1] = f"{_sentence(parts[-1])} {' '.join(orphans)}"
 
-    return " ".join(parts)
+    body = " ".join(parts)
+    # Its own line, not its own sentence run together with the first shot: the guide's
+    # example puts a newline between them, and `[Shot 1]` has to open a line to be found.
+    return f"{_sentence(preamble)}\n{body}" if style_apart and preamble else body
 
 
 def _cues_in(cues: list, shot: Shot) -> list:

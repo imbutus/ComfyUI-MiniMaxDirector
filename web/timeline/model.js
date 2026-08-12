@@ -29,9 +29,33 @@ export const TRACK_FOR_MEDIA = { image: "shots", video: "shots", audio: "cues" }
  *  is what an author picking "none" actually means. Documents written before this still
  *  carry `""` and still compile -- the note alone is used, as it always was. */
 export const CAMERAS = [
-  "static", "dolly_in", "dolly_out", "pan_left", "pan_right",
-  "tilt_up", "tilt_down", "orbit", "handheld", "crash_zoom",
+  "static", "zoom_in", "zoom_out", "dolly_in", "dolly_out",
+  "pan_left", "pan_right", "truck_left", "truck_right",
+  "tilt_up", "tilt_down", "pedestal_up", "pedestal_down",
+  "orbit", "tracking", "pov", "roll_cw", "roll_ccw",
+  "handheld", "shake_strongly",
 ];
+
+/** The other two dimensions of a move: how far it travels, and how fast (base §4.3).
+ *
+ *  Empty is not "unset" -- the guide says medium amplitude and normal speed "are usually
+ *  omitted", so saying nothing is already saying medium. The pickers show that as a
+ *  labelled option rather than a blank, because a blank looks like a control nobody
+ *  finished wiring up. */
+export const AMPLITUDES = ["", "small", "large"];
+export const SPEEDS = ["", "slow", "fast"];
+
+/** What a document written before those two fields existed meant by its camera value.
+ *  Mirrors `LEGACY_AMPLITUDE_SPEED` in timeline.py. */
+const LEGACY_DYNAMICS = {
+  dolly_in: ["small", "slow"],
+  dolly_out: ["small", "slow"],
+  crash_zoom: ["large", "fast"],
+};
+
+/** How a shot is entered. `cut` is the ordinary one; the rest are the three the guide
+ *  allows "when explicitly requested by the user", which is what picking one is. */
+export const TRANSITIONS = ["cut", "dissolve", "fade", "wipe"];
 
 /** How much of a reference survives into the video, for `retention_analysis`.
  *
@@ -41,12 +65,26 @@ export const CAMERAS = [
  *  maps each one to the task type the guide names for that job -- the compiler writes them
  *  into the summary's bracketed prefix, combined with ` + ` when a clip has several. */
 export const ROLES = [
-  "reference", "first frame", "keyframe", "last frame", "continue from", "edit",
+  "reference", "storyboard", "first frame", "keyframe", "last frame",
+  "continue from", "edit",
 ];
 
 export const RETENTIONS = [
   "fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference",
 ];
+
+/** The same question asked of an `<Audio N>`, in the words its own format uses (ref §4.2).
+ *
+ *  Not synonyms of the four above: `fully_copy` says the source *is* the final track and
+ *  `reference` says the signal is never copied. Kept in step with `AUDIO_RETENTIONS` in
+ *  timeline.py. */
+export const AUDIO_RETENTIONS = [
+  "fully_copy", "partially_copy", "reference", "weak_reference",
+];
+
+/** Which set a file's marker is drawn from. The file's kind decides, never the author. */
+export const retentionsFor = (kind) =>
+  (kind === "audio" ? AUDIO_RETENTIONS : RETENTIONS);
 
 /** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`).
  *
@@ -113,6 +151,14 @@ export function parse(text) {
     // `static` -- the move they were already describing by holding still.
     for (const move of Array.isArray(timeline.moves) ? timeline.moves : []) {
       if (!move.camera) move.camera = "static";
+      // Absent is a document from before amplitude and speed were fields, and its camera
+      // value carried both of them inside its sentence. Empty is an author saying medium
+      // and normal out loud, so only the absent case is filled in.
+      if (move.amplitude === undefined && move.speed === undefined) {
+        const [amplitude, speed] = LEGACY_DYNAMICS[move.camera] || ["", ""];
+        move.amplitude = amplitude;
+        move.speed = speed;
+      }
     }
 
     // Before the cast existed the voice was written on each line. Those documents are read
@@ -226,7 +272,10 @@ export function add(timeline, track, seconds = 1.5, at = null) {
   // A camera block with no move is a camera block that does nothing -- the reason to add
   // one is to say how the camera behaves, and "holds a static shot" is the answer for a
   // shot nobody has decided about yet.
-  if (track === "moves") item.camera = "static";
+  if (track === "moves") Object.assign(item, { camera: "static", amplitude: "", speed: "" });
+  // Written rather than left absent so the field exists to be read: an ordinary cut is a
+  // choice the author has made by not making another one.
+  if (track === "shots") item.transition = "cut";
   list.push(item);
 
   stretchFor(timeline, item);
@@ -345,6 +394,27 @@ export const filesOf = (timeline) => {
     if (shot.media?.kind !== "video") continue;
     videos += 1;
     found.push({ token: `<Video ${videos}>`, media: shot.media, block: index });
+  }
+  return found;
+};
+
+/**
+ * Everything the prompt addresses as `<Audio n>`, in the compiler's own order.
+ *
+ * A reference video carries its own soundtrack and the core node labels that immediately
+ * before the video, so the videos' audio comes first and standalone cues follow. Mirrors
+ * the audio half of `attachments.collect`.
+ */
+export const audioOf = (timeline) => {
+  const byStart = (list) => [...list].sort((a, b) => a.start - b.start);
+  const found = [];
+  for (const shot of byStart(items(timeline, "shots"))) {
+    if (shot.media?.kind !== "video") continue;
+    found.push({ token: `<Audio ${found.length + 1}>`, media: shot.media, kind: "video" });
+  }
+  for (const cue of byStart(items(timeline, "cues"))) {
+    if (cue.media?.kind !== "audio") continue;
+    found.push({ token: `<Audio ${found.length + 1}>`, media: cue.media, kind: "audio" });
   }
   return found;
 };

@@ -20,6 +20,7 @@ RefKind = Literal["picture", "audio", "video"]
 
 ROLE_TASKS: dict[str, str] = {
     "reference": "reference generation",
+    "storyboard": "reference generation",
     "first frame": "keyframe completion",
     "keyframe": "keyframe completion",
     "last frame": "keyframe completion",
@@ -58,26 +59,123 @@ RETENTIONS = ("fully_preserved", "partially_preserved", "attribute_transfer", "w
 """How much of a reference survives into the target video, for `retention_analysis`.
 
 Fixed English values in the output format, not prose: the guide lists exactly these four
-for visible content. Audio has its own set, which this project does not emit yet."""
+for visible content (ref §4.1). Audio has its own set -- see `AUDIO_RETENTIONS`."""
 
-CAMERA_PROSE: dict[str, str] = {
-    "static": "The camera holds a static shot.",
-    "dolly_in": "The camera pushes in with small amplitude at slow speed.",
-    "dolly_out": "The camera pulls out with small amplitude at slow speed.",
-    "pan_left": "The camera pans left.",
-    "pan_right": "The camera pans right.",
-    "tilt_up": "The camera tilts up.",
-    "tilt_down": "The camera tilts down.",
-    "orbit": "The camera moves in an arc around the subject.",
-    "handheld": "The camera shakes slightly.",
-    "crash_zoom": "The camera zooms in with large amplitude at fast speed.",
+AUDIO_RETENTIONS = ("fully_copy", "partially_copy", "reference", "weak_reference")
+"""The same question asked of an `<Audio N>`, in the words its own format uses (ref §4.2).
+
+Not a synonym list. `fully_copy` says the source audio *is* the final track, and
+`reference` says the signal is not copied at all -- only its timbre or texture. Handing H3
+`fully_preserved` for an audio reference is a marker its format does not define there, so
+the two sets are kept apart and chosen by the file's kind."""
+
+RETENTION_ACROSS: dict[str, str] = {
+    "fully_preserved": "fully_copy",
+    "partially_preserved": "partially_copy",
+    "attribute_transfer": "reference",
+    "weak_reference": "weak_reference",
 }
-"""Camera verbs the editor offers, and the sentence each one contributes.
+"""Visual marker -> the audio marker that means the same thing.
+
+Two documents need this. One written before the audio set existed stores a visual marker
+on an audio file, and reading it as "unset" would silently promote a `weak_reference`
+soundtrack to `fully_copy`. And a reference video's soundtrack shares the video's record,
+where the marker is by nature a visual one."""
+
+AMPLITUDES = ("small", "large")
+SPEEDS = ("slow", "fast")
+"""The other two dimensions of a camera move (base §4.3).
+
+Empty is not "unset" -- it is the guide's own default: "medium amplitude and normal speed
+are usually omitted". So there is nothing to write for the middle of either scale, and a
+document that says nothing is already saying it."""
+
+CAMERA_MOTION: dict[str, str] = {
+    "static": "holds a static shot",
+    "zoom_in": "zooms in",
+    "zoom_out": "zooms out",
+    "dolly_in": "pushes in",
+    "dolly_out": "pulls out",
+    "pan_left": "pans left",
+    "pan_right": "pans right",
+    "truck_left": "trucks left",
+    "truck_right": "trucks right",
+    "tilt_up": "tilts up",
+    "tilt_down": "tilts down",
+    "pedestal_up": "rises straight up",
+    "pedestal_down": "lowers straight down",
+    "orbit": "moves in an arc around the subject",
+    "tracking": "follows the moving subject",
+    "pov": "takes the subject's point of view",
+    "roll_cw": "rolls clockwise",
+    "roll_ccw": "rolls counterclockwise",
+    "handheld": "shakes slightly",
+    "shake_strongly": "shakes strongly",
+    "crash_zoom": "zooms in",
+}
+"""Every motion type the guide's table names, and the verb phrase each contributes.
 
 H3 reads prose, not enum values, so the mapping lives here rather than in the model.
 Unknown keys pass through untouched -- a director should never be blocked by a
 vocabulary this file happens not to know yet.
+
+`crash_zoom` is not offered any more: it was `zoom_in` with the amplitude and speed baked
+into the sentence, and those are fields now. It stays readable because documents hold it,
+and `from_dict` gives such a document the large/fast it always meant.
 """
+
+
+def camera_sentence(camera: str, amplitude: str = "", speed: str = "") -> str:
+    """`The camera pushes in with small amplitude at slow speed.`
+
+    The guide's own word order, and its own rule about what to leave out: amplitude and
+    speed are written "only when they are meaningful", so an empty one contributes
+    nothing rather than the word "medium".
+
+    A camera value this build does not know is returned untouched -- it is prose somebody
+    wrote by hand, and wrapping it in a sentence frame would corrupt it.
+    """
+    key = str(camera or "").strip()
+    motion = CAMERA_MOTION.get(key)
+    if motion is None:
+        return key
+    parts = [f"The camera {motion}"]
+    # Nothing has a range or a pace while it is holding still, and "holds a static shot
+    # with large amplitude" is a contradiction rather than a detail.
+    if key != "static":
+        if amplitude in AMPLITUDES:
+            parts.append(f"with {amplitude} amplitude")
+        if speed in SPEEDS:
+            parts.append(f"at {speed} speed")
+    return " ".join(parts) + "."
+
+
+LEGACY_AMPLITUDE_SPEED: dict[str, tuple[str, str]] = {
+    "dolly_in": ("small", "slow"),
+    "dolly_out": ("small", "slow"),
+    "crash_zoom": ("large", "fast"),
+}
+"""What the three baked-in sentences used to say before amplitude and speed were fields.
+
+A document written then meant "push in gently", and it said so by picking `dolly_in`.
+Reading it now with both fields empty would quietly change the instruction to a plain
+push-in, so `from_dict` fills them in and the old document compiles to what it always did.
+"""
+
+CAMERA_PROSE: dict[str, str] = {key: camera_sentence(key) for key in CAMERA_MOTION}
+"""Each motion's bare sentence, with no amplitude or speed. Kept as a name because it is
+what the docs and the older tests refer to; `camera_sentence` is what compiles."""
+
+TRANSITIONS: dict[str, str] = {
+    "cut": "the camera cuts to",
+    "dissolve": "the shot cross-dissolves to",
+    "fade": "the shot fades to",
+    "wipe": "the shot wipes to",
+}
+"""How a shot is entered. `cut` is the ordinary one and the default (base §4.2).
+
+The guide fixes the wording for a cut and allows cross-dissolve, fade and wipe "when
+explicitly requested by the user" -- which is exactly what picking one here is."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +237,8 @@ def _speakers(data: dict[str, Any]) -> list["Speaker"]:
                 found.append(Speaker(
                     id=number, voice=str(item.get("voice", "")),
                     name=str(item.get("name", "")), uid=str(item.get("uid", "")),
-                    subject=max(0, subject)))
+                    subject=max(0, subject),
+                    voice_from=str(item.get("voice_from", ""))))
         if found:
             return sorted(found, key=lambda speaker: speaker.id)
 
@@ -171,10 +270,26 @@ def _lines(data: Any) -> tuple["Line", ...]:
             ids=str(item.get("ids", "S1")),
             delivery=str(item.get("delivery", "says")),
             language=str(item.get("language", "English")),
+            offscreen=item.get("offscreen") is True,
+            carries=item.get("carries") is True,
         )
         for item in data
         if isinstance(item, dict)
     )
+
+
+def _dynamics(item: dict[str, Any]) -> dict[str, str]:
+    """A move's amplitude and speed, filling in what an older document meant.
+
+    The distinction is between a key that is absent and one that is empty. Absent is a
+    document from before the fields existed, and its camera value carried the two of them
+    inside its sentence; empty is an author saying medium and normal out loud.
+    """
+    if "amplitude" in item or "speed" in item:
+        return {"amplitude": str(item.get("amplitude", "")),
+                "speed": str(item.get("speed", ""))}
+    amplitude, speed = LEGACY_AMPLITUDE_SPEED.get(str(item.get("camera", "")), ("", ""))
+    return {"amplitude": amplitude, "speed": speed}
 
 
 def _sentences(parts: Iterable[str]) -> str:
@@ -229,6 +344,12 @@ class Speaker:
 
     Zero means unbound. The number is the subject's index, not the picture's: a photograph
     is not who is talking, the person lifted out of it is."""
+    voice_from: str = ""
+    """Filename of an attached audio this person's timbre is taken from.
+
+    A filename rather than a token, for the reason the cast binds everything by filename:
+    `<Audio 2>` is computed from where blocks sit and moves when one is dragged. The
+    compiler resolves it back to a token at the last moment."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,6 +374,19 @@ class Line:
     """The verb: says, shouts, whispers, mutters."""
     language: str = "English"
     """The `[English]` tag inside `<d>`. The words keep their own language; this names it."""
+    offscreen: bool = False
+    """A voiceover: heard, not seen being spoken.
+
+    The guide fixes both halves of this (base §4.4) -- the exact phrase `says in an
+    off-screen voiceover`, and a statement immediately after the `<d>` block that the
+    on-screen character's lips stay closed. Left to free text, the second half is the one
+    everybody forgets, and without it the model animates a mouth to match."""
+    carries: bool = False
+    """This line does not finish inside its block.
+
+    Compiles to `<scenetrans>` at both connecting points when there is a shot after it, and
+    to `<cutoff>` when the clip simply ends underneath it -- the two cases base §4.4 names.
+    Which of the two applies is not authored: it is where the block sits."""
 
     @property
     def numbers(self) -> tuple[int, ...]:
@@ -264,11 +398,15 @@ class Line:
                 found.append(int(digits))
         return tuple(found) or (1,)
 
-    def render(self, voice: str = "") -> str:
+    def render(self, voice: str = "", carried: bool = False, cutoff: bool = False) -> str:
         """`The woman (S1) says: <d>[English] ...</d>`
 
         `voice` is the cast's description of whoever is speaking; the line's own is the
         fallback for documents written before the cast existed.
+
+        `carried` says this line is the second half of one that began before the cut, so it
+        opens with `<scenetrans>`. `cutoff` says there is no shot after this one, which is
+        what turns `carries` from a transition into a truncation.
         """
         said = self.text.strip()
         if not said:
@@ -276,8 +414,22 @@ class Line:
         who = (voice or self.speaker).strip()
         label = f"({self.ids.strip() or 'S1'})"
         verb = self.delivery.strip() or "says"
+        # The guide's exact phrase, and it is exact on purpose: the model was trained on
+        # this string, so composing an equivalent one is a downgrade, not a paraphrase.
+        if self.offscreen:
+            verb = f"{verb} in an off-screen voiceover"
         tag = self.language.strip() or "English"
-        return f"{f'{who} {label}' if who else label} {verb}: <d>[{tag}] {said}</d>"
+
+        spoken = f"{f'{who} {label}' if who else label} {verb}: <d>[{tag}] {said}</d>"
+        if self.offscreen:
+            spoken += " while their lips remain completely closed."
+        if carried:
+            spoken = f"<scenetrans> {spoken}"
+        if self.carries:
+            spoken += (" <cutoff> The speech is truncated by the end of the video."
+                       if cutoff
+                       else " <scenetrans> The line continues seamlessly across the cut.")
+        return spoken
 
 
 @dataclass(frozen=True, slots=True)
@@ -296,13 +448,27 @@ class Shot:
     """An attached file: `{"kind": "image", "filename": ..., "subfolder": ...}`."""
     lines: tuple[Line, ...] = ()
     """What is spoken during this shot, in order."""
+    screen_text: str = ""
+    """Words actually visible in frame: a sign, a banner, a label, a subtitle.
+
+    The guide (base §4.5) asks for them in English double quotes, verbatim and untranslated
+    -- the same service the dialogue row does for `<d>`, and the same reason: an author
+    typing the quotes by hand is an author who sometimes does not."""
+    transition: str = "cut"
+    """How this shot is entered. See `TRANSITIONS`. Ignored on the first shot, which is
+    not entered from anywhere."""
 
     @property
     def end(self) -> int:
         return self.start + self.length
 
-    def text(self, voices: dict[int, str] | None = None) -> str:
-        """Prompt, the camera sentence, then the dialogue -- in that order.
+    def text(
+        self,
+        voices: dict[int, str] | None = None,
+        carried: bool = False,
+        cutoff: bool = False,
+    ) -> str:
+        """Prompt, on-screen text, the camera sentence, then the dialogue -- in that order.
 
         Dialogue comes last because the guide describes a shot as composition, action and
         camera first, with speech landing inside the scene that was just established.
@@ -310,14 +476,50 @@ class Shot:
         `voices` is the document's cast, keyed by speaker number. Passing it in rather than
         holding it here keeps a shot a thing that knows only about itself. `None` means the
         clip has no dialogue, so the lines are skipped entirely.
+
+        `carried` and `cutoff` are the two facts a line cannot know about itself: whether
+        the shot before it left a sentence open, and whether anything follows this one.
         """
-        prose = CAMERA_PROSE.get(self.camera, self.camera).strip()
-        parts = [self.prompt.strip(), prose]
-        for line in self.lines if voices is not None else ():
+        # The legacy shot-level camera has no fields of its own, so it keeps the amplitude
+        # and speed its sentence was written with.
+        prose = camera_sentence(
+            self.camera, *LEGACY_AMPLITUDE_SPEED.get(self.camera, ("", ""))).strip()
+        parts = [self.prompt.strip(), self.signage(), prose]
+        said = list(self.lines) if voices is not None else []
+        for at, line in enumerate(said):
             described = " and ".join(
                 filter(None, ((voices or {}).get(number, "") for number in line.numbers)))
-            parts.append(line.render(described))
+            # Only the first line can be the continuation of one from the shot before; and
+            # only a line with nothing after it in this shot can run into the clip's end.
+            parts.append(line.render(
+                described,
+                carried=carried and at == 0,
+                cutoff=cutoff and at == len(said) - 1,
+            ))
         return _sentences(part for part in parts if part)
+
+    def signage(self) -> str:
+        """The on-screen text as its own sentence, quoted the way the guide asks.
+
+        Straight double quotes are the format, so a value that already carries them is
+        left alone rather than double-wrapped -- an author who typed the guide's form by
+        hand should get their own string back.
+        """
+        words = self.screen_text.strip()
+        if not words:
+            return ""
+        if not (words.startswith('"') and words.endswith('"')):
+            words = f'"{words}"'
+        return f"The words {words} are visible on screen."
+
+    def opener(self) -> str:
+        """`the camera cuts to`, or the transition this shot was given."""
+        return TRANSITIONS.get(self.transition.strip() or "cut", TRANSITIONS["cut"])
+
+    def carries_over(self) -> bool:
+        """Does the last thing said here run past the cut at the end of this shot?"""
+        spoken = [line for line in self.lines if line.text.strip()]
+        return bool(spoken) and spoken[-1].carries
 
 
 @dataclass(frozen=True, slots=True)
@@ -347,13 +549,17 @@ class Move:
     length: int
     camera: str = ""
     prompt: str = ""
+    amplitude: str = ""
+    """`small`, `large`, or empty for the medium the guide leaves unwritten."""
+    speed: str = ""
+    """`slow`, `fast`, or empty for normal. Same rule as `amplitude`."""
 
     @property
     def end(self) -> int:
         return self.start + self.length
 
     def text(self) -> str:
-        prose = CAMERA_PROSE.get(self.camera, self.camera).strip()
+        prose = camera_sentence(self.camera, self.amplitude, self.speed).strip()
         body = self.prompt.strip()
         if prose and body:
             return f"{prose} {body}"
@@ -424,6 +630,7 @@ class Timeline:
         yield self.global_prompt
         for shot in self.shots:
             yield shot.prompt
+            yield shot.screen_text
         for cue in self.cues:
             yield cue.prompt
         for move in self.moves:
@@ -459,6 +666,8 @@ class Timeline:
                     camera=str(item.get("camera", "")),
                     media=item.get("media") or None,
                     lines=_lines(item.get("lines")),
+                    screen_text=str(item.get("screen_text", "")),
+                    transition=str(item.get("transition", "") or "cut"),
                 )
                 for item in data.get("shots", [])
             ],
@@ -477,6 +686,9 @@ class Timeline:
                     length=int(item.get("length", 0)),
                     camera=str(item.get("camera", "")),
                     prompt=str(item.get("prompt", "")),
+                    # Absent means written before the two fields existed, which is not the
+                    # same as chosen empty: see `LEGACY_AMPLITUDE_SPEED`.
+                    **_dynamics(item),
                 )
                 for item in data.get("moves", [])
             ],
@@ -512,7 +724,8 @@ class Timeline:
             "speech": self.speech,
             "speakers": [
                 {"id": speaker.id, "voice": speaker.voice, "name": speaker.name,
-                 "uid": speaker.uid, "subject": speaker.subject}
+                 "uid": speaker.uid, "subject": speaker.subject,
+                 **({"voice_from": speaker.voice_from} if speaker.voice_from else {})}
                 for speaker in self.speakers
             ],
             "shots": [
@@ -521,6 +734,8 @@ class Timeline:
                     "length": shot.length,
                     "prompt": shot.prompt,
                     "camera": shot.camera,
+                    "transition": shot.transition,
+                    **({"screen_text": shot.screen_text} if shot.screen_text else {}),
                     **({"media": shot.media} if shot.media else {}),
                     **({"lines": [
                         {
@@ -529,6 +744,8 @@ class Timeline:
                             "ids": line.ids,
                             "delivery": line.delivery,
                             "language": line.language,
+                            **({"offscreen": True} if line.offscreen else {}),
+                            **({"carries": True} if line.carries else {}),
                         }
                         for line in shot.lines
                     ]} if shot.lines else {}),
@@ -550,6 +767,8 @@ class Timeline:
                     "length": move.length,
                     "camera": move.camera,
                     "prompt": move.prompt,
+                    "amplitude": move.amplitude,
+                    "speed": move.speed,
                 }
                 for move in self.moves
             ],

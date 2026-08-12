@@ -14,11 +14,11 @@ import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds,
+  AMPLITUDES, CAMERAS, ROLES, SPEEDS, TRANSITIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
-  items, length, neighbours,
+  items, length, neighbours, retentionsFor,
   remove, reshape, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
-  filesOf,
+  audioOf, filesOf,
 } from "./model.js";
 
 
@@ -54,10 +54,34 @@ const roleOptions = (current) => {
     .join("");
 };
 
-const retentionOptions = (current) => {
-  const value = current || RETENTIONS[0];
-  const names = RETENTIONS.includes(value) ? RETENTIONS : [value, ...RETENTIONS];
+/**
+ * Retention markers as `<option>`s -- the visual four, or the audio four for an audio
+ * file, which has a vocabulary of its own in H3's format rather than a translation of the
+ * visual one. `kind` is the file's, never the author's choice.
+ *
+ * Same bargain as `cameraOptions`: a value this build does not know is offered rather than
+ * dropped, so the control never shows something the document does not say. That covers the
+ * document written before the two sets were told apart, where an audio file still holds a
+ * visual marker -- the compiler translates it, and this shows what is actually stored.
+ */
+const retentionOptions = (current, kind = "image") => {
+  const all = retentionsFor(kind);
+  const value = current || all[0];
+  const names = all.includes(value) ? all : [value, ...all];
   return names
+    .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
+/** A picker whose empty option is a real answer, not a blank: the guide's own default. */
+const scaleOptions = (values, current, blank) => values
+  .map((name) => `<option value="${name}"${name === (current || "") ? " selected" : ""}>`
+    + `${name || blank}</option>`)
+  .join("");
+
+const transitionOptions = (current) => {
+  const value = TRANSITIONS.includes(current) ? current : TRANSITIONS[0];
+  return TRANSITIONS
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
     .join("");
 };
@@ -1707,7 +1731,7 @@ export class TimelineEditor {
       const keep = document.createElement("select");
       keep.className = "mmd-keep-pick";
       keep.title = "How much of this file survives into the video";
-      keep.innerHTML = retentionOptions(item.media.retention);
+      keep.innerHTML = retentionOptions(item.media.retention, item.media.kind);
       node.appendChild(keep);
     }
 
@@ -1757,11 +1781,20 @@ export class TimelineEditor {
       return this.renderPanel(timeline);
     }
 
+    // Two facts that add or remove controls rather than change their values: the first
+    // shot is entered from nowhere so it has no transition, and a static camera has no
+    // amplitude or speed. Folded into the shape below, or the control appears one
+    // selection late.
+    const first = track === "shots"
+      && items(timeline, "shots").every((other) => other.start >= item.start);
+    const still = item.camera === "static" ? 1 : 0;
+
     // Whether this render is showing a different segment than the last one. The focus
     // guards below exist so a render mid-keystroke does not eat what is being typed --
     // but when the selection itself changed, the field is about a different block and
     // keeping the old text is the bug, not the protection.
     const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
+      + `:${first ? 1 : 0}:${still}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
@@ -1785,6 +1818,27 @@ export class TimelineEditor {
     const cameras = track !== "moves" ? "" : `
       <label>camera
         <select class="mmd-f-camera">${cameraOptions(item.camera)}</select>
+      </label>
+      ${item.camera === "static" ? "" : `
+      <label title="How far the framing travels. The guide leaves medium unwritten, so that option contributes nothing to the sentence -- which is what medium means.">amplitude
+        <select class="mmd-f-amplitude">${
+          scaleOptions(AMPLITUDES, item.amplitude, "medium")}</select>
+      </label>
+      <label title="How fast it travels. Normal is the unwritten default, for the same reason.">speed
+        <select class="mmd-f-speed">${scaleOptions(SPEEDS, item.speed, "normal")}</select>
+      </label>`}`;
+
+    // MAIN blocks only, and the transition is hidden on the first shot: nothing is cut to
+    // at the start of a clip, and offering a choice that compiles to nothing is a control
+    // that lies about having an effect.
+    const shotForm = track !== "shots" ? "" : `
+      ${first ? "" : `
+      <label title="How this shot is entered. An ordinary cut is what the guide asks for unless you want otherwise; cross-dissolve, fade and wipe are the three it allows on request.">enter with
+        <select class="mmd-f-transition">${transitionOptions(item.transition)}</select>
+      </label>`}
+      <label class="mmd-f-wide" title="Words actually visible in frame: a sign, a banner, a label. Sent in double quotes, verbatim and untranslated -- the same service the dialogue row does for the spoken words.">on-screen text
+        <input class="mmd-f-screen" type="text" placeholder="what a sign or banner reads, exactly"
+               value="${String(item.screen_text || "").replace(/"/g, "&quot;")}">
       </label>`;
 
     // Only for a block carrying a file. Attaching one puts the clip in full-reference
@@ -1798,8 +1852,9 @@ export class TimelineEditor {
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
-      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide. A cast card lifted out of this file carries its own marker for the person, which can differ: the picture may be fully_preserved while the face on it is an attribute_transfer.">keep file
-        <select class="mmd-f-retention">${retentionOptions(item.media.retention)}</select>
+      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A cast card lifted out of this file carries its own marker for the person, which can differ.">keep file
+        <select class="mmd-f-retention">${
+          retentionOptions(item.media.retention, item.media.kind)}</select>
       </label>`;
 
     // MAIN blocks only. H3 generates the voice with the picture in one pass, and the
@@ -1828,6 +1883,12 @@ export class TimelineEditor {
           </label>
           <label title="Names the language of the words. The words themselves are never translated.">language
             <input class="mmd-f-language" type="text" value="${value("language", "English")}">
+          </label>
+          <label class="mmd-switch" title="A voiceover: heard, not seen being spoken. Writes the guide's exact phrase and the clause it requires after every one -- that the character's lips stay closed. Without the second half the model animates a mouth to match.">
+            <input class="mmd-f-offscreen" type="checkbox"${line.offscreen ? " checked" : ""}> off-screen
+          </label>
+          <label class="mmd-switch" title="This line does not finish inside this block. Compiles as <scenetrans> at both sides of the cut with a continuity phrase, or as <cutoff> when the clip simply ends underneath it.">
+            <input class="mmd-f-carries" type="checkbox"${line.carries ? " checked" : ""}> carries over
           </label>
           ${said.length > 1
             ? '<button class="mmd-f-delline" title="Remove this line">×</button>' : ""}
@@ -1860,6 +1921,7 @@ export class TimelineEditor {
       // the prompt; it just survives long enough to be finished.
       const blank = !said.text.trim() && !String(said.speaker || "").trim()
         && speakerNumbers(said.ids).join() === "1"
+        && !said.offscreen && !said.carries
         && said.delivery === "says" && said.language === "English";
       // Only the last row may vanish for being empty. An empty row above a full one is a
       // line the author is still writing, and dropping it would renumber the rest under
@@ -1903,6 +1965,7 @@ export class TimelineEditor {
     // it happens only when the panel is actually a different shape. Everything else is
     // an in-place value update below.
     const shape = `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
+      + `:${first ? 1 : 0}:${still}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
@@ -1924,6 +1987,7 @@ export class TimelineEditor {
         <label class="mmd-f-locked" title="The end in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-end-secs"></span><span class="mmd-unit">s</span></label>
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
+        + group("shot", shotForm)
         + group("camera", cameras)
         + group("file", subject
             + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""))
@@ -2039,6 +2103,17 @@ export class TimelineEditor {
         });
       }
 
+      // The two switches on a row. `change` rather than `input`, because a checkbox has
+      // one and only one of those worth acting on, and both fire.
+      lines?.addEventListener("change", (e) => {
+        for (const [selector, key] of [
+          [".mmd-f-offscreen", "offscreen"], [".mmd-f-carries", "carries"],
+        ]) {
+          if (!e.target.matches(selector)) continue;
+          patchLine({ [key]: e.target.checked }, false, rowOf(e.target));
+        }
+      });
+
       // Clicking a face adds or removes that person from that line. A chorus is two chips
       // lit at once, so the group form needs no mode of its own; the last one cannot be
       // turned off, because a line spoken by nobody is not a line.
@@ -2078,8 +2153,27 @@ export class TimelineEditor {
         this.panelShape = null;
         this.render();
       });
+      // A change of motion can add or remove the two dynamics pickers, so the panel is
+      // rebuilt rather than repainted -- `patch` alone would leave the old pair on screen
+      // beside a camera that no longer has them.
       this.segFields.querySelector(".mmd-f-camera")
-        ?.addEventListener("change", (e) => patch({ camera: e.target.value }));
+        ?.addEventListener("change", (e) => {
+          this.panelShape = null;
+          patch({ camera: e.target.value });
+        });
+      this.segFields.querySelector(".mmd-f-amplitude")
+        ?.addEventListener("change", (e) => patch({ amplitude: e.target.value }));
+      this.segFields.querySelector(".mmd-f-speed")
+        ?.addEventListener("change", (e) => patch({ speed: e.target.value }));
+      this.segFields.querySelector(".mmd-f-transition")
+        ?.addEventListener("change", (e) => patch({ transition: e.target.value }));
+      this.segFields.querySelector(".mmd-f-screen")
+        ?.addEventListener("input", (e) => {
+          this.snapshotTyping();
+          const next = this.read();
+          items(next, track)[index].screen_text = e.target.value;
+          this.write(next);
+        });
       this.segFields.querySelector(".mmd-f-subject")
         ?.addEventListener("input", (e) => patchMedia({ description: e.target.value }, true));
       this.segFields.querySelector(".mmd-f-retention")
@@ -2106,6 +2200,10 @@ export class TimelineEditor {
     put(".mmd-f-end", item.start + item.length);
     put(".mmd-f-len", item.length);
     put(".mmd-f-camera", item.camera || "static");
+    put(".mmd-f-amplitude", item.amplitude || "");
+    put(".mmd-f-speed", item.speed || "");
+    put(".mmd-f-transition", item.transition || "cut");
+    put(".mmd-f-screen", item.screen_text || "");
 
     // Undo and a switch of selection both land here; the rows themselves are built once.
     const rows = [...this.segFields.querySelectorAll(".mmd-f-line-row")];
@@ -2125,6 +2223,15 @@ export class TimelineEditor {
         "mmd-f-quiet", !(item.lines || []).some((line) => String(line.text || "").trim()));
       write(".mmd-f-delivery", said.delivery ?? "says");
       write(".mmd-f-language", said.language ?? "English");
+      // Checkboxes hold no caret, so they follow the document unconditionally -- which is
+      // what makes undo put them back.
+      for (const [selector, on] of [
+        [".mmd-f-offscreen", said.offscreen === true],
+        [".mmd-f-carries", said.carries === true],
+      ]) {
+        const box = row.querySelector(selector);
+        if (box) box.checked = on;
+      }
     });
     // The chips carry names and faces owned by the cast, so they go stale as the cast is
     // edited. Rebuilt on every render: they hold no caret to lose.

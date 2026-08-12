@@ -86,8 +86,17 @@ def test_the_shot_body_is_the_same_string_the_base_format_carries():
     rename, not a rewrite -- shot numbering, cut times and camera prose stay put."""
     prompt = compile_timeline(build()).prompt
     body = prompt.split("detailed_description: ")[1].split("\n\noverall_soundscape:")[0]
-    assert body.startswith("[Shot 1] Live-action, cinematic,")
+    assert "[Shot 1] A basket of golden croissants" in body
     assert "[Shot 2] At 00:02.667, the camera cuts to a raccoon rising" in body
+
+
+def test_the_style_is_stated_before_shot_one():
+    """§5.2: in full-reference mode the style is established in one or two sentences
+    *before* `[Shot 1]`, not folded into it the way the base format asks for."""
+    body = compile_timeline(build()).prompt.split("detailed_description: ")[1]
+    style, rest = body.split("\n", 1)
+    assert style == "Live-action, cinematic, warm morning sunlight on a cafe terrace."
+    assert rest.startswith("[Shot 1] ")
 
 
 def test_every_token_is_defined_and_analysed():

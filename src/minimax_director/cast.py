@@ -78,6 +78,7 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
 
         media = files.get(str(card.get("file", "")).strip())
         described = str(card.get("description", "")).strip()
+        motion = str(card.get("motion_from", "")).strip()
         if media is not None and described:
             entries = media.setdefault("subjects", [])
             if isinstance(entries, list):
@@ -85,8 +86,22 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
                     "name": described,
                     "subject_retention": str(card.get("keep", "")),
                     "onto": str(card.get("onto", "")).strip(),
+                    # A second asset for the same person: the still says what they look
+                    # like, the clip says how they move. Carried as a filename for the
+                    # reason everything else here is -- tokens move when a block does.
+                    **({"motion_file": motion} if motion else {}),
                     "uid": tag,
                 })
+
+        # An audio the voice is taken from is marked on its own record too, so the
+        # compiler can tell "nothing was said about this file" from "this file is a
+        # timbre reference" without going back through the cast.
+        voice_from = str(card.get("voice_from", "")).strip()
+        heard = files.get(voice_from)
+        if heard is not None:
+            listeners = heard.setdefault("voices", [])
+            if isinstance(listeners, list):
+                listeners.append(tag)
 
         speakers.append({
             "id": number,
@@ -94,11 +109,15 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
             "name": str(card.get("name", "")),
             "subject": 0,
             "uid": tag,
+            **({"voice_from": voice_from} if voice_from else {}),
         })
 
     merged["speakers"] = speakers
+    # A card whose voice is an audio reference has described its voice as fully as one
+    # with a paragraph of prose -- more so -- so it counts as somebody who can speak.
     merged["speech"] = document["speech"] and any(
-        str(card.get("voice", "")).strip() for card in document["cards"])
+        str(card.get("voice", "")).strip() or str(card.get("voice_from", "")).strip()
+        for card in document["cards"])
     return merged
 
 

@@ -126,14 +126,37 @@ not on screen — and the TIMELINE tab shows:
   `Start: 0 f | End: 96 f | Length: 96 f = 4.00s`. Frames come first everywhere in the
   editor, including the playhead clock, because frames are what the document stores and
   what H3 is given; seconds are the translation.
+- **SHOT** — MAIN blocks only. `enter with` is how the cut into this shot is written —
+  `cut` unless you ask for `dissolve`, `fade` or `wipe`; it is not offered on the first
+  shot, which is entered from nowhere. `on-screen text` is any words actually visible in
+  frame — a sign, a banner, a label — sent in double quotes, verbatim and untranslated,
+  the same service the dialogue row does for the spoken words.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
+  `amplitude` and `speed` sit beside it: how far the framing travels and how fast. Both
+  default to *medium* and *normal*, which the guide writes by saying nothing, so those
+  options contribute no words. A static shot has neither, and the two pickers go away.
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
-  says it, `how` it is said, and its `language`. **+ line** adds another row, so a block
-  can hold a conversation; `×` removes one. Who the speakers *are* is written once in the
-  CAST tab, not here — see below.
+  says it, `how` it is said, its `language`, and two switches — **off-screen** and
+  **carries over**. **+ line** adds another row, so a block can hold a conversation; `×`
+  removes one. Who the speakers *are* is written once in the CAST tab, not here — see
+  below.
 - **FILE** — blocks carrying one: `describes`, `used as`, `keep file`, and
   **detach media**, which removes the file without removing the block
+
+`used as` says what the file is *for*, and that decides the task type the prompt opens
+with: `reference` (guidance), `storyboard` (a plan of the framing rather than content —
+it compiles as *"<Picture 3> is a storyboard reference for [Shot 1], defining viewpoint,
+subject placement, and shot order."*), `first frame` / `keyframe` / `last frame` (a real
+frame of the target video), `continue from`, `edit`.
+
+`keep file` says how much of it survives. An **audio** file is graded in its own words,
+because H3's format defines a different set for sound: `fully_copy` (this recording is the
+finished soundtrack), `partially_copy`, `reference` (only the timbre or texture is
+followed, the signal is not copied), `weak_reference`. Everything visible keeps
+`fully_preserved` / `partially_preserved` / `attribute_transfer` / `weak_reference`. The
+picker follows the file, so there is nothing to get wrong — and an older document holding
+a visual marker on an audio file is translated rather than reset.
 
 A dialogue row with no words in it dims — the row and its background both — so an empty
 row reads as what it is: ignored by the compiler until you type something.
@@ -147,6 +170,18 @@ Two faces lit on **one** row is the guide's `(S1,S2)`: the same words spoken by 
 the same instant. Two rows is a conversation — they speak in turn. Speech with no agreed
 words, an argument or a crowd, is neither: describe it in the segment prompt and put the
 sound in an AUDIO cue.
+
+**off-screen** makes the line a voiceover. MiniMax fixes both halves of that form and the
+switch writes both: the exact phrase `says in an off-screen voiceover`, and the clause
+that has to follow every one of them — *while their lips remain completely closed*. The
+second half is the one people forget by hand, and without it the model animates a mouth
+to match the words.
+
+**carries over** says the line does not finish inside this block. With a shot after it,
+both sides of the cut are marked `<scenetrans>` and the prompt states that the audio
+continues across it; with nothing after it, the same switch compiles as `<cutoff>` —
+speech truncated by the end of the clip — and the linter says so, in case that was not
+what you meant. Write the two halves as two lines in two blocks and tick the first.
 
 ### The cast
 
@@ -166,9 +201,19 @@ holds:
   describes but no card names. Filled, it compiles as
   `<Subject 2> …: attribute_transfer - the face…, transferred onto SPEAKER.` Empty, the
   model is told to move a trait and never told where, and the block's chip stays amber.
+- **motion from** — a second file for the same person, supplying how they move rather than
+  what they look like. A still says nothing about a walk, so pointing the card at a video
+  as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>
+  and whose motion comes from <Video 1>.` Shown once there is a video on the timeline.
 - **what they look like** — for a card with a file; becomes their `subject_definitions` line
 - **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
   voice from this, so an empty one is a voice nobody chose and the linter says so.
+- **voice from** — or take the timbre from a recording instead of describing it. Point the
+  card at an `<Audio n>` on the timeline and the prompt says
+  `<Audio 1> is the voice-timbre reference for <Subject 1> (S1).`, with the file marked
+  `reference`: the timbre and the delivery are followed, the signal itself is never
+  copied. Setting that file's `keep file` to `fully_copy` asks for both at once, and the
+  linter calls it what it is.
 
 **+ character** adds a card. **they speak** switches dialogue off for the whole clip: the
 rows and every `<d>` go at once, and the cards stay — a character can be in a clip without
@@ -251,26 +296,41 @@ way: it is a real frame of the target video, whoever else it defines.
 
 ## Camera moves
 
-Each mode contributes one sentence, in the vocabulary MiniMax documents (`Push In`,
-`Pan Left`, `Arc Shot`, `Static Shot`, with `with small/large amplitude` and
-`at slow/fast speed`). H3 reads prose, not enum values:
+A move is three choices, which is how MiniMax documents it: **motion type**, **amplitude**
+and **speed**. H3 reads prose, not enum values, so the three become one sentence.
 
-| Mode | Sentence sent |
+| Motion | Sentence sent |
 |---|---|
-| `—` | *nothing — your note alone is used* |
 | `static` | The camera holds a static shot. |
-| `dolly_in` | The camera pushes in with small amplitude at slow speed. |
-| `dolly_out` | The camera pulls out with small amplitude at slow speed. |
-| `pan_left` | The camera pans left. |
-| `pan_right` | The camera pans right. |
-| `tilt_up` | The camera tilts up. |
-| `tilt_down` | The camera tilts down. |
+| `zoom_in` / `zoom_out` | The camera zooms in / out. |
+| `dolly_in` / `dolly_out` | The camera pushes in / pulls out. |
+| `pan_left` / `pan_right` | The camera pans left / right. |
+| `truck_left` / `truck_right` | The camera trucks left / right. |
+| `tilt_up` / `tilt_down` | The camera tilts up / down. |
+| `pedestal_up` / `pedestal_down` | The camera rises straight up / lowers straight down. |
 | `orbit` | The camera moves in an arc around the subject. |
+| `tracking` | The camera follows the moving subject. |
+| `pov` | The camera takes the subject's point of view. |
+| `roll_cw` / `roll_ccw` | The camera rolls clockwise / counterclockwise. |
 | `handheld` | The camera shakes slightly. |
-| `crash_zoom` | The camera zooms in with large amplitude at fast speed. |
+| `shake_strongly` | The camera shakes strongly. |
 
-A note is appended after the sentence: `dolly_in` + *"closing on the apple"* becomes
-*"The camera dollies slowly in. closing on the apple"*.
+Zoom and push-in are not the same move. A zoom changes the focal length with the camera
+standing still; a push-in moves the camera body, and the background changes size with the
+subject. The model knows the difference, so it is worth picking the right one.
+
+**amplitude** (`small` / `large`) and **speed** (`slow` / `fast`) are added to the
+sentence when set: `dolly_in` + `small` + `slow` compiles as *"The camera pushes in with
+small amplitude at slow speed."* Both default to *medium* and *normal*, which the guide
+writes by leaving them out — so those options add nothing, on purpose.
+
+A note typed into the block is appended after the sentence: `dolly_in` + *"closing on the
+apple"* becomes *"The camera pushes in. closing on the apple"* — write it as a
+continuation, not as a sentence of its own.
+
+Documents from before amplitude and speed were fields are read as what they meant:
+`dolly_in` was always *small, slow* and `crash_zoom` always *large, fast*, so both keep
+those values on load and compile to exactly the sentence they always did.
 
 A camera block is written into whichever shots it overlaps. It stays a separate track in
 the editor because a move can straddle a cut, but the prompt puts the sentence inside the
@@ -303,6 +363,12 @@ Three consequences worth knowing:
   the MUSIC box is `non_diegetic_music`, the score only the audience hears, and compiles
   to `N/A` when empty.
 
+Attach a file and the prompt switches to H3's six-section full-reference format instead —
+`subject_definitions`, `summary`, `retention_analysis`, `detailed_description`,
+`overall_soundscape`, `non_diegetic_music`. The shot list is the same string under a
+different name, with one difference the guide asks for: the GLOBAL PROMPT is stated on its
+own line **above** `[Shot 1]` rather than folded into it.
+
 ---
 
 ## The outputs
@@ -317,6 +383,19 @@ Three consequences worth knowing:
 
 Wire `prompt` and `report` to a preview node while you are learning the tool. Almost
 every "why did it do that" question is answered by looking at them.
+
+`report` also carries the checks MiniMax's guides hand out for free, each a warning and
+never a refusal:
+
+- the description outside the **350–500 words** the guide asks for on a generation task —
+  skipped for dialogue-heavy clips and for editing tasks, which it exempts by name
+- two adjacent shots that **describe the same thing at a different framing**; the guide
+  asks for a camera move rather than a cut when only the distance changes
+- an empty AUDIO track, because `overall_soundscape: N/A` tells H3 the clip is
+  **completely silent**, which is a stronger claim than "nobody wrote anything yet"
+- a **voice reference** whose `keep file` asks for the recording to be copied
+- a line marked **carries over** with nothing after it, which compiles as `<cutoff>`
+- a **guessed word** in a reused line — the guide wants `[unclear]`, never a guess
 
 ---
 
