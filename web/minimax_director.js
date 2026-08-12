@@ -16,6 +16,7 @@ import { BUILD, VERSION } from "./build.js";
 
 const NODE = "MiniMaxDirector";
 const PROMPT_NODE = "MiniMaxDirectorPrompt";
+const REPORT_NODE = "MiniMaxDirectorReport";
 const CAST_NODE = "MiniMaxDirectorCast";
 const STATE_WIDGET = "timeline";
 const CAST_WIDGET = "cast";
@@ -130,7 +131,14 @@ app.registerExtension({
   name: "imbutus.MiniMaxDirector",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    const mounts = { [NODE]: attach, [PROMPT_NODE]: attachPromptView, [CAST_NODE]: attachCast };
+    const mounts = {
+      [NODE]: attach,
+      [PROMPT_NODE]: (node) => attachPromptView(node, "prompt"),
+      // Same widget, a different field of the same preview: the compile and the lint run
+      // together, so a report panel costs one more line rather than a second request.
+      [REPORT_NODE]: (node) => attachPromptView(node, "report"),
+      [CAST_NODE]: attachCast,
+    };
     const mount = mounts[nodeData.name];
     if (!mount) return;
     const onCreated = nodeType.prototype.onNodeCreated;
@@ -337,14 +345,16 @@ function remember(node, editor) {
  * by the editor: a graph can hold this node with no director on the canvas yet, and the
  * stylesheet goes in once either way.
  */
-function attachPromptView(node) {
+function attachPromptView(node, field = "prompt") {
   install();
+
+  const heading = field === "report"
+    ? '<label>LINT REPORT <span class="mmd-hint">what to check before you run</span></label>'
+    : '<label>COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span></label>';
 
   const root = document.createElement("div");
   root.className = "mmd-prompt-view";
-  root.innerHTML = `
-    <label>COMPILED PROMPT <span class="mmd-hint">what the model actually receives</span></label>
-    <pre class="mmd-prompt-text" tabindex="0"></pre>`;
+  root.innerHTML = `${heading}<pre class="mmd-prompt-text" tabindex="0"></pre>`;
 
   const view = node.addDOMWidget(PROMPT_VIEW, "minimax_director_prompt", root, {
     getMinHeight: () => 120,
@@ -357,6 +367,7 @@ function attachPromptView(node) {
   refuseWidthStamp(view);
 
   node.promptView = root.querySelector(".mmd-prompt-text");
+  node.promptField = field;
   node.setSize([
     Math.max(node.size?.[0] ?? 0, PROMPT_SIZE[0]),
     Math.max(node.size?.[1] ?? 0, PROMPT_SIZE[1]),
@@ -368,7 +379,7 @@ function attachPromptView(node) {
   node.onExecuted = function (message) {
     executed?.apply(this, arguments);
     const text = message?.text;
-    if (text?.length) paintPromptView(node, { ok: true, prompt: text.join("") });
+    if (text?.length) paintPromptView(node, { ok: true, [field]: text.join("") });
   };
 
   // Wiring it up mid-session should show the prompt at once rather than on the next
@@ -551,8 +562,11 @@ function paintPromptViews(director, result) {
 function paintPromptView(node, result) {
   if (!node.promptView) return;
   node.promptView.classList.toggle("mmd-prompt-bad", !result.ok);
+  // An empty report is an answer, not a blank panel: nothing found is the thing you
+  // wanted to know, and a box with nothing in it reads as a box that is not working.
+  const found = result[node.promptField ?? "prompt"] ?? "";
   node.promptView.textContent = result.ok
-    ? result.prompt
+    ? (found || (node.promptField === "report" ? "nothing to report" : ""))
     : `could not compile: ${result.error}`;
   node.graph?.setDirtyCanvas(true, true);
 }

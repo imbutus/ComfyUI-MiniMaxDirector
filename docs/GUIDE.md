@@ -402,6 +402,12 @@ never a refusal:
 
 ## The other two nodes
 
+**MiniMax Director — Prompt** and **MiniMax Director — Report** show the compiled prompt
+and the linter's findings while you write, without running anything. Both are already in
+the shipped workflow. They exist rather than a generic preview node for one reason: a
+preview fills from a *run*, and a warning that arrives after the render arrives after the
+cost.
+
 **MiniMax Director — Compile** does the compile step with no model attached. Use it to
 review or hand-edit a prompt before spending GPU time.
 

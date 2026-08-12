@@ -78,6 +78,7 @@ arrange is the clip that is generated, with no frames on the end that no shot de
 | --- | --- |
 | `MiniMax Director` | Timeline editor; outputs `positive`, `latent`, the compiled `prompt`, the `length`, and a lint `report`. |
 | `MiniMax Director — Prompt` | Shows the compiled prompt as the timeline is edited, without running anything. Wire the director's `prompt` output to it. |
+| `MiniMax Director — Report` | Shows the linter's findings as the timeline is edited. Wire the director's `report` output to it. |
 | `MiniMax Director — Compile` | The same compile step with no model attached, for reviewing or hand-editing a prompt first. |
 | `MiniMax Director — Length` | Snaps a duration in seconds to a valid frame count. |
 
@@ -124,8 +125,8 @@ it from the Workflows sidebar. It wires up:
 
 - **MiniMax Director** — the timeline you work in.
 - **MiniMax Director — Prompt** — the compiled prompt, beside it, updating as you type.
-- **report** — the linter's findings, under it. Almost every "why did it do that" is
-  answered by those two panels.
+- **MiniMax Director — Report** — the linter's findings, above it. Almost every
+  "why did it do that" is answered by those two panels.
 - the loaders, sampler, both VAE decodes, `CreateVideo` and `SaveVideo` — everything
   needed to get an mp4 with sound out the other end.
 

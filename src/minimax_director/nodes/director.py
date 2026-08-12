@@ -279,6 +279,32 @@ class MiniMaxDirectorPrompt(io.ComfyNode):
         return io.NodeOutput(ui=ui.PreviewText(source or ""))
 
 
+class MiniMaxDirectorReport(io.ComfyNode):
+    """Show the linter's findings, updating as the timeline is edited.
+
+    The same argument as `MiniMaxDirectorPrompt`, one step further: a warning that only
+    appears after a run appears after the cost. Every check the linter makes is free and
+    needs no model, so there is no reason to learn about a gap in the shot list from a
+    finished video rather than from the panel you are already looking at.
+    """
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorReport",
+            display_name="MiniMax Director — Report",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[io.String.Input("source", force_input=True)],
+            outputs=[],
+            is_output_node=True,
+        )
+
+    @classmethod
+    def execute(cls, source) -> io.NodeOutput:
+        return io.NodeOutput(ui=ui.PreviewText(source or ""))
+
+
 class MiniMaxDirectorLength(io.ComfyNode):
     """Snap a duration in seconds to a length H3 accepts."""
 
@@ -339,6 +365,7 @@ NODES = [
     MiniMaxDirectorCast,
     MiniMaxDirectorCompile,
     MiniMaxDirectorPrompt,
+    MiniMaxDirectorReport,
     MiniMaxDirectorLength,
 ]
 
