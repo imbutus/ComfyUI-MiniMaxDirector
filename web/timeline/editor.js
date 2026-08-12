@@ -1808,6 +1808,7 @@ export class TimelineEditor {
 
     this.segPrompt.value = "";
     this.segPrompt.disabled = true;
+    this.segPrompt.closest(".mmd-prompt")?.classList.add("mmd-bulk");
     this.range.textContent = `${picked.length} segments selected`;
 
     const tracks = new Set(picked.map((entry) => entry.track));
@@ -1872,6 +1873,10 @@ export class TimelineEditor {
           </select>
         </label>`)
       + group("do", `
+        ${only("moves") || only("shots") || files ? "" : `
+        <span class="mmd-f-note">Nothing to set: these blocks are on different tracks, or
+        do not all carry a file of one kind. Only what applies to every selected block is
+        offered.</span>`}
         <button class="mmd-f-bulk mmd-b-merge"${joined ? "" : " disabled"}
           title="${joined
             ? "One shot instead of several. The prose is joined and the span is kept -- which is what MiniMax asks for when a cut only changes the distance or the angle."
@@ -1997,6 +2002,7 @@ export class TimelineEditor {
     // it, which made multi-select good for exactly two things -- deleting and dragging --
     // when it is the natural way to say "these shots, all of them".
     if (this.selected.length > 1) return this.renderBulk(timeline);
+    this.segPrompt.closest(".mmd-prompt")?.classList.remove("mmd-bulk");
 
     if (!this.selection) {
       this.segPrompt.value = "";

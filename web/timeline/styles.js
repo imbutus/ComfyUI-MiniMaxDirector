@@ -454,6 +454,12 @@ const CSS = `
 /* With no segment selected the box has nothing to hold, and a locked field still asks to be
    read before it can be dismissed. It leaves instead, and the panel closes over the gap. */
 .mmd-prompt:has(> textarea:disabled) { display:none; }
+/* Except when the box is holding a selection panel. The textarea is disabled there for
+   the same reason -- there is no single block to type about -- but the fields under it
+   are the whole point, and the rule above took them down with it. */
+.mmd .mmd-prompt.mmd-bulk { display:flex; }
+.mmd-prompt.mmd-bulk > label, .mmd-prompt.mmd-bulk > .mmd-seg-prompt { display:none; }
+.mmd-seg-fields .mmd-f-note { color:#6b7280; font-size:11px; }
 
 /* One row per group, and each group a box of its own. Everything used to sit in a single
    wrapping row, which broke wherever the width ran out and put the end of a block's timing
