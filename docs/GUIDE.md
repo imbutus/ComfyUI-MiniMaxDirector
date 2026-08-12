@@ -252,7 +252,8 @@ Removing a speaker leaves the lines that used their number alone. Renumbering to
 gap would quietly reassign every later line to a different person.
 
 Double-click a block to edit its text in place. Drag its edges to resize, its middle to
-move, and drag a box over several to select them together. `Delete` removes the
+move, and drag a box over several to select them together. Clicking one member of a
+selection singles it out; `Cmd/Ctrl`-clicking one takes it out and leaves the rest. `Delete` removes the
 selection; `Cmd/Ctrl+A` selects every block on every track; `S` cuts the selection in two
 at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
 it, keeping its spacing; `Cmd/Ctrl+D` duplicates; `Cmd/Ctrl+Z` undoes.

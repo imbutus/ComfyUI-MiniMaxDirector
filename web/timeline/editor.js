@@ -401,6 +401,12 @@ export class TimelineEditor {
         node.classList.remove("mmd-resizing");
       }
       if (this.marquee) this.endMarquee();
+      // A click inside a group, not a drag of it: collapse to the one that was clicked.
+      if (this.pending && !dragged) {
+        this.selected = [this.pending];
+        this.render();
+      }
+      this.pending = null;
       if (dragged) this.render();
     });
 
@@ -1064,9 +1070,24 @@ export class TimelineEditor {
 
     // Grabbing something already in a multi-selection keeps the group and moves it
     // together; grabbing anything else selects just that one.
+    const additive = event.shiftKey || event.metaKey || event.ctrlKey;
+    this.pending = null;
     if (!this.isSelected(track, index)) {
-      if (event.shiftKey || event.metaKey || event.ctrlKey) this.selected.push({ track, index });
+      if (additive) this.selected.push({ track, index });
       else this.selected = [{ track, index }];
+    } else if (additive) {
+      // The modifier could only ever add. Held over something already selected it now
+      // takes that one out and leaves the rest of the group alone, which is what every
+      // other list of things behaves like.
+      this.selected = this.selected.filter(
+        (entry) => !(entry.track === track && entry.index === index));
+      this.render();
+      return;
+    } else if (this.selected.length > 1) {
+      // Keep the group: this may be the start of a drag that moves all of it. But a
+      // gesture that turns out to be a plain click meant "just this one", and answering
+      // it by doing nothing made a selected block the one block you could not single out.
+      this.pending = { track, index };
     }
 
     // What the pointer is actually over decides the gesture -- the same element the
