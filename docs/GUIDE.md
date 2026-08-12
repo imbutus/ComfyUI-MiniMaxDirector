@@ -228,7 +228,8 @@ gap would quietly reassign every later line to a different person.
 
 Double-click a block to edit its text in place. Drag its edges to resize, its middle to
 move, and drag a box over several to select them together. `Delete` removes the
-selection; `S` cuts it in two at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
+selection; `Cmd/Ctrl+A` selects every block on every track; `S` cuts the selection in two
+at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
 it, keeping its spacing; `Cmd/Ctrl+D` duplicates; `Cmd/Ctrl+Z` undoes.
 
 **Clear** in the toolbar empties the timeline — every block, the global prompt and the

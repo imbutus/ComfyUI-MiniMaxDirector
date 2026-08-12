@@ -318,6 +318,21 @@ export class TimelineEditor {
         return;
       }
 
+      // Select every block on every track. Before the guard below, because select-all is
+      // the one selection command that has to work from nothing selected -- and ahead of
+      // ComfyUI's own handler, which reads the same chord as "select every node on the
+      // canvas". Whichever of the two answers is decided by what you clicked last.
+      if (this.active && chord && key === "a") {
+        event.preventDefault();
+        event.stopPropagation();
+        const timeline = this.read();
+        this.selected = TRACKS.flatMap(({ key: track }) =>
+          items(timeline, track).map((_, index) => ({ track, index })));
+        this.selection = this.selected.length === 1 ? this.selected[0] : null;
+        this.render();
+        return;
+      }
+
       if (this.active && chord && key === "v" && this.clipboard?.length) {
         event.preventDefault();
         event.stopPropagation();
