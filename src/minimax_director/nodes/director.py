@@ -120,8 +120,10 @@ class MiniMaxDirector(io.ComfyNode):
                     tooltip="How reference images are sized; 'max' is slower but keeps identity.",
                 ),
                 io.String.Input("cast", multiline=True, default=CAST_EMPTY, optional=True,
-                                tooltip="Everyone in the clip. Edited in the director's "
-                                        "CAST tab, or wired from a Cast node."),
+                                tooltip="Everything the prompt names -- people, props, "
+                                        "costumes, places -- and the one place a file is "
+                                        "described. Edited in the director's SUBJECTS "
+                                        "tab, or wired from a Subjects node."),
                 io.Vae.Input("audio_vae", optional=True),
                 io.Image.Input("first_frame", optional=True),
                 io.Image.Input("last_frame", optional=True),
@@ -331,24 +333,30 @@ class MiniMaxDirectorLength(io.ComfyNode):
 
 
 class MiniMaxDirectorCast(io.ComfyNode):
-    """Everyone in the clip, one card each: their face, what stays the same, how they sound.
+    """Everything the prompt has to name, one card each: what it is, what stays the same.
 
-    A character is four things -- a face, a name, a description the model must honour, and
-    a voice -- and they used to be authored in two different parts of the director with
-    nothing on screen tying them together. They are written here instead and folded into
-    the timeline at compile time.
+    A card is one `<Subject n>`. Usually a person -- a face, a name, a description the
+    model must honour, and a voice, which used to be authored in two different parts of
+    the director with nothing on screen tying them together -- but a costume, a prop, a
+    place or a style lifted out of the same photograph is a subject too, and fills in the
+    same card with the voice row left empty. Several cards may point at one file: that is
+    how a single photograph names several things.
 
-    Wire `cast` into the director. The card names the file it draws a person out of by
-    filename rather than by `<Picture n>`: the ordinal is computed from where blocks sit
-    on the timeline and changes when one is dragged, and a card that quietly re-pointed at
-    a different photograph is a mistake you would only see in the finished video.
+    This is also the only place a file is described. A file used to define something is
+    cited inside that thing's definition rather than given a line of its own, so a second
+    description box on the block would have been a field the prompt threw away.
+
+    Wire `cast` into the director. The card names its file by filename rather than by
+    `<Picture n>`: the ordinal is computed from where blocks sit on the timeline and
+    changes when one is dragged, and a card that quietly re-pointed at a different
+    photograph is a mistake you would only see in the finished video.
     """
 
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxDirectorCast",
-            display_name="MiniMax Director — Cast",
+            display_name="MiniMax Director — Subjects",
             category=CATEGORY,
             description=cls.__doc__,
             inputs=[io.String.Input("cast", multiline=True, default=CAST_EMPTY)],

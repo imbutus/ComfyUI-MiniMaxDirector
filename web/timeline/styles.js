@@ -191,6 +191,11 @@ const CSS = `
    are two answers to the same question, and stacked they read as two unrelated fields. */
 .mmd-card-voice-row { display:flex; align-items:center; gap:9px; min-width:0; }
 .mmd-card-voice-row .mmd-card-voice { flex:1 1 auto; }
+/* Where the description ends up. Grey and one size down: it is the answer to a question
+   the card raises, not another thing to fill in. Empty when it has nothing to say, and
+   the rule collapses the gap so nothing moves. */
+.mmd-card-note { color:#6b7280; font-size:10px; line-height:1.35; }
+.mmd-card-note:empty { display:none; }
 .mmd-card-badge { flex:0 0 auto; background:#2f6d8f; color:#eaf2f6; border-radius:4px;
   padding:2px 6px; font-size:10px; letter-spacing:.05em; }
 .mmd-card-subject { background:#2c313c; color:#9ca3af; }
@@ -250,9 +255,14 @@ const CSS = `
 .mmd-f-nobody { color:#6b7280; font-size:11px; }
 /* Part of the sentence, not a control beside it: it reads as the words it replaces and
    underlines like a link, because that is what it does. */
-.mmd-f-tocast { background:none; border:0; padding:0; font:inherit; color:#8fb8cc;
-  text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
-.mmd-f-tocast:hover { color:#cde3ef; }
+.mmd-f-tocast, .mmd-seg-fields .mmd-f-tocast { background:none; border:0; padding:0;
+  font:inherit; color:#8fb8cc; text-decoration:underline; text-underline-offset:2px;
+  cursor:pointer; }
+/* Scoped copy on purpose: the panel's own '.mmd-seg-fields button' rule is the red
+   "detach media" style and outranks a bare class, so this link came out looking like the
+   one destructive control on the node. */
+.mmd-f-tocast:hover, .mmd-seg-fields .mmd-f-tocast:hover { color:#cde3ef;
+  background:none; border-color:transparent; }
 .mmd-cast-add { align-self:flex-start; margin-top:5px; background:#2c313c; color:#e5e7eb;
   border:1px solid #3a4150; border-radius:5px; padding:4px 9px; cursor:pointer;
   font:inherit; font-size:11px; }
@@ -460,6 +470,21 @@ const CSS = `
 .mmd .mmd-prompt.mmd-bulk { display:flex; }
 .mmd-prompt.mmd-bulk > label, .mmd-prompt.mmd-bulk > .mmd-seg-prompt { display:none; }
 .mmd-seg-fields .mmd-f-note { color:#6b7280; font-size:11px; }
+
+/* A file somebody has been lifted out of. The sentence that reaches the prompt is the
+   cast card's, so the box that no longer feeds anything is replaced by the one that
+   does -- flat, unbordered, obviously not a field you type into. */
+.mmd-seg-fields .mmd-f-claimed { display:flex; align-items:center; gap:8px;
+  flex-wrap:wrap; color:#9ca3af; font-size:11px; }
+.mmd-seg-fields .mmd-f-claim-head { color:#9ca3af; }
+.mmd-seg-fields .mmd-f-claim { display:flex; align-items:center; gap:6px;
+  background:#1c1f26; border:1px solid #2c313c; border-radius:4px; padding:2px 8px; }
+.mmd-seg-fields .mmd-f-claim-who { color:#8fb8cc; white-space:nowrap; }
+.mmd-seg-fields .mmd-f-claim-text { color:#e5e7eb; }
+/* No card names this file yet, or only an older build's block text does: same shape as a
+   real claim, drawn as the absence it is. */
+.mmd-seg-fields .mmd-f-claim-none { color:#6b7280; font-style:italic; }
+.mmd-seg-fields .mmd-f-claimed .mmd-f-note { flex-basis:100%; }
 
 /* One row per group, and each group a box of its own. Everything used to sit in a single
    wrapping row, which broke wherever the width ran out and put the end of a block's timing

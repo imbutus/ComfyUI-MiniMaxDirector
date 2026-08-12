@@ -138,12 +138,16 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 ## The cast document
 
 A second widget, parsed by `cast.py` and folded into the timeline before compiling. One
-card per person: `name`, `file` (which attachment they are drawn from), `description`,
-`voice`, `keep` (their own `subject_retention`), `onto`, `motion_from`, `voice_from`, and
-a stable `uid`.
+card per subject -- shown as the **SUBJECTS** tab, and not only people: a costume, a prop,
+a place or a style out of the same photograph is a card too, with the voice fields left
+empty. Fields: `name`, `file` (which attachment it is drawn from), `description`, `voice`,
+`keep` (its own `subject_retention`), `onto`, `motion_from`, `voice_from`, and a stable
+`uid`. Several cards may name one file; each is numbered separately.
 
-- A card **with** a file and a description appends a subject to that file's `subjects`;
-  every card appends a speaker. Both ends carry the card's `uid`, so the `<Subject n>` a
+- A card **with** a file and a description appends a subject to that file's `subjects`,
+  and lends its sentence to the file's own `description` when the record has none -- the
+  editor has no description box on the block, so a file whose role keeps it an entry
+  would otherwise have nothing to say about itself. Every card appends a speaker. Both ends carry the card's `uid`, so the `<Subject n>` a
   voice belongs to survives the renumbering that dragging a block causes.
 - `onto` is the receiver of an `attribute_transfer`, and only means anything for that
   marker. `compile.py` appends `, transferred onto <onto>` to the subject's retention
@@ -307,6 +311,21 @@ no weights, in about 0.2 seconds.
     `role` and `retention` when it is attached, rather than left absent for a compiler
     default to fill in: a select shows the first value of its set either way, and a
     compiler falling back to a different one puts a value on screen the prompt never used.
+15. **One file, one description, written on a subject card.** A file used to define
+    something gets no `subject_definitions` line of its own (`_only_defines` in
+    `compile.py`), so a `describes` box on the block fed nothing -- two boxes for one
+    file, and nothing on screen saying which won. The block's box is gone: the FILE panel
+    shows `editor.definedBy`, a read-only reading of the cards drawn from that file, and
+    `cast.merge` lends the first card's sentence to `media["description"]` so a file whose
+    role *does* keep it an entry is still described. `media["description"]` is still read
+    by the compiler and still carried by older documents, which is why the panel shows it
+    greyed rather than pretending it is not there.
+16. **Never lay the timeline out while its tab is hidden.** Track widths come from
+    `stage.clientWidth`, which is 0 under `.mmd-hide { display:none }`, and `width()`
+    falls back to a 200px floor -- so a `render()` triggered from the SUBJECTS tab (a card
+    edit repaints the blocks, which carry its chips) left the whole clip drawn into a
+    corner, still there when the tab came back. `showTab` re-renders on the way into
+    `timeline`, one frame later so layout has caught up with the class it just removed.
 
 ## Calling into ComfyUI
 

@@ -92,6 +92,14 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
                     **({"motion_file": motion} if motion else {}),
                     "uid": tag,
                 })
+            # The editor has one description box per file and it lives on the card, so a
+            # file that keeps an entry of its own -- a frame anchor, an edit source, and
+            # anything not used purely to define somebody -- would otherwise have nothing
+            # to say about itself. The first card to name it lends its sentence; a
+            # description already on the record is left alone, because it was written
+            # about the file rather than about a person in it.
+            if not str(media.get("description", "")).strip():
+                media["description"] = described
 
         # An audio the voice is taken from is marked on its own record too, so the
         # compiler can tell "nothing was said about this file" from "this file is a

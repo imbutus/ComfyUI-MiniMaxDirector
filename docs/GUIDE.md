@@ -117,7 +117,7 @@ The panel under the toolbar shows one of three things, and remembers which one a
 reload:
 
 - **TIMELINE** — the tracks, and the fields of whatever block is selected
-- **CAST** — one card per person in the clip
+- **SUBJECTS** — one card per thing the prompt has to name
 - **GLOBAL** — GLOBAL PROMPT and GLOBAL MUSIC, the two things that are set once for the
   whole piece and then left alone
 
@@ -145,10 +145,17 @@ not on screen — and the TIMELINE tab shows:
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
   says it, `how` it is said, its `language`, and two switches — **off-screen** and
   **carries over**. **+ line** adds another row, so a block can hold a conversation; `×`
-  removes one. Who the speakers *are* is written once in the CAST tab, not here — see
+  removes one. Who the speakers *are* is written once in the SUBJECTS tab, not here — see
   below.
-- **FILE** — blocks carrying one: `describes`, `used as`, `keep file`, and
-  **detach media**, which removes the file without removing the block
+- **FILE** — blocks carrying one: `used as`, `keep file`, **detach media**, and a
+  read-only `describes` line. There is no description box here: what a file *is* is
+  written once, on a subject card, and this line shows the card's sentence beside the
+  `<Subject n>` it became with a link to the SUBJECTS tab. It said `nothing describes
+  this file yet` until you add one. The guide asks for a file used to define something to
+  be cited inside that thing's definition rather than given an entry of its own, so a
+  second box here was a field the prompt threw away — which is exactly how it behaved.
+  Text typed on the block by an older build still compiles and is shown greyed, with the
+  card's sentence taking over the moment there is one.
 
 **Several blocks selected** turns the panel into a selection panel, offering only what
 applies to all of them: `camera` / `amplitude` / `speed` when they are all camera moves,
@@ -210,17 +217,28 @@ what you meant. Write the two halves as two lines in two blocks and tick the fir
 
 ### The cast
 
-The **CAST** tab is one card per person, and the tab itself carries the count. A card
-holds:
+The **SUBJECTS** tab is one card per thing the prompt has to name, and the tab itself
+carries the count. Usually a person — but the guide's subjects are not only people: a
+costume, a prop, a place or a style lifted out of the same photograph is a subject too,
+with a retention marker of its own, and it fills in the same card with the voice row left
+empty. Several cards may point at one file; that is how a single photograph names several
+things, each numbered separately.
 
-- **name them** — a short name, yours, so the chips on a dialogue row are readable
-- **from** — which file on the timeline this person is drawn from, if any. That binding is
-  what makes a face and a voice one person: the card then shows the `<Subject n>` badge
-  the prompt will use for them.
-- **keep them** — how much of *the person* survives, compiled as `subject_retention`. Not
+This is also the only place a file is described. A card holds:
+
+- **name it** — a short name, yours, so the chips on a dialogue row are readable
+- **from** — which file on the timeline this subject is drawn from, if any, and the only
+  place that file is described. The binding is what makes a face and a voice one person:
+  the card then shows the `<Subject n>` badge the prompt will use. Several cards may point
+  at one file — a person, their coat, the room behind them — each numbered separately.
+- **what it is** — the sentence that becomes this subject's definition, and the only
+  description of that file anywhere. A line under the box says which `<Subject n>` it
+  became and that the file has no entry of its own. When the file's role does keep it an
+  entry — a frame anchor, an edit source — this sentence fills that in too.
+- **keep it** — how much of *the subject* survives, compiled as `subject_retention`. Not
   the same field as the block's `keep file`: the photo may be `fully_preserved` while the
   face taken out of it is an `attribute_transfer` onto somebody else.
-- **onto** — who receives that transfer. It appears only when `keep them` is
+- **onto** — who receives that transfer. It appears only when `keep it` is
   `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
   offers the other cast members and each shot's subject, or you type a receiver the shot
   describes but no card names. Filled, it compiles as
@@ -314,7 +332,7 @@ Limits, from the model: **9 images, 3 videos, 3 video soundtracks, 3 standalone 
 **A picture that only exists to define somebody gets no entry of its own.** MiniMax's
 guide is explicit: if an image is used only to establish a character, a scene, a costume
 or a style, cite it inside the `<Subject n>` definition instead of writing a standalone
-picture entry. So a `reference` image whose whole job is feeding a cast card is described
+picture entry. So a `reference` image whose whole job is feeding a subject card is described
 once, as the subject drawn from it — asking for the picture *and* the person is asking for
 two different things at once. An image used as a `first frame` keeps its own entry either
 way: it is a real frame of the target video, whoever else it defines.

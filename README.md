@@ -5,11 +5,17 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
-H3 makes the picture and the voices in one pass, so the editor has a cast: one card per
-person, holding their face, their voice, how much of them survives from a reference, and —
-for a face swap — who the face is transferred onto. A card can also take a person's motion
-from a video and their voice timbre from a recording, which is the guide's one-subject-
-several-assets case. A shot then only says who speaks and what they say.
+H3 makes the picture and the voices in one pass, so the editor has a **SUBJECTS** tab: one
+card per thing the prompt has to name, holding its face, its voice, how much of it survives
+from a reference, and — for a face swap — who the face is transferred onto. Not only
+people: a costume, a prop, a place or a style out of the same photograph is a card too,
+and several cards may point at one file. A card can also take a person's motion from a
+video and their voice timbre from a recording, which is the guide's one-subject-several-
+assets case. A shot then only says who speaks and what they say.
+
+A card is also the one place a file is described — there is no second description box on
+the block, because a file used to define something is cited inside that thing's definition
+rather than given a line of its own.
 
 The compiler covers MiniMax's published prompt guides rather than a subset of them: the
 full camera vocabulary as motion type × amplitude × speed, voiceovers in the exact form

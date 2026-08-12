@@ -20,6 +20,18 @@ import {
   remove, reshape, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
   audioOf, filesOf,
 } from "./model.js";
+import { numbering } from "./cast.js";
+
+
+/**
+ * User text into markup.
+ *
+ * Names, filenames and descriptions are typed by hand and several of them are written
+ * straight into `innerHTML`; the angle brackets matter here in particular, because the
+ * things this editor talks about are called `<Subject 1>`.
+ */
+const text = (value) => String(value ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 
 /**
@@ -165,7 +177,7 @@ export class TimelineEditor {
       <div class="mmd-tabbed">
       <div class="mmd-tabs">
         <button class="mmd-tab mmd-on" data-tab="timeline">TIMELINE</button>
-        <button class="mmd-tab" data-tab="cast">CAST <span class="mmd-tab-count"></span></button>
+        <button class="mmd-tab" data-tab="cast" title="Everything the prompt has to name: people, costumes, props, places. One card each, and each becomes a &lt;Subject n&gt;. This is the only place a file is described.">SUBJECTS <span class="mmd-tab-count"></span></button>
         <button class="mmd-tab" data-tab="global">GLOBAL</button>
       </div>
 
@@ -239,6 +251,13 @@ export class TimelineEditor {
     this.scrub = this.root.querySelector(".mmd-scrub");
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
+    // Delegated once, on an element that outlives every rebuild: the link to the SUBJECTS
+    // tab appears in two unrelated groups of this panel -- the dialogue row when nobody
+    // has been written yet, and the file row, which is the only place a file is
+    // described. Bound to one of them it was dead in the other.
+    this.segFields.addEventListener("click", (event) => {
+      if (event.target.closest(".mmd-f-tocast")) this.showTab("cast");
+    });
     this.global = this.root.querySelector(".mmd-global");
     this.music = this.root.querySelector(".mmd-music");
 
@@ -588,7 +607,7 @@ export class TimelineEditor {
   /**
    * Show one panel of the node.
    *
-   * The cast is a list of people, not part of the timeline, and it is read while writing
+   * The cast is a list of subjects, not part of the timeline, and it is read while writing
    * dialogue rather than continuously -- so it takes the same space rather than its own.
    * A tab costs nothing when you are not looking at it, which is the whole point on a
    * node this tall.
@@ -604,6 +623,12 @@ export class TimelineEditor {
     for (const panel of this.panels) {
       panel.classList.toggle("mmd-hide", panel.dataset.panel !== name);
     }
+    // The tracks are laid out from `stage.clientWidth`, and a hidden panel measures zero
+    // -- so a render that ran while another tab was open (editing a subject repaints the
+    // blocks, which carry its chips) sized the whole clip to the 200px floor in `width`,
+    // and coming back showed a timeline squeezed into a corner. Re-measured on the way
+    // in, a frame later, once layout has caught up with the class that was just removed.
+    if (name === "timeline") requestAnimationFrame(() => this.render());
     this.onTab?.(name);
   }
 
@@ -615,7 +640,7 @@ export class TimelineEditor {
     if (height > 0) this.root.style.setProperty("--mmd-cast-height", `${height}px`);
   }
 
-  /** How many people are in the cast, shown on the tab so it is not a mystery door. */
+  /** How many cards the cast holds, shown on the tab so it is not a mystery door. */
   paintTabCount(count) {
     const badge = this.tabs.querySelector(".mmd-tab-count");
     if (badge) badge.textContent = count ? `· ${count}` : "";
@@ -675,14 +700,14 @@ export class TimelineEditor {
     const chosen = speakerNumbers(ids);
     const cast = this.castOf?.();
     if (!cast) {
-      return `<span class="mmd-f-nobody">no cast node connected — add a
-        <b>MiniMax Director — Cast</b> and wire its <b>cast</b> output here</span>`;
+      return `<span class="mmd-f-nobody">no subjects node connected — add a
+        <b>MiniMax Director — Subjects</b> and wire its <b>cast</b> output here</span>`;
     }
     if (!cast.cards.length) {
       // A line needs somebody to speak it, and the place to add them is one tab away --
       // so the sentence saying so is the way there, rather than an instruction to follow.
       return `<span class="mmd-f-nobody">nobody in the cast yet —
-        <button type="button" class="mmd-f-tocast">add a character</button></span>`;
+        <button type="button" class="mmd-f-tocast">add a subject</button></span>`;
     }
 
     const files = filesOf(timeline);
@@ -1705,6 +1730,30 @@ export class TimelineEditor {
       (card) => card.file === file && card.keep === "attribute_transfer");
   }
 
+  /**
+   * Cast cards that draw somebody out of this block's file, with the number each became.
+   *
+   * When there is one, this file gets no line of its own in `subject_definitions`: the
+   * guide says to cite the image inside the `<Subject N>` definition rather than write
+   * it twice, so the block's own `describes` box is compiled into nothing. Two boxes for
+   * one file with one of them silently losing is the thing this reports, and the panel
+   * shows the winning sentence in place of the dead field.
+   *
+   * A file used as a frame anchor or an edit source is *in* the video rather than behind
+   * it and keeps its entry however many people are lifted out of it, which is why the
+   * role is read here too. Mirrors `_only_defines` in `compile.py`.
+   */
+  definedBy(timeline, item) {
+    if (!item.media?.filename) return [];
+    if (String(item.media.role || "reference") !== "reference") return [];
+    const cards = this.castOf?.()?.cards || [];
+    const mine = cards.filter((card) =>
+      card.file === item.media.filename && String(card.description || "").trim());
+    if (!mine.length) return [];
+    const numbers = numbering(timeline, cards);
+    return mine.map((card) => ({ card, index: numbers.get(card.uid || card.id) || 0 }));
+  }
+
   segment(track, index, item, scale) {
     const node = document.createElement("div");
     node.className = "mmd-seg";
@@ -2108,6 +2157,19 @@ export class TimelineEditor {
       && items(timeline, "shots").every((other) => other.start >= item.start);
     const still = item.camera === "static" ? 1 : 0;
 
+    // Who, if anybody, has taken this file over. Computed here rather than beside the
+    // markup because the two shape strings below have to know: a card written while this
+    // block is selected replaces a text box with a read-only line, and a shape blind to
+    // it would leave the dead box on screen until the selection moved away and back.
+    const claimed = !item.media ? [] : this.definedBy(timeline, item);
+    // Text typed on the block itself, which older documents carry and the compiler still
+    // reads. There is no box for it any more -- one file, one description, written on a
+    // subject card -- so it is shown for what it is rather than left invisible.
+    const orphaned = item.media ? String(item.media.description || "").trim() : "";
+    const claimTag = claimed
+      .map(({ card, index }) => `${index}${card.uid || card.id}`).join("/")
+      + (orphaned ? "!" : "");
+
     // Whether this render is showing a different segment than the last one. The focus
     // guards below exist so a render mid-keystroke does not eat what is being typed --
     // but when the selection itself changed, the field is about a different block and
@@ -2119,7 +2181,8 @@ export class TimelineEditor {
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
       + `:${(item.lines || []).map((said) =>
-            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`;
+            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`
+      + `:${claimTag}`;
 
     this.segPrompt.disabled = false;
     if (changed || document.activeElement !== this.segPrompt) {
@@ -2164,10 +2227,24 @@ export class TimelineEditor {
     // mode, where the prompt has to say what each reference is and how much of it must
     // survive -- questions that have no meaning for a block with nothing attached.
     const subject = !item.media ? "" : `
-      <label class="mmd-f-wide">describes
-        <input class="mmd-f-subject" type="text" placeholder="what this file is, and what must stay the same"
-               value="${String(item.media.description || "").replace(/"/g, "&quot;")}">
-      </label>
+      <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the SUBJECTS tab, not a second box to fill in.">
+        <span class="mmd-f-claim-head">describes</span>
+        ${claimed.length ? claimed.map(({ card, index }) => `
+        <span class="mmd-f-claim">
+          <span class="mmd-f-claim-who">${index ? `&lt;Subject ${index}&gt;` : "S" + card.id}${
+            String(card.name || "").trim() ? ` ${text(card.name.trim())}` : ""}</span>
+          <span class="mmd-f-claim-text">${text(card.description.trim())}</span>
+        </span>`).join("") : `
+        <span class="mmd-f-claim mmd-f-claim-none">${
+          orphaned ? text(orphaned) : "nothing describes this file yet"}</span>`}
+        <button type="button" class="mmd-f-tocast">${
+          claimed.length ? "edit on the subject card" : "add a subject"}</button>
+        ${!orphaned ? "" : (claimed.length ? `
+        <div class="mmd-f-note">“${text(orphaned)}” is no longer compiled: the subject card
+          above describes this file instead.</div>` : `
+        <div class="mmd-f-note">Typed on the block itself, before subjects were the one
+          place. It still compiles; a subject card replaces it.</div>`)}
+      </div>
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
@@ -2290,7 +2367,8 @@ export class TimelineEditor {
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
       + `:${(item.lines || []).map((said) =>
-            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`;
+            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`
+      + `:${claimTag}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       // Three groups on three rows: when a block moves, what is said in it, and what
@@ -2437,8 +2515,6 @@ export class TimelineEditor {
       // lit at once, so the group form needs no mode of its own; the last one cannot be
       // turned off, because a line spoken by nobody is not a line.
       lines?.addEventListener("click", (e) => {
-        if (e.target.closest(".mmd-f-tocast")) return this.showTab("cast");
-
         if (e.target.closest(".mmd-f-addline")) {
           const next = this.read();
           const target = items(next, track)[index];
@@ -2497,8 +2573,6 @@ export class TimelineEditor {
           // back; the panel itself is not rebuilt, because its shape has not changed.
           this.render();
         });
-      this.segFields.querySelector(".mmd-f-subject")
-        ?.addEventListener("input", (e) => patchMedia({ description: e.target.value }, true));
       this.segFields.querySelector(".mmd-f-retention")
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")

@@ -1,10 +1,14 @@
 /**
  * The cast, on a node of its own.
  *
- * A character is four things -- a face, a name, a description the model has to honour and
- * a voice -- and in the director they were authored in two different places with nothing
- * on screen tying them together. Here they are one card, and the compiler takes them apart
- * again (`cast.py`) into the subject records and speakers the prompt format wants.
+ * A card is one *subject*: the thing the prompt will call `<Subject n>`. Usually a person
+ * -- a face, a name, a description the model has to honour and a voice, which in the
+ * director were authored in two different places with nothing on screen tying them
+ * together -- but the guide's subjects are not only people. A costume, a prop, a place or
+ * a style lifted out of the same photograph is a subject too, with a retention marker of
+ * its own, and it fills in the same card leaving the voice row empty. Here they are one
+ * card, and the compiler takes them apart again (`cast.py`) into the subject records and
+ * speakers the prompt format wants.
  *
  * This node reads the director's timeline but never writes to it. The card names the file
  * it draws somebody out of by *filename*: `<Picture 2>` is computed from where blocks sit
@@ -101,15 +105,15 @@ export class CastEditor {
     this.root.className = "mmd mmd-cast-node";
     this.root.innerHTML = `
       <div class="mmd-prompt mmd-cast-box">
-        <label>CAST
-          <span class="mmd-hint">everyone in this clip — one card each: their face, what stays the same, how they sound</span>
+        <label>SUBJECTS
+          <span class="mmd-hint">everything the prompt has to name — people, props, costumes, places: one card each, and each is where its file is described</span>
         </label>
-        <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the cast"></textarea>
+        <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the list"></textarea>
         <div class="mmd-cast-body">
           <div class="mmd-cast"></div>
           <div class="mmd-cast-foot">
-            <button class="mmd-cast-add" title="A card for one person. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same person.">+ character</button>
-            <label class="mmd-switch" title="Off, nobody speaks: the voices go away and nothing spoken is compiled. The cards stay -- a character can be in a clip without saying anything.">
+            <button class="mmd-cast-add" title="A card for one subject -- a person, but equally a costume, a prop, a place or a style. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same subject. Several cards may point at the same file: that is how one photograph names several things.">+ subject</button>
+            <label class="mmd-switch" title="Off, nobody speaks: the voices go away and nothing spoken is compiled. The cards stay -- a subject can be in a clip without saying anything, and most of them never do.">
               <input class="mmd-speech" type="checkbox"> they speak
             </label>
             <span class="mmd-grow"></span>
@@ -129,7 +133,7 @@ export class CastEditor {
       this.commit(next);
     });
     this.root.querySelector(".mmd-cast-add")
-      .addEventListener("click", () => this.addCharacter());
+      .addEventListener("click", () => this.addSubject());
 
     this.list.addEventListener("input", (event) => {
       const card = event.target.closest("[data-card]");
@@ -191,7 +195,7 @@ export class CastEditor {
     this.commit(state);
   }
 
-  addCharacter() {
+  addSubject() {
     const state = this.read();
     const first = filesOf(this.timeline() || {})[0];
     const number = Math.max(0, ...state.cards.map((card) => card.id)) + 1;
@@ -216,7 +220,7 @@ export class CastEditor {
     const state = this.read();
     const card = state.cards[position];
     if (card && (card.name.trim() || card.description.trim() || card.voice.trim())
-        && !confirm(`Remove ${card.name.trim() || "this character"} from the cast?`)) {
+        && !confirm(`Remove ${card.name.trim() || "this card"} from the cast?`)) {
       return;
     }
     state.cards.splice(position, 1);
@@ -307,12 +311,12 @@ export class CastEditor {
           ${this.face(card, file)}
           <div class="mmd-card-body">
             <div class="mmd-card-top">
-              <input class="mmd-card-name" type="text" placeholder="name them: WOMAN"
+              <input class="mmd-card-name" type="text" placeholder="name it: WOMAN, COAT"
                      value="${value(card.name)}">
               <span class="mmd-card-badge" title="The speaker ID the prompt uses">S${card.id}</span>
               <span class="mmd-card-badge mmd-card-subject${index ? "" : " mmd-hide"}"
-                    title="What the prompt calls this person, computed from where their file sits on the director's timeline">&lt;Subject ${index}&gt;</span>
-              <label class="mmd-card-from" title="Which file on the director's timeline this person is drawn from. Two people out of one photograph is two cards pointing at the same file.">from
+                    title="What the prompt calls this subject, computed from where its file sits on the director's timeline">&lt;Subject ${index}&gt;</span>
+              <label class="mmd-card-from" title="Which file on the director's timeline this subject is drawn from. Several things out of one photograph -- a person, their coat, the room behind them -- is several cards pointing at the same file, each numbered separately.">from
                 <select class="mmd-card-file">
                   <option value=""${file ? "" : " selected"}>— words only, no file</option>
                   ${files.map((item) => `
@@ -321,11 +325,11 @@ export class CastEditor {
                 </select>
               </label>
               ${!file ? "" : `
-              <label class="mmd-card-keep" title="How much of this person survives into the video -- their own marker, not the file's: the photo may be fully_preserved while the face taken from it is an attribute_transfer onto somebody else. Compiled as subject_retention.">keep them
+              <label class="mmd-card-keep" title="How much of this subject survives into the video -- its own marker, not the file's: the photo may be fully_preserved while the face taken from it is an attribute_transfer onto somebody else. Compiled as subject_retention.">keep it
                 <select class="mmd-card-retention">${retentionOptions(card.keep)}</select>
               </label>
               ${!clips.length ? "" : `
-              <label class="mmd-card-from" title="A second file for the same person, supplying how they move rather than what they look like. The guide allows one subject to be defined by several assets, each with a job of its own -- a still cannot say anything about a walk.">motion from
+              <label class="mmd-card-from" title="A second file for the same subject, supplying how it moves rather than what it looks like. The guide allows one subject to be defined by several assets, each with a job of its own -- a still cannot say anything about a walk.">motion from
                 <select class="mmd-card-motion">
                   <option value=""${card.motion_from ? "" : " selected"}>— none</option>
                   ${clips.map((item) => `
@@ -357,11 +361,12 @@ export class CastEditor {
             </div>
             ${!file ? "" : `
             <input class="mmd-card-description" type="text"
-                   placeholder="what they look like, and what must stay the same"
-                   value="${value(card.description)}">`}
+                   placeholder="what it is, and what must stay the same"
+                   value="${value(card.description)}">
+            <div class="mmd-card-note" title="Where this sentence ends up. A file somebody is drawn out of gets no entry of its own in the prompt -- the guide asks for it to be cited inside the character's definition instead -- so this box is the one that reaches the model, and the block's own describes box stops being compiled."></div>`}
             <div class="mmd-card-voice-row">
               <input class="mmd-card-voice" type="text"
-                     placeholder="how they sound: age, gender, pitch, timbre, accent"
+                     placeholder="if it speaks — how they sound: age, gender, pitch, timbre, accent"
                      value="${value(card.voice)}">
               ${!heard.length ? "" : `
               <label class="mmd-card-from" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
@@ -377,13 +382,14 @@ export class CastEditor {
           </div>
         </div>`;
       }).join("") || (timeline
-        ? `<div class="mmd-cast-empty">Nobody yet. Add a character, then say what they
-             look like and how they sound.</div>`
+        ? `<div class="mmd-cast-empty">Nothing yet. Add a subject — a person, a costume,
+             a prop, a place — then say what it is, and how they sound if they speak.</div>`
         : `<div class="mmd-cast-empty">Not connected. Wire this node's <b>cast</b> output
              into the director, and the files on its timeline appear here.</div>`);
-    } else {
-      this.paint(state, numbers);
     }
+    // Both branches: the note under a description is filled by `paint` alone, so a list
+    // that was just rebuilt would show an empty one until the next keystroke.
+    this.paint(state, numbers);
 
     // A card taller or shorter than the node it sits in is the whole reason this node was
     // split out, so the height follows the list on every render rather than on a gesture.
@@ -392,16 +398,30 @@ export class CastEditor {
 
   /** Values and numbers, for a list whose shape has not changed. */
   paint(state, numbers = null) {
-    const marks = numbers || numbering(this.timeline(), state.cards);
+    const timeline = this.timeline();
+    const marks = numbers || numbering(timeline, state.cards);
+    const files = filesOf(timeline || {});
     state.cards.forEach((card, position) => {
       const row = this.list.querySelector(`[data-card="${position}"]`);
       if (!row) return;
 
+      const index = marks.get(card.uid || card.id) || 0;
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
-        const index = marks.get(card.uid || card.id) || 0;
         badge.textContent = `<Subject ${index}>`;
         badge.classList.toggle("mmd-hide", !index);
+      }
+
+      // Painted rather than built, because it turns on at the first character typed into
+      // the description -- and rebuilding the list then would take the caret with it.
+      const note = row.querySelector(".mmd-card-note");
+      if (note) {
+        const file = files.find((item) => (item.media.filename || "") === card.file) || null;
+        const own = file && String(file.media.role || "reference") === "reference"
+          ? String(file.media.description || "").trim() : "";
+        note.textContent = !index || !file ? "" : (
+          `${file.token} has no line of its own — this sentence is ${
+            `<Subject ${index}>`}` + (own ? `, and its own “${own}” is not compiled.` : "."));
       }
       for (const [selector, text] of [
         [".mmd-card-name", card.name],
