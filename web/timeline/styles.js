@@ -203,9 +203,15 @@ const CSS = `
   background:#15181e center/cover no-repeat; border:1px solid #333a45; display:block; }
 .mmd-face-none { display:flex; align-items:center; justify-content:center; color:#4b5563;
   font-size:16px; }
-.mmd-cast-drop { flex:0 0 auto; background:transparent; color:#6b7280; border:0;
-  cursor:pointer; font:inherit; padding:2px 5px; border-radius:4px; }
-.mmd-cast-drop:hover { background:#3a2422; color:#f3d3cf; }
+/* Removing somebody is the one destructive control on a card, so it says so in the same
+   red the toolbar's Delete uses -- and it sits at the far end of the row, away from the
+   fields you type in. */
+.mmd-card-top .mmd-grow { flex:1; }
+.mmd-cast-drop { flex:0 0 auto; background:#3a2422; color:#f3d3cf;
+  border:1px solid #5c332d; cursor:pointer; font:inherit; padding:3px 7px;
+  border-radius:5px; display:inline-flex; align-items:center;
+  transition:background .12s ease, border-color .12s ease; }
+.mmd-cast-drop:hover { background:#5a3029; border-color:#8a4238; }
 .mmd-cast-empty { color:#6b7280; font-size:11px; padding:2px 0; }
 
 /* Who speaks a line, as faces. Two lit at once is the guide's (S1,S2) chorus, which the
@@ -445,6 +451,11 @@ const CSS = `
 .mmd-f-group:has(> .mmd-f-lines) { align-items:flex-start; }
 .mmd-f-group:has(> .mmd-f-lines) > .mmd-f-tag { padding-top:6px; }
 .mmd-f-line-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+/* A row with no words in it is a row about nothing: who speaks, how, and in what language
+   all describe a line that does not exist yet. They wash out until it does -- still there,
+   still clickable, just not competing with the one box that is asking to be filled. */
+.mmd-f-line-row.mmd-f-quiet > *:not(.mmd-f-wide) { opacity:.4; }
+.mmd-f-line-row.mmd-f-quiet:focus-within > * { opacity:1; }
 .mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-delline {
   background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-delline:hover {
