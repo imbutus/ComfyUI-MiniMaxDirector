@@ -10,7 +10,7 @@
  */
 
 import { api } from "../../../scripts/api.js";
-import { BUILD } from "../build.js";
+import { BUILD, VERSION } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
@@ -1621,7 +1621,7 @@ export class TimelineEditor {
       </label>
       <span class="mmd-grow"></span>
       <span class="mmd-renders"></span>
-      <span class="mmd-build" title="extension build">${BUILD}</span>`;
+      <span class="mmd-build" title="minimax-director ${VERSION}, build ${BUILD}">v${VERSION} · ${BUILD}</span>`;
 
     const frames = (input) => Math.max(0, Math.round(Number(input.value)));
 
