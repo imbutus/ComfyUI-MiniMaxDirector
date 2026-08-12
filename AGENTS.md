@@ -83,6 +83,8 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   "global_prompt": "Style and scene constants for the whole clip.",
   "shots": [
     { "start": 0, "length": 41, "prompt": "…", "camera": "dolly_in",
+      "lines": [ { "text": "I get off at the next station.", "ids": "S1",
+                   "delivery": "says", "language": "English" } ],
       "media": { "kind": "image", "filename": "a.png", "subfolder": "" } }
   ],
   "moves": [ { "start": 0, "length": 41, "camera": "pan_right", "prompt": "…" } ],
@@ -103,6 +105,30 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - `references` is rebuilt from what is actually connected before compiling; the stored
   copy is never trusted.
 - Unknown keys survive a round trip through the editor.
+- A shot's `lines` is a list, one entry per spoken line: `text` sent verbatim, `ids` the
+  guide's `(S1)` or `(S1,S2)`, `delivery` the verb, `language` the tag. Two speakers on
+  one line is a chorus; two lines is a conversation. A wordless line is kept, not dropped
+  at the door, so `lint` can say the half-filled row exists.
+
+## The cast document
+
+A second widget, parsed by `cast.py` and folded into the timeline before compiling. One
+card per person: `name`, `file` (which attachment they are drawn from), `description`,
+`voice`, `keep` (their own `subject_retention`), `onto`, and a stable `uid`.
+
+- A card **with** a file and a description appends a subject to that file's `subjects`;
+  every card appends a speaker. Both ends carry the card's `uid`, so the `<Subject n>` a
+  voice belongs to survives the renumbering that dragging a block causes.
+- `onto` is the receiver of an `attribute_transfer`, and only means anything for that
+  marker. `compile.py` appends `, transferred onto <onto>` to the subject's retention
+  line; without it the model is told to move a trait and never told where.
+- The person and the file they came from are two retentions, deliberately: a photo can be
+  `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
+- `_only_defines` in `compile.py` suppresses a file's own `<Picture n>` entry — in both
+  `subject_definitions` and `retention_analysis` — when its role is `reference` and a
+  subject is drawn from it. That is the guide's rule: an image used only to define a
+  character is cited inside the `<Subject n>` line instead. A frame anchor, a continuation
+  source or an edit target keeps its entry however many people it defines.
 
 ## What the compiler emits
 
@@ -149,6 +175,7 @@ reference the prose points at.
 | `timeline.py` | the document, its JSON | no |
 | `compile.py` | document → prompt | no |
 | `lint.py` | pre-flight checks | no |
+| `cast.py` | the cast document, merged into the timeline | no |
 | `attachments.py` | files on segments, their ordinals | no |
 | `references.py` | files on sockets, their ordinals | no |
 | `core.py` | adapter over ComfyUI's H3 nodes | yes |

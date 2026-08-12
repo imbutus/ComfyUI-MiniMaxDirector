@@ -5,6 +5,11 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
+H3 makes the picture and the voices in one pass, so the editor has a cast: one card per
+person, holding their face, their voice, how much of them survives from a reference, and —
+for a face swap — who the face is transferred onto. A shot then only says who speaks and
+what they say.
+
 It ships as a whole workflow, not just a node pack: `examples/minimax-director.json` is a
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
 and video out. Install it, open it, start writing shots. See **[Install](#install)**.
@@ -166,6 +171,7 @@ src/minimax_director/
   lattice.py             frame arithmetic; the 17-frame rule
   timeline.py            the timeline document and its JSON
   compile.py             timeline -> prompt
+  cast.py                the cast document, merged in before compiling
   lint.py                checks that run before sampling
   references.py          reference ordinals for wired sockets
   attachments.py         reference ordinals for files on the timeline

@@ -53,7 +53,9 @@ yourself looking for the negative input, there isn't one.
 
 ## The timeline
 
-Three tracks, and each block on them describes a span of the clip.
+Three tracks, and each block on them describes a span of the clip. The node's own title
+bar carries the pack's version and build date at its right end, so a screenshot of a
+misbehaving graph says which build drew it.
 
 | Track | Holds | Becomes |
 |---|---|---|
@@ -88,6 +90,10 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 - **Neither** lets two blocks on one track overlap. Two descriptions of the same frames
   is not something the prompt can express.
 
+The settings row says `renders 124 f = 5.17s · 120 f rounded up` only when the number
+generated is not the number you typed. The rounding is the news; repeating a duration you
+can already read in the box beside it was the same fact twice.
+
 ### The three tabs
 
 The panel under the toolbar shows one of three things, and remembers which one across a
@@ -105,7 +111,10 @@ not on screen — and the TIMELINE tab shows:
 
 - **SEGMENT PROMPT** — what happens in it
 - **TIMING** — `start`, `end` and `length` in frames, each with a read-only seconds
-  reading beside it. Frames are what the document stores and what H3 is given.
+  reading beside it, and one line underneath reading the whole span the same way:
+  `Start: 0 f | End: 96 f | Length: 96 f = 4.00s`. Frames come first everywhere in the
+  editor, including the playhead clock, because frames are what the document stores and
+  what H3 is given; seconds are the translation.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
@@ -114,6 +123,14 @@ not on screen — and the TIMELINE tab shows:
   CAST tab, not here — see below.
 - **FILE** — blocks carrying one: `describes`, `used as`, `keep file`, and
   **detach media**, which removes the file without removing the block
+
+A dialogue row with no words in it dims — the row and its background both — so an empty
+row reads as what it is: ignored by the compiler until you type something.
+
+Along the bottom edge of a block sit its chips: the file it carries (`IMAGE · face.jpg`),
+and one per transfer taken out of that file — `FACE → SPEAKER`, or amber `FACE → ?` while
+nobody has been named to receive it. A face swap is a thing you can see on the timeline
+rather than something buried in a card.
 
 Two faces lit on **one** row is the guide's `(S1,S2)`: the same words spoken by both at
 the same instant. Two rows is a conversation — they speak in turn. Speech with no agreed
@@ -132,6 +149,12 @@ holds:
 - **keep them** — how much of *the person* survives, compiled as `subject_retention`. Not
   the same field as the block's `keep file`: the photo may be `fully_preserved` while the
   face taken out of it is an `attribute_transfer` onto somebody else.
+- **onto** — who receives that transfer. It appears only when `keep them` is
+  `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
+  offers the other cast members and each shot's subject, or you type a receiver the shot
+  describes but no card names. Filled, it compiles as
+  `<Subject 2> …: attribute_transfer - the face…, transferred onto SPEAKER.` Empty, the
+  model is told to move a trait and never told where, and the block's chip stays amber.
 - **what they look like** — for a card with a file; becomes their `subject_definitions` line
 - **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
   voice from this, so an empty one is a voice nobody chose and the linter says so.
@@ -199,6 +222,14 @@ So one video with sound plus one standalone clip gives `<Audio 1>` (the soundtra
 wrong video, quietly. The `prompt` output shows the numbering that was actually used.
 
 Limits, from the model: **9 images, 3 videos, 3 video soundtracks, 3 standalone audio**.
+
+**A picture that only exists to define somebody gets no entry of its own.** MiniMax's
+guide is explicit: if an image is used only to establish a character, a scene, a costume
+or a style, cite it inside the `<Subject n>` definition instead of writing a standalone
+picture entry. So a `reference` image whose whole job is feeding a cast card is described
+once, as the subject drawn from it — asking for the picture *and* the person is asking for
+two different things at once. An image used as a `first frame` keeps its own entry either
+way: it is a real frame of the target video, whoever else it defines.
 
 ---
 
