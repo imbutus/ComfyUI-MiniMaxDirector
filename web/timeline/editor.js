@@ -1790,6 +1790,200 @@ export class TimelineEditor {
     if (node) node.textContent = item.prompt?.trim() || item.camera || "";
   }
 
+  /**
+   * The panel for a selection of several blocks.
+   *
+   * Only what applies to *everything* selected is offered. A `keep file` picker over one
+   * image and one audio would have to choose which vocabulary to show, and either answer
+   * is wrong for half the selection -- so it is absent instead, which is at least true.
+   *
+   * Every picker opens on "leave as is" and writes only when something is chosen. A
+   * control that arrives holding a value has already decided for you, and over a
+   * selection that decision is silent and multiplied.
+   */
+  renderBulk(timeline) {
+    const picked = this.selected
+      .map(({ track, index }) => ({ track, index, item: items(timeline, track)[index] }))
+      .filter((entry) => entry.item);
+
+    this.segPrompt.value = "";
+    this.segPrompt.disabled = true;
+    this.range.textContent = `${picked.length} segments selected`;
+
+    const tracks = new Set(picked.map((entry) => entry.track));
+    const only = (track) => tracks.size === 1 && tracks.has(track);
+    const carried = picked.filter((entry) => entry.item.media);
+    const kinds = new Set(carried.map((entry) => entry.item.media.kind));
+    // One kind, and every block carrying one: a marker set belongs to a file's type.
+    const files = carried.length === picked.length && kinds.size === 1 ? [...kinds][0] : null;
+
+    // Merging is only meaningful for shots that already touch. Two shots with a gap
+    // between them are not one shot with a cut in it, they are two shots and a hole.
+    const ordered = only("shots")
+      ? [...picked].sort((a, b) => a.item.start - b.item.start) : [];
+    const joined = ordered.length > 1 && ordered.every((entry, at) => at === 0
+      || entry.item.start === ordered[at - 1].item.start + ordered[at - 1].item.length);
+    const speaks = ordered.length > 1 && this.speaks();
+
+    const shape = "bulk:" + picked.map((e) => `${e.track}:${e.index}`).sort().join(",")
+      + `:${only("moves") ? 1 : 0}${only("shots") ? 1 : 0}${files || "-"}`
+      + `:${joined ? 1 : 0}${speaks ? 1 : 0}`;
+    // Nothing in here holds a caret or a value read back from the document, so an
+    // unchanged shape has nothing to repaint.
+    if (this.panelShape === shape) return;
+    this.panelShape = shape;
+
+    const group = (tag, body) => !body.trim() ? ""
+      : `<div class="mmd-f-group"><span class="mmd-f-tag">${tag}</span>${body}</div>`;
+    const blank = (label) => `<option value="" selected>— ${label}</option>`;
+
+    this.segFields.innerHTML =
+      group("camera", !only("moves") ? "" : `
+        <label title="Set the move on every selected block.">camera
+          <select class="mmd-b-camera">${blank("leave as is")}
+            ${CAMERAS.map((v) => `<option value="${v}">${v}</option>`).join("")}
+          </select>
+        </label>
+        <label title="Set the amplitude on every selected block.">amplitude
+          <select class="mmd-b-amplitude">${blank("leave as is")}
+            ${AMPLITUDES.map((v) => `<option value="${v}">${v || "medium"}</option>`).join("")}
+          </select>
+        </label>
+        <label title="Set the speed on every selected block.">speed
+          <select class="mmd-b-speed">${blank("leave as is")}
+            ${SPEEDS.map((v) => `<option value="${v}">${v || "normal"}</option>`).join("")}
+          </select>
+        </label>`)
+      + group("shot", !only("shots") ? "" : `
+        <label title="How each selected shot is entered. The first shot of the clip ignores it -- nothing is cut to at the start.">enter with
+          <select class="mmd-b-transition">${blank("leave as is")}
+            ${TRANSITIONS.map((v) => `<option value="${v}">${v}</option>`).join("")}
+          </select>
+        </label>`)
+      + group("file", !files ? "" : `
+        <label title="What every selected file is for.">used as
+          <select class="mmd-b-role">${blank("leave as is")}
+            ${ROLES.map((v) => `<option value="${v}">${v}</option>`).join("")}
+          </select>
+        </label>
+        <label title="How much of every selected file survives. The set follows the files' own kind.">keep file
+          <select class="mmd-b-retention">${blank("leave as is")}
+            ${retentionsFor(files).map((v) => `<option value="${v}">${v}</option>`).join("")}
+          </select>
+        </label>`)
+      + group("do", `
+        <button class="mmd-f-bulk mmd-b-merge"${joined ? "" : " disabled"}
+          title="${joined
+            ? "One shot instead of several. The prose is joined and the span is kept -- which is what MiniMax asks for when a cut only changes the distance or the angle."
+            : "Select two or more shots that touch, with no gap between them."}"
+          >merge into one shot</button>
+        <button class="mmd-f-bulk mmd-b-carry"${speaks ? "" : " disabled"}
+          title="${speaks
+            ? "Mark the last spoken line of every selected shot but the last as carrying over, so the speech is written as one sentence crossing the cuts."
+            : "Select two or more shots, with dialogue switched on."}"
+          >make the speech continuous</button>`);
+
+    /** Write the same change onto every selected block, then let the picker go blank. */
+    const all = (node, change) => {
+      const next = this.read();
+      for (const { track, index } of this.selected) {
+        const target = items(next, track)[index];
+        if (target) change(target);
+      }
+      node.value = "";
+      this.panelShape = null;
+      this.commit(next);
+    };
+
+    const bind = (selector, change) => {
+      const node = this.segFields.querySelector(selector);
+      node?.addEventListener("change", (event) => {
+        if (!event.target.value) return;
+        all(node, (target) => change(target, event.target.value));
+      });
+    };
+
+    bind(".mmd-b-camera", (target, value) => { target.camera = value; });
+    bind(".mmd-b-amplitude", (target, value) => { target.amplitude = value; });
+    bind(".mmd-b-speed", (target, value) => { target.speed = value; });
+    bind(".mmd-b-transition", (target, value) => { target.transition = value; });
+    bind(".mmd-b-role", (target, value) => {
+      if (target.media) target.media = { ...target.media, role: value };
+    });
+    bind(".mmd-b-retention", (target, value) => {
+      if (target.media) target.media = { ...target.media, retention: value };
+    });
+
+    this.segFields.querySelector(".mmd-b-merge")
+      ?.addEventListener("click", () => this.mergeShots());
+    this.segFields.querySelector(".mmd-b-carry")
+      ?.addEventListener("click", () => this.carryThrough());
+  }
+
+  /**
+   * Fold the selected shots into the first of them.
+   *
+   * Base §4.2: a cut should introduce new information, and "if only the distance or a
+   * slight angle needs to change, prefer camera motion". The linter says so; this is what
+   * you do about it. Everything the shots carried comes across -- prose, on-screen text,
+   * dialogue in the order it was heard -- because a merge that quietly drops a line is
+   * worse than no merge at all.
+   */
+  mergeShots() {
+    const next = this.read();
+    const list = items(next, "shots");
+    const chosen = this.selected
+      .filter((entry) => entry.track === "shots")
+      .map((entry) => list[entry.index])
+      .filter(Boolean)
+      .sort((a, b) => a.start - b.start);
+    if (chosen.length < 2) return;
+
+    const first = chosen[0];
+    const last = chosen[chosen.length - 1];
+    const text = (key) => chosen.map((shot) => String(shot[key] || "").trim())
+      .filter(Boolean).join(" ");
+
+    first.length = last.start + last.length - first.start;
+    first.prompt = text("prompt");
+    first.screen_text = text("screen_text");
+    first.lines = chosen.flatMap((shot) => shot.lines || []);
+    if (!first.media) first.media = chosen.find((shot) => shot.media)?.media;
+
+    next.shots = list.filter((shot) => shot === first || !chosen.includes(shot));
+    this.selected = [{ track: "shots", index: next.shots.indexOf(first) }];
+    this.panelShape = null;
+    this.commit(next);
+  }
+
+  /**
+   * Write one sentence across the selected shots.
+   *
+   * The last spoken line of every shot but the final one is marked as carrying over, so
+   * the compiler puts `<scenetrans>` at both sides of each cut it crosses. Shots with
+   * nothing said in them are skipped rather than given an empty line to carry.
+   */
+  carryThrough() {
+    const next = this.read();
+    const list = items(next, "shots");
+    const chosen = this.selected
+      .filter((entry) => entry.track === "shots")
+      .map((entry) => list[entry.index])
+      .filter(Boolean)
+      .sort((a, b) => a.start - b.start);
+
+    for (const shot of chosen.slice(0, -1)) {
+      const lines = [...(shot.lines || [])];
+      const at = lines.map((line) => String(line.text || "").trim())
+        .reduce((found, said, index) => (said ? index : found), -1);
+      if (at < 0) continue;
+      lines[at] = { ...lines[at], carries: true };
+      shot.lines = lines;
+    }
+    this.panelShape = null;
+    this.commit(next);
+  }
+
   renderPanel(timeline) {
     // Every path that changes what is selected ends up here, so this is the one place
     // that has to report it. See `remember()` in minimax_director.js for why anything
@@ -1799,14 +1993,17 @@ export class TimelineEditor {
     if (document.activeElement !== this.global) this.global.value = timeline.global_prompt || "";
     if (document.activeElement !== this.music) this.music.value = timeline.music || "";
 
+    // Several blocks is a selection, not an absence. The panel used to empty itself for
+    // it, which made multi-select good for exactly two things -- deleting and dragging --
+    // when it is the natural way to say "these shots, all of them".
+    if (this.selected.length > 1) return this.renderBulk(timeline);
+
     if (!this.selection) {
       this.segPrompt.value = "";
       this.segPrompt.disabled = true;
       this.segFields.innerHTML = "";
       this.panelShape = null;
-      this.range.textContent = this.selected.length
-        ? `${this.selected.length} segments selected`
-        : "no segment selected";
+      this.range.textContent = "no segment selected";
       return;
     }
 

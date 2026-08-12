@@ -144,6 +144,20 @@ not on screen — and the TIMELINE tab shows:
 - **FILE** — blocks carrying one: `describes`, `used as`, `keep file`, and
   **detach media**, which removes the file without removing the block
 
+**Several blocks selected** turns the panel into a selection panel, offering only what
+applies to all of them: `camera` / `amplitude` / `speed` when they are all camera moves,
+`enter with` when they are all shots, `used as` and `keep file` when they all carry a file
+of one kind. Each picker starts on *leave as is* and writes nothing until you choose.
+
+Two actions live there as well:
+
+- **merge into one shot** — adjacent shots become one, prose joined, dialogue kept in the
+  order it was heard. This is what MiniMax asks for when a cut only changes the distance
+  or the angle, and it is the fix for the linter's warning about exactly that.
+- **make the speech continuous** — marks the last spoken line of every selected shot but
+  the last as `carries over`, so one sentence is written across the cuts with
+  `<scenetrans>` on both sides of each.
+
 `used as` says what the file is *for*, and that decides the task type the prompt opens
 with: `reference` (guidance), `storyboard` (a plan of the framing rather than content —
 it compiles as *"<Picture 3> is a storyboard reference for [Shot 1], defining viewpoint,

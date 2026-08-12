@@ -488,9 +488,15 @@ const CSS = `
 .mmd-f-group.mmd-f-quiet { background:#15181e; border-color:#1f232b; }
 .mmd-f-group.mmd-f-quiet > .mmd-f-tag { opacity:.55; }
 .mmd-f-group.mmd-f-quiet:focus-within { background:#191c23; border-color:#262b34; }
-.mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-delline {
+/* A bulk action reads like the row's other controls, and says so when it cannot run:
+   disabled rather than hidden, because a button that comes and goes is one you never
+   learn about. Its title says what selection would enable it. */
+.mmd-seg-fields .mmd-f-bulk[disabled] { opacity:.4; cursor:not-allowed; }
+.mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-bulk,
+.mmd-seg-fields .mmd-f-delline {
   background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
-.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-delline:hover {
+.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-bulk:not([disabled]):hover,
+.mmd-seg-fields .mmd-f-delline:hover {
   background:#2c313c; border-color:#4b5563; }
 .mmd-seg-fields .mmd-f-delline { padding:2px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
