@@ -326,9 +326,11 @@ export class TimelineEditor {
         event.preventDefault();
         event.stopPropagation();
         const timeline = this.read();
+        // Only `selected` is written. `selection` is a *derived* property with a setter
+        // that replaces the whole list, so assigning it here -- even to the value it
+        // already holds -- threw away everything just selected.
         this.selected = TRACKS.flatMap(({ key: track }) =>
           items(timeline, track).map((_, index) => ({ track, index })));
-        this.selection = this.selected.length === 1 ? this.selected[0] : null;
         this.render();
         return;
       }
