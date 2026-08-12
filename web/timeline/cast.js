@@ -16,6 +16,7 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import { RETENTIONS, filesOf } from "./model.js";
 import { BUILD } from "../build.js";
+import { ICON } from "./icons.js";
 
 export const EMPTY = { version: 1, speech: true, cards: [] };
 
@@ -290,7 +291,7 @@ export class CastEditor {
                 <select class="mmd-card-retention">${retentionOptions(card.keep)}</select>
               </label>`}
               <span class="mmd-grow"></span>
-              <button class="mmd-cast-drop" title="Remove from the cast">✕</button>
+              <button class="mmd-cast-drop" title="Remove from the cast">${ICON.trash}</button>
             </div>
             ${!file ? "" : `
             <input class="mmd-card-description" type="text"
