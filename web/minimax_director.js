@@ -196,6 +196,26 @@ function attach(node) {
       (state) => { cast.value = JSON.stringify(state, null, 2); },
       () => parse(json.value),
     );
+    // A card saved before this stored no `keep them` at all: the panel drew the first
+    // marker, and the compiler read the blank as "retain this person the way their file
+    // is retained" -- so a card reading `fully_preserved` beside a `weak_reference` photo
+    // compiled as `weak_reference`. Normalising makes the two agree without waiting for
+    // an edit that may never come. It runs after `onConfigure` as well as here, because
+    // a graph load writes the saved widget value over anything set at construction.
+    const normaliseCast = () => {
+      const normalised = JSON.stringify(parseCast(cast.value), null, 2);
+      if (cast.value === normalised) return;
+      cast.value = normalised;
+      inside.render();
+    };
+    normaliseCast();
+    const configuredCast = node.onConfigure;
+    node.onConfigure = function () {
+      const result = configuredCast?.apply(this, arguments);
+      normaliseCast();
+      return result;
+    };
+
     // Editing the cast changes the compiled prompt and the block's chips, and neither
     // knows the tab exists.
     inside.onChange = () => {
@@ -390,6 +410,23 @@ function attachCast(node) {
     },
   );
   if (!json.value?.trim()) json.value = JSON.stringify(EMPTY_CAST, null, 2);
+
+  // Same repair as the director's own cast tab: a card stored with no `keep them` drew
+  // the first marker and compiled as the file's. After `onConfigure`, because the saved
+  // widget value lands over anything set here.
+  const normalise = () => {
+    const normalised = JSON.stringify(parseCast(json.value), null, 2);
+    if (json.value === normalised) return;
+    json.value = normalised;
+    editor.render();
+  };
+  normalise();
+  const configured = node.onConfigure;
+  node.onConfigure = function () {
+    const result = configured?.apply(this, arguments);
+    normalise();
+    return result;
+  };
 
   node.castEditor = editor;
 

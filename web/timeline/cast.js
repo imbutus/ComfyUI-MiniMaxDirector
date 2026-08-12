@@ -38,7 +38,12 @@ export function parseCast(text) {
           name: String(card.name || ""),
           file: String(card.file || ""),
           description: String(card.description || ""),
-          keep: String(card.keep || ""),
+          // Never blank. The select shows the first marker when the value is empty, while
+          // the compiler reads an empty subject marker as "retain this person the way the
+          // file they came from is retained" -- so a card reading `fully_preserved` beside
+          // a `weak_reference` photo compiled as `weak_reference`. What is displayed is
+          // what is stored.
+          keep: String(card.keep || RETENTIONS[0]),
           onto: String(card.onto || ""),
           voice: String(card.voice || ""),
         })),
@@ -187,7 +192,7 @@ export class CastEditor {
       name: "",
       file: first ? first.media.filename || "" : "",
       description: "",
-      keep: "",
+      keep: RETENTIONS[0],
       onto: "",
       voice: "",
     });
