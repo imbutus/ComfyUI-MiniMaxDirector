@@ -1825,10 +1825,14 @@ export class TimelineEditor {
     const joined = ordered.length > 1 && ordered.every((entry, at) => at === 0
       || entry.item.start === ordered[at - 1].item.start + ordered[at - 1].item.length);
     const speaks = ordered.length > 1 && this.speaks();
+    // Gaps are closed within a track, so a selection holding one block per track has
+    // nothing to close -- there is no block before it that it was picked with.
+    const stacked = [...tracks].some((track) =>
+      picked.filter((entry) => entry.track === track).length > 1);
 
     const shape = "bulk:" + picked.map((e) => `${e.track}:${e.index}`).sort().join(",")
       + `:${only("moves") ? 1 : 0}${only("shots") ? 1 : 0}${files || "-"}`
-      + `:${joined ? 1 : 0}${speaks ? 1 : 0}`;
+      + `:${joined ? 1 : 0}${speaks ? 1 : 0}${stacked ? 1 : 0}`;
     // Nothing in here holds a caret or a value read back from the document, so an
     // unchanged shape has nothing to repaint.
     if (this.panelShape === shape) return;
@@ -1877,8 +1881,10 @@ export class TimelineEditor {
           <input class="mmd-b-length" type="number" min="1" step="1" placeholder="frames">
           <span class="mmd-unit">f</span>
         </label>
-        <button class="mmd-f-bulk mmd-b-close"
-          title="Move the selected blocks up against the one before them, track by track, so there is no gap between them. The first of each track stays where it is."
+        <button class="mmd-f-bulk mmd-b-close"${stacked ? "" : " disabled"}
+          title="${stacked
+            ? "Move the selected blocks up against the one before them, track by track, so there is no gap between them. The first of each track stays where it is."
+            : "Select two or more blocks on the same track: a gap is the space between two blocks, and one block per track has none."}"
           >close the gaps</button>`)
       + group("do", `
         ${only("moves") || only("shots") || files ? "" : `
