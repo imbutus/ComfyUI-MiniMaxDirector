@@ -153,9 +153,7 @@ selection; `S` cuts it in two at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy 
 it, keeping its spacing; `Cmd/Ctrl+D` duplicates; `Cmd/Ctrl+Z` undoes.
 
 **Clear** in the toolbar empties the timeline — every block, the global prompt and the
-music. The **preset** dropdown beside it replaces the timeline with a worked example that
-compiles and runs as it stands — a talking avatar, a three-shot scene, a two-hander, a
-reference shot.
+music. One undo step puts it back.
 
 The red playhead is the timeline's one landmark. Click empty track to move it, and it
 becomes where new blocks land, what a drag snaps to, and what `+` / `-` zoom around.

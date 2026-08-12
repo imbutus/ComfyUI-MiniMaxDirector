@@ -13,7 +13,6 @@ import { api } from "../../../scripts/api.js";
 import { BUILD } from "../build.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
-import { PRESETS, load as loadPreset } from "./presets.js";
 import {
   CAMERAS, RETENTIONS, ROLES, TRACKS, TRACK_FOR_MEDIA, add, bounds, ceiling,
   emptyTimeline, formatSeconds, speakerIds, speakerNumbers,
@@ -154,11 +153,6 @@ export class TimelineEditor {
         <button data-media="video">${ICON.video} Add Video</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <button data-reset="1" title="Empty the timeline: every block, the global prompt and the music. Cmd/Ctrl+Z puts it back.">${ICON.reset} Clear</button>
-        <select class="mmd-preset" title="Replace the timeline with a worked example. Each one compiles and runs as it stands.">
-          <option value="">preset…</option>
-          ${PRESETS.map((preset, at) =>
-            `<option value="${at}" title="${preset.hint}">${preset.name}</option>`).join("")}
-        </select>
         <span class="mmd-grow"></span>
         <span class="mmd-len"></span>
       </div>
@@ -363,12 +357,6 @@ export class TimelineEditor {
     document.addEventListener("pointerdown", (event) => {
       this.active = this.root.contains(event.target);
     }, true);
-
-    this.root.querySelector(".mmd-preset").addEventListener("change", (event) => {
-      const preset = PRESETS[Number(event.target.value)];
-      event.target.value = "";
-      if (preset) this.usePreset(preset);
-    });
 
     this.tabs.addEventListener("click", (event) => {
       const tab = event.target.closest(".mmd-tab");
@@ -738,26 +726,6 @@ export class TimelineEditor {
   }
 
   /**
-   * Replace the timeline with a preset.
-   *
-   * A confirm rather than a merge: the presets are whole documents, and dropping one on
-   * top of existing work would produce a third thing that is neither. One undo step, so
-   * pressing it by accident costs nothing.
-   */
-  usePreset(preset) {
-    const current = this.read();
-    const populated = TRACKS.some(({ key }) => items(current, key).length);
-    if (populated && !confirm(
-      `Replace the timeline with "${preset.name}"? Cmd/Ctrl+Z puts it back.`)) return;
-
-    this.selected = [];
-    this.selection = null;
-    this.panelShape = null;
-    this.playhead = 0;
-    this.commit(loadPreset(preset));
-  }
-
-  /**
    * Remember the selected blocks, keeping their spacing.
    *
    * Positions are stored relative to the earliest one, so a pair of blocks two seconds
@@ -891,7 +859,7 @@ export class TimelineEditor {
     // A selected block on the right track with nothing attached takes the file; anything
     // else gets a block of its own. The rule used to be "always a new segment, never a
     // swap", which came from dropping a file onto a block that already had one and
-    // destroying it -- a block with none has nothing to destroy, and a preset that says
+    // destroying it -- a block with none has nothing to destroy, and an example that says
     // "one block waiting for an image" had no way to be true.
     const empty = this.selection?.track === track
       && items(timeline, track)[this.selection.index]
