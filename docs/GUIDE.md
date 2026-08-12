@@ -79,6 +79,12 @@ Three write a description; three attach a file.
 Every Add appends a new block after the last one on that track. Adding never overwrites
 a block you already have.
 
+**An attached audio or video takes the span it actually runs for.** The file is measured
+before its block is placed, so an eight-second recording gets eight seconds of clip rather
+than a default two — bounded by the block after it and by the end of the clip, so
+attaching an album does not produce a two-hour timeline. Its `keep file` and `used as` are
+written down at the same moment, so what the pickers show is what the prompt uses.
+
 ### Duration comes first
 
 Set the clip length in the **duration** box, then arrange blocks inside it.

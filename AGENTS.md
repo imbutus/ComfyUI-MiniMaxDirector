@@ -206,6 +206,18 @@ measured 2026-08-05, a separate `Camera:` block was ignored. It stays a separate
 the editor because a move can straddle a cut, and folding it into a shot line at authoring
 time would silently pick a side.
 
+## The two preview nodes
+
+`MiniMaxDirectorPrompt` and `MiniMaxDirectorReport` are the same node with a different
+field of the same reply. `preview.py:compile_preview` runs the compile and the lint
+together and returns both, so a second panel costs one more line rather than a second
+request; `attachPromptView(node, field)` picks which one it paints, and `node.promptField`
+is what `paintPromptView` reads.
+
+`PreviewAny` would show either string, but only after a run -- it fills from execution
+results. That is why these exist: a warning that arrives after the render arrives after
+the cost, and every check the linter makes is free.
+
 ## Reference numbering — the subtle part
 
 H3 addresses references from the prose as `<Picture i>`, `<Video k>`, `<Audio j>`,
@@ -282,6 +294,19 @@ no weights, in about 0.2 seconds.
     panel's `shape` string must name every fact that adds or removes markup -- today
     whether this is the first shot (no transition) and whether the camera is static (no
     amplitude or speed). Values alone are repainted; structure is rebuilt.
+12. **`selection` is derived and its setter replaces the list.** `editor.selection` reads
+    back `selected[0]` only when exactly one thing is selected, and assigning it writes
+    `selected = [value]` -- so writing it after building a multi-block selection throws
+    that selection away, even when the value written is the one it already held. Write
+    `selected`; never both.
+13. **The segment box hides itself when its textarea is disabled.**
+    `.mmd-prompt:has(> textarea:disabled)` is `display:none`, which is right for "nothing
+    selected" and wrong for "several selected" -- both disable the textarea, and only one
+    of them wants the box gone. The bulk panel opts out with `.mmd-bulk`.
+14. **What a picker shows is what the document holds.** An attached file is given its
+    `role` and `retention` when it is attached, rather than left absent for a compiler
+    default to fill in: a select shows the first value of its set either way, and a
+    compiler falling back to a different one puts a value on screen the prompt never used.
 
 ## Calling into ComfyUI
 
