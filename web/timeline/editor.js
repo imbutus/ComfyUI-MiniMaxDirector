@@ -779,31 +779,6 @@ export class TimelineEditor {
   }
 
   /**
-   * Warn when a reference clip is outside the length H3 accepts.
-   *
-   * Stored on the record, so the note survives a reload and a lint run rather than being
-   * a message that scrolled past. The check is skipped when the browser cannot read a
-   * duration: an unknown length is not a wrong one.
-   */
-  async checkDuration(track, index, record) {
-    const length = await media.seconds(record);
-    if (length === null) return;
-
-    const rounded = Math.round(length * 10) / 10;
-    const next = this.read();
-    const target = items(next, track)[index];
-    if (!target?.media || target.media.filename !== record.filename) return;
-
-    target.media = { ...target.media, seconds: rounded };
-    this.commit(next);
-
-    if (rounded < 2 || rounded > 15) {
-      console.warn(
-        `[MiniMaxDirector] ${record.filename} is ${rounded}s; H3 takes reference clips of 2-15s.`);
-    }
-  }
-
-  /**
    * Cut the selected blocks in two at the playhead.
    *
    * A cut is the one edit that needs a position rather than a size, which is what the
@@ -854,6 +829,15 @@ export class TimelineEditor {
     }
 
     const track = TRACK_FOR_MEDIA[kind];
+
+    // How long the file actually runs, before it is placed. A block is the span of clip
+    // the file occupies, so a two-second default under an eight-second recording was the
+    // editor deciding to use a quarter of it without saying so. Read from the browser --
+    // the file is already uploaded and served -- and `null` when it will not say, which
+    // is not the same as short.
+    const measured = kind === "image" ? null : await media.seconds(record);
+    if (measured !== null) record.seconds = Math.round(measured * 10) / 10;
+
     const timeline = this.read();
     const firstImage = kind === "image"
       && !items(timeline, track).some((entry) => entry.media?.kind === "image");
@@ -866,16 +850,36 @@ export class TimelineEditor {
     const empty = this.selection?.track === track
       && items(timeline, track)[this.selection.index]
       && !items(timeline, track)[this.selection.index].media;
-    const target = empty ? this.selection.index : add(timeline, track, 2, this.playhead);
+    // Placed at one frame and grown afterwards, so the room it is allowed is measured
+    // where it actually landed rather than guessed at beforehand.
+    const target = empty
+      ? this.selection.index
+      : add(timeline, track, 1 / FPS, this.playhead);
     const item = items(timeline, track)[target];
     item.media = record;
+
+    if (measured !== null) {
+      // Everything the block can have: the neighbour it would otherwise overlap, and the
+      // end of the clip. A file longer than that takes what there is -- the alternative
+      // is a two-hour timeline because somebody attached an album.
+      const room = bounds(timeline, track, target)[1] - item.start;
+      item.length = Math.max(1, Math.min(Math.round(measured * FPS), room));
+    } else if (!empty) {
+      item.length = Math.max(1, Math.min(2 * FPS, bounds(timeline, track, target)[1] - item.start));
+    }
+    stretchFor(timeline, item);
+
     this.selection = { track, index: target };
     this.commit(timeline);
 
     // H3 takes reference clips of 2-15 seconds. Outside that the model does not refuse --
     // it quietly uses what it can -- so the only place this can be caught is here, and it
     // is worth catching before a generation rather than after one.
-    if (kind !== "image") this.checkDuration(track, target, record);
+    if (measured !== null && (record.seconds < 2 || record.seconds > 15)) {
+      console.warn(
+        `[MiniMaxDirector] ${record.filename} is ${record.seconds}s; `
+        + "H3 takes reference clips of 2-15s.");
+    }
 
     // The first reference image sets the generation size, but only under "match" --
     // that mode scales references to the generation's pixel area, so a mismatched
