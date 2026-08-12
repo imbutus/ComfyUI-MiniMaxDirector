@@ -57,8 +57,13 @@ on a laptop.
 ## The frame lattice
 
 H3 only accepts clip lengths satisfying `length % 17 == 5` at 24 fps — 5, 22, 39, 56, 73,
-90, 107, 124, and so on. The timeline snaps to that lattice, and the linter says how many
-frames of padding it added rather than leaving you to discover it in the output.
+90, 107, 124, and so on. The model denoises a latent whose time axis is a row of slots, and
+the video VAE packs 17 frames into 5 of them (after a 5-frame head worth 2); a length off
+the lattice would need a fraction of a slot.
+
+The editor lands on it while you build rather than at render time: a block that grows the
+clip takes the padding, and a typed duration snaps up on its own. So the timeline you
+arrange is the clip that is generated, with no frames on the end that no shot describes.
 
 ## Nodes
 

@@ -90,11 +90,20 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 - **Neither** lets two blocks on one track overlap. Two descriptions of the same frames
   is not something the prompt can express.
 
-The settings row says `renders 124 f = 5.17s · 120 f rounded up` only when the number
-generated is not the number you typed. The rounding is the news; repeating a duration you
-can already read in the box beside it was the same fact twice. The padding is said there
-and nowhere else — the timeline itself ends where the clip does, not where the lattice
-lands, so a clip of 196 frames is 196 frames of track with nothing empty on the end.
+**The clip is always a length H3 can render.** The lattice below is `17n+5`, so 144 frames
+is not a length that exists: it generates as 158 whatever the editor says. Rather than let
+those fourteen frames sit in the output with no shot describing them, the editor lands on
+the lattice as you work:
+
+- A block that grows the clip — added, dragged past the end, or given a longer `length` —
+  takes the padding itself. Your last block ends up a few frames longer, and the timeline
+  is exactly what renders.
+- A **duration** typed by hand snaps up on its own, and leaves the blocks alone: that is a
+  decision about the piece, not about a segment. Empty means "follow the content".
+
+The timeline is drawn to the clip, not past it, so there is nothing empty on the end. The
+settings row's `renders 124 f = 5.17s · 120 f rounded up` is the fallback for the cases
+that still round — a clip following its content — and stays silent otherwise.
 
 ### The three tabs
 
@@ -193,12 +202,17 @@ H3 only accepts clip lengths satisfying `length % 17 == 5`, at a fixed 24 fps:
 5, 22, 39, 56, 73, 90, 107, 124, 141, 158, 175, ...
 ```
 
-The 17 comes from the temporal VAE, which compresses in blocks of 17 frames plus a
-5-frame head. Only **8s, 25s and 42s** land on whole seconds.
+**Where the 17 comes from.** The model does not denoise frames; it denoises a latent — a
+compressed video whose time axis is a row of slots. H3's video VAE packs **17 frames into
+5 slots**, after a 5-frame head that costs 2, which ComfyUI writes as
+`((frames - 5) // 17) * 5 + 2` (`comfy_extras/nodes_minimax_h3.py`). Decoding runs the
+other way: each slot becomes 3.4 frames. A length off the lattice would need a fraction of
+a slot, which cannot exist, so 124 frames is 37 slots and 130 frames is nothing at all.
 
-The editor always rounds **up** to the next legal length and tells you how much it added.
-Ask for 5.13s and you get 124 frames — 5.17s. That is not a bug and it is not avoidable;
-a length off the lattice is refused by the model.
+Only **8s (192 f), 25s (600 f) and 42s (1008 f)** land on whole seconds.
+
+The editor always rounds **up**, never down, and does it while you build rather than at
+render time: see *Duration comes first* above.
 
 The trained range is roughly **124–362 frames** (5.2–15.1s). Shorter and longer are
 accepted by the node but untested.

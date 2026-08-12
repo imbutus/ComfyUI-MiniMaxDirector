@@ -51,8 +51,12 @@ These are the model's, not design choices. Verified in
 | Reference caps | 9 images, 3 videos, 3 video-soundtracks, 3 audios | `io.Autogrow` templates |
 | Guidance | CFG-free | official graphs use `BasicGuider`, never a negative prompt |
 
-The 17 comes from the temporal VAE, which compresses in blocks of 17 frames plus a
-5-frame head. `lattice.snap_up` implements it and **never rounds down**.
+The 17 comes from the video VAE's time axis: the latent is a row of slots, 17 frames pack
+into 5 of them after a 5-frame head worth 2 -- core writes it as
+`((frames - 5) // 17) * 5 + 2` (`comfy_extras/nodes_minimax_h3.py:39`). A length off the
+lattice needs a fraction of a slot. `lattice.snap_up` implements it and **never rounds
+down**; `model.js:stretchFor` applies it in the editor, so the document is already on the
+lattice before it reaches the compiler.
 
 ## The two core nodes, and why the choice matters
 
@@ -102,6 +106,11 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   stretches the clip instead, because refusing them leaves no way to lengthen a block
   except editing the duration first and the block second. `bounds()` is the drag limit,
   `neighbours()` the typed one; neither permits an overlap.
+- **Content that grows the clip lands on the lattice, and takes the padding with it.**
+  `stretchFor` snaps the new end up to `17n+5` and adds the difference to the block that
+  pushed it, so `span == duration == length` and no frame of the output is undescribed. A
+  duration typed by hand snaps too, but never resizes a block: that is a statement about
+  the piece.
 - `references` is rebuilt from what is actually connected before compiling; the stored
   copy is never trusted.
 - Unknown keys survive a round trip through the editor.
