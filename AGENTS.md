@@ -332,7 +332,7 @@ four say the same thing. A feature the docs do not mention is a feature nobody f
 the info note is the only documentation most people ever read, because it is already on
 the canvas when they open the workflow.
 
-1. **The info node** — the `Note` inside `examples/minimax-director.json` *and*
+1. **The info node** — the `MarkdownNote` inside `examples/minimax-director.json` *and*
    `examples/minimax-director-turbo.json`. Both, identically; they are two copies of one
    text and drifting them apart is how the turbo workflow ends up describing an older
    build.
