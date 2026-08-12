@@ -105,8 +105,10 @@ export class TimelineEditor {
     this.clipboard = null;
     this.panelShape = null;
     this.marquee = null;
-    /** Two steps in from `fit`: at fit a 64-frame block is too narrow to show its caption. */
-    this.zoom = ZOOM_STEP ** 2;
+    /** `fit`: the whole clip on screen from the first click. Opening two steps in showed
+     *  captions at full width but hid the end of the piece, and a timeline you cannot see
+     *  the end of is the one thing a timeline is for. */
+    this.zoom = 1;
     this.playhead = 0;
 
     // Undo state. Snapshots are JSON strings of the whole document -- small, trivially
