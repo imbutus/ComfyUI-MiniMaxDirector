@@ -1685,6 +1685,16 @@ export class TimelineEditor {
     // a block's file and they used to be written in the same corner on top of each other:
     // which file it is, and what is lifted out of it and carried onto somebody else.
     const chips = [];
+    // Words that will be *in* the picture, so they belong on the picture. Quoted, because
+    // the quotes are what the model is sent and what makes this a sign rather than a note
+    // to yourself. First in the strip: it is the block's own content, not a file it cites.
+    if (String(item.screen_text || "").trim()) {
+      chips.push({
+        text: `"${item.screen_text.trim().replace(/^"|"$/g, "")}"`,
+        className: "mmd-chip mmd-chip-text",
+        title: "On-screen text: sent in double quotes, verbatim and untranslated",
+      });
+    }
     if (item.media?.filename) {
       chips.push({ text: `${item.media.kind.toUpperCase()} · ${item.media.filename}`,
                    className: "mmd-chip" });
@@ -2173,6 +2183,10 @@ export class TimelineEditor {
           const next = this.read();
           items(next, track)[index].screen_text = e.target.value;
           this.write(next);
+          // The chip on the block is the only place this text is visible while you are
+          // looking at the timeline, so it follows the keystroke. `render` puts the caret
+          // back; the panel itself is not rebuilt, because its shape has not changed.
+          this.render();
         });
       this.segFields.querySelector(".mmd-f-subject")
         ?.addEventListener("input", (e) => patchMedia({ description: e.target.value }, true));
