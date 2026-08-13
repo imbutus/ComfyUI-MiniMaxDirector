@@ -268,8 +268,7 @@ export class TimelineEditor {
       }
       // A card for the file this block carries, made from here rather than by walking
       // over to the tab and finding the same filename in a select. The host owns the
-      // cast document, so it does the writing; with no writer -- a Who & What node wired
-      // from outside -- the tab still opens and the card is made there.
+      // document, so it does the writing; the tab opens either way.
       const chip = event.target.closest(".mmd-f-subj");
       if (chip) {
         this.writeToken(String(chip.dataset.token || ""));
@@ -781,7 +780,7 @@ export class TimelineEditor {
     this.root.style.setProperty("--mmd-band-gap", `${Math.max(0, Math.round(height - rows))}px`);
   }
 
-  /** Whether anybody speaks: the cast node's switch, with no cast node meaning no. */
+  /** Whether anybody speaks: the `they speak` switch on WHO & WHAT, off by default. */
   speaks() {
     const cast = this.castOf?.();
     return !!cast && cast.speech !== false;
@@ -790,14 +789,10 @@ export class TimelineEditor {
   chips(timeline, ids) {
     const chosen = speakerNumbers(ids);
     const cast = this.castOf?.();
-    if (!cast) {
-      return `<span class="mmd-f-nobody">no subjects node connected — add a
-        <b>MiniMax Director — Who & What</b> and wire its <b>cast</b> output here</span>`;
-    }
-    if (!cast.cards.length) {
+    if (!cast || !cast.cards.length) {
       // A line needs somebody to speak it, and the place to add them is one tab away --
       // so the sentence saying so is the way there, rather than an instruction to follow.
-      return `<span class="mmd-f-nobody">nobody in the cast yet —
+      return `<span class="mmd-f-nobody">nobody in WHO &amp; WHAT yet —
         <button type="button" class="mmd-f-tocast">add a card</button></span>`;
     }
 
@@ -832,8 +827,8 @@ export class TimelineEditor {
       + orphans.map((number) => `
       <button class="mmd-f-chip mmd-on mmd-f-orphan" data-speaker="${number}"
               title="${quote(sole(number) ? SOLE
-                : "This line names a speaker the cast no longer has. Click to drop them.")}">
-        <span class="mmd-face mmd-face-none">?</span><span>S${number} — not in the cast</span>
+                : "This line names a speaker WHO & WHAT no longer has. Click to drop them.")}">
+        <span class="mmd-face mmd-face-none">?</span><span>S${number} — not in WHO &amp; WHAT</span>
       </button>`).join("");
   }
 
@@ -1922,7 +1917,7 @@ export class TimelineEditor {
         className: `mmd-chip mmd-chip-move${card.onto ? "" : " mmd-chip-open"}`,
         title: card.onto
           ? `${card.description || "this person"} is transferred onto ${card.onto}`
-          : "attribute_transfer with no target: say who receives it on the cast card",
+          : "attribute_transfer with no target: say who receives it on the card",
       });
     }
     if (chips.length) {
@@ -2372,7 +2367,7 @@ export class TimelineEditor {
       <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
         <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
       </label>
-      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A cast card lifted out of this file carries its own marker for the person, which can differ.">keep file
+      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
         <select class="mmd-f-retention">${
           retentionOptions(item.media.retention, item.media.kind)}</select>
       </label>`;

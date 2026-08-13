@@ -194,7 +194,7 @@ src/minimax_director/
   lattice.py             frame arithmetic; the 17-frame rule
   timeline.py            the timeline document and its JSON
   compile.py             timeline -> prompt
-  cast.py                the cast document, merged in before compiling
+  cast.py                the WHO & WHAT document, merged in before compiling
   lint.py                checks that run before sampling
   references.py          reference ordinals for wired sockets
   attachments.py         reference ordinals for files on the timeline

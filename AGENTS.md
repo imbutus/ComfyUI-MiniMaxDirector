@@ -135,7 +135,7 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - `transition` defaults to `cut` and is ignored on the first shot, which is entered from
   nowhere. `screen_text` is quoted verbatim into the shot's prose.
 
-## The cast document
+## The WHO & WHAT document
 
 A second widget, parsed by `cast.py` and folded into the timeline before compiling. One
 card per subject -- shown as the **WHO & WHAT** tab, and not only people: a costume, a prop,
@@ -145,9 +145,7 @@ empty. Fields: `name`, `file` (which attachment it is drawn from), `description`
 `uid`. Several cards may name one file; each is numbered separately, and the block's
 FILE row makes them: `editor.definedBy` lists the subjects drawn from that file with
 `edit` beside each, and **+ another card** calls `CastEditor.addSubject(filename)`
-through `editor.onAddCard`. That hook is wired only when the cast is the director's
-own tab -- a Who & What node wired from outside owns its document, and the director
-must not write into it behind its back.
+through `editor.onAddCard`.
 
 - A card **with** a file and a description appends a subject to that file's `subjects`,
   and lends its sentence to the file's own `description` when the record has none -- the
@@ -274,7 +272,7 @@ reference the prose points at.
 | `timeline.py` | the document, its JSON | no |
 | `compile.py` | document → prompt | no |
 | `lint.py` | pre-flight checks | no |
-| `cast.py` | the cast document, merged into the timeline | no |
+| `cast.py` | the WHO & WHAT document, merged into the timeline | no |
 | `attachments.py` | files on segments, their ordinals | no |
 | `references.py` | files on sockets, their ordinals | no |
 | `core.py` | adapter over ComfyUI's H3 nodes | yes |

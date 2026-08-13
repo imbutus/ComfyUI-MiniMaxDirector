@@ -17,16 +17,11 @@ import { BUILD, VERSION } from "./build.js";
 const NODE = "MiniMaxDirector";
 const PROMPT_NODE = "MiniMaxDirectorPrompt";
 const REPORT_NODE = "MiniMaxDirectorReport";
-const CAST_NODE = "MiniMaxDirectorCast";
 const STATE_WIDGET = "timeline";
 const CAST_WIDGET = "cast";
 const PROMPT_VIEW = "compiled_prompt";
 /** Wide enough to read a compiled shot without wrapping every few words. */
 const PROMPT_SIZE = [520, 420];
-/** A card is a face and three sentences: wide, and only as tall as the cast is long. */
-const CAST_SIZE = [860, 150];
-/** An empty cast is one line of text. Below this the title bar starts eating the list. */
-const CAST_MIN_HEIGHT = 110;
 
 /**
  * What was selected on each director, keyed by node id.
@@ -188,7 +183,6 @@ app.registerExtension({
       // Same widget, a different field of the same preview: the compile and the lint run
       // together, so a report panel costs one more line rather than a second request.
       [REPORT_NODE]: (node) => attachPromptView(node, "report"),
-      [CAST_NODE]: attachCast,
     };
     const mount = mounts[nodeData.name];
     if (!mount) return;
@@ -240,10 +234,7 @@ function attach(node) {
     if (!cast.value?.trim()) cast.value = JSON.stringify(EMPTY_CAST, null, 2);
   }
 
-  editor.castJSON = () => {
-    const wired = castNodeOf(node);
-    return (wired ? castValue(wired) : cast?.value) || "";
-  };
+  editor.castJSON = () => cast?.value || "";
   editor.castOf = () => {
     const text = editor.castJSON();
     return text ? parseCast(text) : null;
@@ -302,9 +293,7 @@ function attach(node) {
     };
     // The FILE row on a block can make a card already pointed at that block's file: one
     // photograph often holds several subjects, and picking the same filename out of a
-    // select once per person is the long way to say so. Only wired when the cast is this
-    // node's own tab -- a Who & What node wired from outside owns its document, and the
-    // director must not write into it behind its back.
+    // select once per person is the long way to say so.
     editor.onAddCard = (filename) => inside.addSubject(filename || "");
     // `edit` beside a subject on the FILE row lands on that card's name box. A frame
     // later, because the tab it lives on was hidden until the click that got here.
@@ -472,150 +461,6 @@ function attachPromptView(node, field = "prompt") {
     }
     return result;
   };
-}
-
-/**
- * Give a `MiniMaxDirectorCast` node its list of cards.
- *
- * The cast reads the director's timeline for the files a character can be drawn out of,
- * and writes only its own JSON. The compiler folds the two together (`cast.py`), so the
- * link is what makes a card mean anything -- unwired, the node says so rather than
- * offering a file picker with nothing in it.
- */
-function attachCast(node) {
-  const json = node.widgets?.find((widget) => widget.name === CAST_WIDGET);
-  if (!json) return;
-
-  json.hidden = true;
-  json.computeSize = () => [0, -4];
-  if (json.inputEl) json.inputEl.style.display = "none";
-
-  const editor = new CastEditor(
-    () => parseCast(json.value),
-    (state) => { json.value = JSON.stringify(state, null, 2); },
-    () => {
-      const director = directorOf(node);
-      const widget = director?.widgets?.find((w) => w.name === STATE_WIDGET);
-      return widget ? parse(widget.value) : null;
-    },
-  );
-  if (!json.value?.trim()) json.value = JSON.stringify(EMPTY_CAST, null, 2);
-
-  // Same repair as the director's own cast tab: a card stored with no `keep them` drew
-  // the first marker and compiled as the file's. After `onConfigure`, because the saved
-  // widget value lands over anything set here.
-  const normalise = () => {
-    const normalised = JSON.stringify(parseCast(json.value), null, 2);
-    if (json.value === normalised) return;
-    json.value = normalised;
-    editor.render();
-  };
-  normalise();
-  const configured = node.onConfigure;
-  node.onConfigure = function () {
-    const result = configured?.apply(this, arguments);
-    normalise();
-    return result;
-  };
-
-  node.castEditor = editor;
-
-  // A card only becomes visible in the prompt once the director recompiles, and the
-  // director has no way of knowing this node was typed into.
-  editor.onChange = () => {
-    const director = directorOf(node);
-    director?.timelineEditor?.schedulePreview();
-    director?.timelineEditor?.render();
-  };
-
-  const widget = node.addDOMWidget(CAST_WIDGET + "_editor", "minimax_director_cast",
-                                   editor.root, {
-    getMinHeight: () => 160,
-    hideOnZoom: false,
-    serialize: false,
-    getValue: () => undefined,
-    setValue: () => {},
-  });
-  widget.serializeValue = () => undefined;
-  refuseWidthStamp(widget);
-
-  node.setSize([
-    Math.max(node.size?.[0] ?? 0, CAST_SIZE[0]),
-    Math.max(node.size?.[1] ?? 0, CAST_SIZE[1]),
-  ]);
-
-  // As tall as the cast, and no taller. A fixed height left a band of empty node under
-  // one card, which is the space the director needs on a screen that already does not
-  // have enough of it.
-  const fit = () => fitCast(node, editor);
-  editor.onResize = fit;
-
-  // Wiring it up mid-session should fill the file picker at once rather than on the next
-  // keystroke, and the director's chips should learn about the cast the same moment.
-  const connections = node.onConnectionsChange;
-  node.onConnectionsChange = function () {
-    const result = connections?.apply(this, arguments);
-    requestAnimationFrame(() => {
-      editor.shape = null;
-      editor.render();
-      editor.onChange?.();
-    });
-    return result;
-  };
-
-  requestAnimationFrame(() => {
-    editor.render();
-    fit();
-    requestAnimationFrame(fit);
-  });
-}
-
-/**
- * Shrink a cast node to its cards.
- *
- * The same measurement `fitNode` makes for the director, minus the grow-only guard: a
- * cast that loses a character should give the height back, because the reason this node
- * exists is that the director had none to spare.
- */
-function fitCast(node, editor) {
-  const root = editor.root;
-  const style = getComputedStyle(root);
-  const gap = parseFloat(style.rowGap) || 0;
-  const kids = [...root.children];
-  const needed = kids.reduce((sum, el) => sum + el.offsetHeight, 0) + gap * (kids.length - 1);
-
-  const delta = Math.round(needed - root.clientHeight);
-  if (Math.abs(delta) < 2) return;
-  node.setSize([node.size[0], Math.max(CAST_MIN_HEIGHT, node.size[1] + delta)]);
-  node.graph?.setDirtyCanvas(true, true);
-}
-
-/** The director this cast node feeds, or null while it is unwired. */
-function directorOf(cast) {
-  const graph = cast.graph ?? app.graph;
-  for (const output of cast.outputs ?? []) {
-    for (const id of output.links ?? []) {
-      const target = graph?.getNodeById?.(graph?.links?.[id]?.target_id);
-      if (target?.widgets?.some((widget) => widget.name === STATE_WIDGET)) return target;
-    }
-  }
-  return null;
-}
-
-/** The cast node feeding `director`, or null. */
-function castNodeOf(director) {
-  const graph = director.graph ?? app.graph;
-  for (const input of director.inputs ?? []) {
-    if (input.name !== CAST_WIDGET || input.link == null) continue;
-    const source = graph?.getNodeById?.(graph?.links?.[input.link]?.origin_id);
-    if (source) return source;
-  }
-  return null;
-}
-
-/** A cast node's stored JSON, whatever the node turns out to be. */
-function castValue(node) {
-  return node?.widgets?.find((widget) => widget.name === CAST_WIDGET)?.value || "";
 }
 
 /** The prompt nodes wired to `director`, in graph order. */

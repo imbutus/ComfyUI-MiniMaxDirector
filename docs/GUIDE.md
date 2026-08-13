@@ -137,13 +137,13 @@ not on screen — and the TIMELINE tab shows:
   shot, which is entered from nowhere. `on-screen text` is any words actually visible in
   frame — a sign, a banner, a label — sent in double quotes, verbatim and untranslated,
   the same service the dialogue row does for the spoken words.
-- **SUBJECTS** — one chip per card the cast has numbered, each with the file's thumbnail
+- **SUBJECTS** — one chip per card WHO & WHAT has numbered, each with the file's thumbnail
   and the token it became: `<Subject 1> man`. Click one and the token is written into
   SEGMENT PROMPT at the caret; a chip whose token the text already names is lit. Typing
   the number by hand is the alternative, and getting it wrong is silent — the prompt then
   cites a subject that does not exist and nothing on screen says so. A card with no
-  description takes no number and so has no chip, and the row is absent until the cast has
-  at least one numbered card.
+  description takes no number and so has no chip, and the row is absent until WHO & WHAT
+  has at least one numbered card.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
   `amplitude` and `speed` sit beside it: how far the framing travels and how fast. Both
@@ -227,7 +227,7 @@ continues across it; with nothing after it, the same switch compiles as `<cutoff
 speech truncated by the end of the clip — and the linter says so, in case that was not
 what you meant. Write the two halves as two lines in two blocks and tick the first.
 
-### The cast
+### WHO & WHAT
 
 The **WHO & WHAT** tab is one card per thing the prompt has to name, and the tab itself
 carries the count. Usually a person — but the guide's subjects are not only people: a
@@ -263,7 +263,7 @@ A card holds:
   face taken out of it is an `attribute_transfer` onto somebody else.
 - **onto** — who receives that transfer. It appears only when `keep it` is
   `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
-  offers the other cast members and each shot's subject, or you type a receiver the shot
+  offers the other cards and each shot's subject, or you type a receiver the shot
   describes but no card names. Filled, it compiles as
   `<Subject 2> …: attribute_transfer - the face…, transferred onto SPEAKER.` Empty, the
   model is told to move a trait and never told where, and the block's chip stays amber.
@@ -303,7 +303,7 @@ anything. The voice row goes with them, `voice from` included: a timbre referenc
 instruction about a voice, and with nobody speaking the compiler drops it rather than
 telling the model a recording is the reference for a speaker it never voices.
 
-The cast lives on the document rather than on each line because a speaker is not a property
+WHO & WHAT lives on the document rather than on each line because a speaker is not a property
 of one shot. Describing the same `S1` two different ways in two blocks was possible before,
 and to the model that reads as two people sharing one label.
 

@@ -123,7 +123,7 @@ class MiniMaxDirector(io.ComfyNode):
                                 tooltip="Everything the prompt names -- people, props, "
                                         "costumes, places -- and the one place a file is "
                                         "described. Edited in the director's WHO & WHAT "
-                                        "tab, or wired from a Who & What node."),
+                                        "tab."),
                 io.Vae.Input("audio_vae", optional=True),
                 io.Image.Input("first_frame", optional=True),
                 io.Image.Input("last_frame", optional=True),
@@ -332,45 +332,8 @@ class MiniMaxDirectorLength(io.ComfyNode):
         return io.NodeOutput(length, lattice.to_seconds(length))
 
 
-class MiniMaxDirectorCast(io.ComfyNode):
-    """Everything the prompt has to name, one card each: what it is, what stays the same.
-
-    A card is one `<Subject n>`. Usually a person -- a face, a name, a description the
-    model must honour, and a voice, which used to be authored in two different parts of
-    the director with nothing on screen tying them together -- but a costume, a prop, a
-    place or a style lifted out of the same photograph is a subject too, and fills in the
-    same card with the voice row left empty. Several cards may point at one file: that is
-    how a single photograph names several things.
-
-    This is also the only place a file is described. A file used to define something is
-    cited inside that thing's definition rather than given a line of its own, so a second
-    description box on the block would have been a field the prompt threw away.
-
-    Wire `cast` into the director. The card names its file by filename rather than by
-    `<Picture n>`: the ordinal is computed from where blocks sit on the timeline and
-    changes when one is dragged, and a card that quietly re-pointed at a different
-    photograph is a mistake you would only see in the finished video.
-    """
-
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxDirectorCast",
-            display_name="MiniMax Director — Who & What",
-            category=CATEGORY,
-            description=cls.__doc__,
-            inputs=[io.String.Input("cast", multiline=True, default=CAST_EMPTY)],
-            outputs=[io.String.Output(display_name="cast")],
-        )
-
-    @classmethod
-    def execute(cls, cast) -> io.NodeOutput:
-        return io.NodeOutput(cast)
-
-
 NODES = [
     MiniMaxDirector,
-    MiniMaxDirectorCast,
     MiniMaxDirectorCompile,
     MiniMaxDirectorPrompt,
     MiniMaxDirectorReport,

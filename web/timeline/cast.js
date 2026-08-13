@@ -379,7 +379,7 @@ export class CastEditor {
                 </select>
               </label>`}`}
               <span class="mmd-grow"></span>
-              <button class="mmd-cast-drop" title="Remove from the cast">${ICON.trash}</button>
+              <button class="mmd-cast-drop" title="Remove this card">${ICON.trash}</button>
             </div>
             ${file ? `
             <input class="mmd-card-description" type="text"
@@ -405,18 +405,17 @@ export class CastEditor {
             </div>
           </div>
         </div>`;
-      }).join("") || (timeline
-        ? `<div class="mmd-cast-empty">Nothing yet. Add a subject — a person, a costume,
-             a prop, a place — then say what it is, and how they sound if they speak.</div>`
-        : `<div class="mmd-cast-empty">Not connected. Wire this node's <b>cast</b> output
-             into the director, and the files on its timeline appear here.</div>`);
+      }).join("")
+        || `<div class="mmd-cast-empty">Nothing yet. Add a subject — a person, a costume,
+             a prop, a place — then say what it is, and how they sound if they speak.</div>`;
     }
     // Both branches: the note under a description is filled by `paint` alone, so a list
     // that was just rebuilt would show an empty one until the next keystroke.
     this.paint(state, numbers);
 
-    // A card taller or shorter than the node it sits in is the whole reason this node was
-    // split out, so the height follows the list on every render rather than on a gesture.
+    // A card taller or shorter than the room the list has been given is what the host
+    // needs to know about, so the height follows the list on every render rather than on
+    // a gesture.
     requestAnimationFrame(() => this.onResize?.());
   }
 
