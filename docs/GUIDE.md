@@ -284,7 +284,7 @@ amber across it and the same line in `report`.
 A green **`[Shot n]`** badge says where the card is heard, which is otherwise only visible
 from the TIMELINE tab.
 
-**+ subject** adds a card. **they speak** switches dialogue off for the whole clip: the
+**+ card** adds a card. **they speak** switches dialogue off for the whole clip: the
 rows and every `<d>` go at once, and the cards stay — a character can be in a clip without
 saying anything.
 

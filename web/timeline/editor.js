@@ -707,7 +707,7 @@ export class TimelineEditor {
       // A line needs somebody to speak it, and the place to add them is one tab away --
       // so the sentence saying so is the way there, rather than an instruction to follow.
       return `<span class="mmd-f-nobody">nobody in the cast yet —
-        <button type="button" class="mmd-f-tocast">add a subject</button></span>`;
+        <button type="button" class="mmd-f-tocast">add a card</button></span>`;
     }
 
     const files = filesOf(timeline);
