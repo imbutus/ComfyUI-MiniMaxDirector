@@ -177,7 +177,7 @@ export class TimelineEditor {
       <div class="mmd-tabbed">
       <div class="mmd-tabs">
         <button class="mmd-tab mmd-on" data-tab="timeline">TIMELINE</button>
-        <button class="mmd-tab" data-tab="cast" title="Everything the prompt has to name: people, costumes, props, places. One card each, and each becomes a &lt;Subject n&gt;. This is the only place a file is described.">SUBJECTS <span class="mmd-tab-count"></span></button>
+        <button class="mmd-tab" data-tab="cast" title="Everyone and everything the prompt has to name: people, costumes, props, places. One card each, and the only place a file is described. A card with a file becomes a &lt;Subject n&gt;; a card that talks is a speaker, S1 upwards.">WHO &amp; WHAT <span class="mmd-tab-count"></span></button>
         <button class="mmd-tab" data-tab="global">GLOBAL</button>
       </div>
 
@@ -251,7 +251,7 @@ export class TimelineEditor {
     this.scrub = this.root.querySelector(".mmd-scrub");
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
-    // Delegated once, on an element that outlives every rebuild: the link to the SUBJECTS
+    // Delegated once, on an element that outlives every rebuild: the link to the WHO & WHAT
     // tab appears in two unrelated groups of this panel -- the dialogue row when nobody
     // has been written yet, and the file row, which is the only place a file is
     // described. Bound to one of them it was dead in the other.
@@ -701,7 +701,7 @@ export class TimelineEditor {
     const cast = this.castOf?.();
     if (!cast) {
       return `<span class="mmd-f-nobody">no subjects node connected — add a
-        <b>MiniMax Director — Subjects</b> and wire its <b>cast</b> output here</span>`;
+        <b>MiniMax Director — Who & What</b> and wire its <b>cast</b> output here</span>`;
     }
     if (!cast.cards.length) {
       // A line needs somebody to speak it, and the place to add them is one tab away --
@@ -2227,7 +2227,7 @@ export class TimelineEditor {
     // mode, where the prompt has to say what each reference is and how much of it must
     // survive -- questions that have no meaning for a block with nothing attached.
     const subject = !item.media ? "" : `
-      <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the SUBJECTS tab, not a second box to fill in.">
+      <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
         ${claimed.length ? claimed.map(({ card, index }) => `
         <span class="mmd-f-claim">

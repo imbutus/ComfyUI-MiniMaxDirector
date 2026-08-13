@@ -5,7 +5,7 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
-H3 makes the picture and the voices in one pass, so the editor has a **SUBJECTS** tab: one
+H3 makes the picture and the voices in one pass, so the editor has a **WHO & WHAT** tab: one
 card per thing the prompt has to name, holding its face, its voice, how much of it survives
 from a reference, and — for a face swap — who the face is transferred onto. Not only
 people: a costume, a prop, a place or a style out of the same photograph is a card too,

@@ -117,7 +117,7 @@ The panel under the toolbar shows one of three things, and remembers which one a
 reload:
 
 - **TIMELINE** — the tracks, and the fields of whatever block is selected
-- **SUBJECTS** — one card per thing the prompt has to name
+- **WHO & WHAT** — one card per thing the prompt has to name
 - **GLOBAL** — GLOBAL PROMPT and GLOBAL MUSIC, the two things that are set once for the
   whole piece and then left alone
 
@@ -145,12 +145,12 @@ not on screen — and the TIMELINE tab shows:
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
   says it, `how` it is said, its `language`, and two switches — **off-screen** and
   **carries over**. **+ line** adds another row, so a block can hold a conversation; `×`
-  removes one. Who the speakers *are* is written once in the SUBJECTS tab, not here — see
+  removes one. Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
   below.
 - **FILE** — blocks carrying one: `used as`, `keep file`, **detach media**, and a
   read-only `describes` line. There is no description box here: what a file *is* is
   written once, on a subject card, and this line shows the card's sentence beside the
-  `<Subject n>` it became with a link to the SUBJECTS tab. It said `nothing describes
+  `<Subject n>` it became with a link to the WHO & WHAT tab. It said `nothing describes
   this file yet` until you add one. The guide asks for a file used to define something to
   be cited inside that thing's definition rather than given an entry of its own, so a
   second box here was a field the prompt threw away — which is exactly how it behaved.
@@ -217,14 +217,24 @@ what you meant. Write the two halves as two lines in two blocks and tick the fir
 
 ### The cast
 
-The **SUBJECTS** tab is one card per thing the prompt has to name, and the tab itself
+The **WHO & WHAT** tab is one card per thing the prompt has to name, and the tab itself
 carries the count. Usually a person — but the guide's subjects are not only people: a
 costume, a prop, a place or a style lifted out of the same photograph is a subject too,
 with a retention marker of its own, and it fills in the same card with the voice row left
 empty. Several cards may point at one file; that is how a single photograph names several
 things, each numbered separately.
 
-This is also the only place a file is described. A card holds:
+Two tokens appear on every card, and they are MiniMax's, not ours:
+
+- **`S1…Sn`** — a **speaker**: who says a line. The card supplies the voice; the words
+  themselves are written on a shot's dialogue row. `S` is for speaker, which is why it is
+  not `V`.
+- **`<Subject 1…n>`** — a **subject on an image or video**: something the model has to
+  look at and keep. Only a card with a file has one, so a card that is a voice and nothing
+  else shows a hollow `no <Subject>` in its place.
+
+A card can be one, the other, or both. This is also the only place a file is described.
+A card holds:
 
 - **name it** — a short name, yours, so the chips on a dialogue row are readable
 - **from** — which file on the timeline this subject is drawn from, if any, and the only
@@ -442,6 +452,11 @@ never a refusal:
 - a **voice reference** whose `keep file` asks for the recording to be copied
 - a line marked **carries over** with nothing after it, which compiles as `<cutoff>`
 - a **guessed word** in a reused line — the guide wants `[unclear]`, never a guess
+- a **subject card that compiles to nothing**: no file, so it is not a `<Subject n>`,
+  and no voice, so it is never heard. The card is a filled-in row either way
+- the reverse: a card with a **voice nobody speaks with** — no line names its `S`, so
+  the voice instructs nothing, and a `voice from` recording is named as the timbre
+  reference for a speaker the model is never asked to voice
 
 ---
 

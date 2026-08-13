@@ -175,8 +175,11 @@ const CSS = `
    they sound sit on one card because they are one person -- spread across the block panel
    and a list of numbered rows, nothing on screen said they were related at all. */
 .mmd-cast { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
-.mmd-card { display:flex; gap:9px; align-items:flex-start; background:#1c1f26;
-  border:1px solid #2c313c; border-radius:8px; padding:8px; }
+/* A card that counts is raised off the panel: lighter than the ground it sits on, with a
+   border you can find. The off state below is the opposite of all three, because the two
+   used to differ by one step of grey and read as the same card twice. */
+.mmd-card { display:flex; gap:9px; align-items:flex-start; background:#232833;
+  border:1px solid #3a4150; border-radius:8px; padding:8px; }
 .mmd-card-body { flex:1 1 auto; display:flex; flex-direction:column; gap:5px;
   min-width:0; }
 .mmd-card-top { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
@@ -196,9 +199,54 @@ const CSS = `
    the rule collapses the gap so nothing moves. */
 .mmd-card-note { color:#6b7280; font-size:10px; line-height:1.35; }
 .mmd-card-note:empty { display:none; }
+.mmd-card-wordless { color:#6b7280; }
+.mmd-card-wordless b { color:#9ca3af; font-weight:600; }
+/* A card that reaches the prompt as nothing, dimmed the way every other control that
+   cannot act is dimmed.
+
+   The controls are dimmed one by one rather than the card as a whole: opacity on an
+   ancestor cannot be undone by a descendant, and the line saying *why* the card is dim
+   is the one thing on it that has to stay readable. The trash stays lit for the same
+   reason -- removing the card is a perfectly good answer to the message.
+
+   Focus does not lift it. The card is dim because it reaches the prompt as nothing, and
+   that is still true while the caret is sitting in it; the dimming ends on the first
+   character of a voice or the first file picked, which is a state the row is repainted
+   for on every keystroke. */
+.mmd-card.mmd-card-off > .mmd-face,
+.mmd-card.mmd-card-off .mmd-card-top > *:not(.mmd-cast-drop),
+.mmd-card.mmd-card-off .mmd-card-description,
+.mmd-card.mmd-card-off .mmd-card-voice-row { opacity:.4; }
+/* Switched off, not merely far away: sunk below the panel rather than raised off it, and
+   outlined the way every unfinished thing in this editor is outlined -- dashed. Opacity
+   alone was not enough; two cards a shade apart read as one card twice. */
+.mmd-card.mmd-card-off { background:transparent; border-style:dashed;
+  border-color:#2c313c; }
+.mmd-card.mmd-card-off input, .mmd-card.mmd-card-off select { background:#12151b;
+  border-color:#252b34; }
+/* The line on an off card is the only warning on it, so it is the one thing that reads
+   as one -- amber, the colour a transfer with no target already uses. Full brightness on
+   purpose: it is the reason the rest is dim. */
+.mmd-card.mmd-card-off .mmd-card-note { color:#e0b055; }
+.mmd-card.mmd-card-off .mmd-card-note b { color:#f6e6c8; }
 .mmd-card-badge { flex:0 0 auto; background:#2f6d8f; color:#eaf2f6; border-radius:4px;
   padding:2px 6px; font-size:10px; letter-spacing:.05em; }
 .mmd-card-subject { background:#2c313c; color:#9ca3af; }
+/* Where a card is heard, in the prompt's own words for a shot. Green rather than blue:
+   the subject badge says what the model calls this thing, this says it is used. */
+.mmd-card-heard { background:#1f3329; color:#8fc9a4; letter-spacing:0; }
+/* A badge for something this card has *not* got. Hollow and dashed, the shape everything
+   unfinished in this editor takes -- a missing badge read as a rendering gap, and the
+   first question about this panel was why one card had a token and the other had none. */
+.mmd-card-nosubject { background:transparent; color:#6b7280; border:1px dashed #3a4150;
+  padding:1px 5px; letter-spacing:0; }
+
+/* What the two tokens mean, once, above the list. They are MiniMax's own -- S for
+   speaker, <Subject n> for something drawn out of a file -- so they cannot be renamed
+   into something self-explanatory and have to be explained instead. */
+.mmd-cast-legend { display:flex; flex-direction:column; gap:2px; margin:0 0 6px;
+  color:#6b7280; font-size:10px; line-height:1.4; }
+.mmd-cast-legend b { color:#9ca3af; font-weight:600; }
 .mmd-card-from, .mmd-card-keep { flex:0 0 auto; display:flex; align-items:center;
   gap:5px; color:#6b7280; font-size:11px; }
 .mmd-card-from select { max-width:210px; font-size:11px; cursor:pointer; }
@@ -514,11 +562,14 @@ const CSS = `
    still clickable, just not competing with the one box that is asking to be filled. The
    box itself keeps its own weight, and so does the group's surface once anything is said:
    a dialogue group with nothing in it sinks back into the panel it sits on. */
-.mmd-f-line-row.mmd-f-quiet > *:not(.mmd-f-wide) { opacity:.4; }
-.mmd-f-line-row.mmd-f-quiet:focus-within > * { opacity:1; }
+/* A row with no words, and the group around it: dimmed whole rather than field by field.
+   The line box used to stay lit and focus lifted the rest, which meant the one state the
+   dimming exists to show -- nothing is being said here -- looked exactly like a row being
+   typed into. It clears on the first character, which is the moment it stops being true. */
+.mmd-f-line-row.mmd-f-quiet > * { opacity:.4; }
 .mmd-f-group.mmd-f-quiet { background:#15181e; border-color:#1f232b; }
 .mmd-f-group.mmd-f-quiet > .mmd-f-tag { opacity:.55; }
-.mmd-f-group.mmd-f-quiet:focus-within { background:#191c23; border-color:#262b34; }
+.mmd-f-group.mmd-f-quiet > .mmd-f-addline { opacity:.4; }
 /* A bulk action reads like the row's other controls, and says so when it cannot run:
    disabled rather than hidden, because a button that comes and goes is one you never
    learn about. Its title says what selection would enable it. */

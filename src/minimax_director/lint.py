@@ -43,6 +43,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_silence(timeline),
         *_check_voice_references(timeline),
         *_check_continuity(timeline),
+        *_check_speakers(timeline),
     ]
     return sorted(issues, key=lambda issue: issue.level != "error")
 
@@ -204,7 +205,7 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
         yield Issue(
             "warning",
             f"{item.token} ({name}) has no description, so nothing tells the model what "
-            f"to keep from it. Describe it on the block that carries it.",
+            f"to keep from it. Describe it on a subject card pointed at this file.",
         )
 
 
@@ -296,7 +297,7 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
             yield Issue(
                 "warning",
                 f"[Shot {number}] {_join_ids(unknown)} speaks with no description, so the "
-                f"voice is whatever the model picks. Describe them in the cast: age, "
+                f"voice is whatever the model picks. Describe them on their subject card: age, "
                 f"gender, pitch, timbre, accent.",
             )
 
@@ -401,3 +402,54 @@ def _check_content(timeline: Timeline) -> Iterator[Issue]:
     for move in timeline.moves:
         if not move.text():
             yield Issue("warning", f"The camera move at frame {move.start} is empty.")
+
+
+def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
+    """A subject card that reaches the prompt as nothing at all.
+
+    A card earns its place two ways: it names a file, which makes it a `<Subject n>` with
+    a definition and a retention marker, or it describes a voice, which becomes the words
+    in front of `(S1)`. With neither, the compiled prompt is byte-for-byte what it would
+    be with no card there -- and the editor draws a filled-in row either way, which reads
+    as work that has been done.
+
+    The second half is the reverse: a voice, and no line anywhere that names it. A voice
+    is an instruction about how somebody sounds, and with nothing spoken it instructs
+    nothing -- while `voice_from` goes further and tells the model an attached recording
+    is the timbre reference for a speaker it is never asked to voice.
+
+    The first half is deliberately *not* guarded on `speech`: that flag is derived --
+    `cast.merge` sets it false precisely when no card has a voice -- so reading it there
+    would silence the check in the one case it exists for. The second half is guarded,
+    because with the switch off no line is compiled and an unused voice is a control left
+    as it was found.
+    """
+    bound = attachments.bound(timeline)
+    spoken = {number
+              for shot in timeline.shots
+              for line in shot.lines if line.text.strip()
+              for number in line.numbers}
+
+    for speaker in timeline.speakers:
+        voiced = bool(str(speaker.voice).strip() or str(speaker.voice_from).strip())
+        described = bound.get(speaker.id) is not None
+        name = str(speaker.name).strip() or f"S{speaker.id}"
+
+        if not voiced and not described:
+            yield Issue(
+                "warning",
+                f"The subject card {name} compiles to nothing: it names no file, so it is "
+                f"not a <Subject n>, and it describes no voice, so it is not heard. Point "
+                f"its from at a file, or say how it sounds.",
+            )
+        elif voiced and timeline.speech and speaker.id not in spoken:
+            # A voice is an instruction about how somebody sounds, and with no line it is
+            # an instruction about nothing. `voice_from` makes it worse than idle: the
+            # prompt states that an attached recording is the timbre reference for a
+            # speaker the model is never asked to voice.
+            yield Issue(
+                "warning",
+                f"{name} has a voice but says nothing: no line names S{speaker.id}, so "
+                f"the voice is never used. Tick their face on a shot's dialogue row, or "
+                f"clear the voice.",
+            )

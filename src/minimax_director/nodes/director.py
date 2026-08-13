@@ -122,8 +122,8 @@ class MiniMaxDirector(io.ComfyNode):
                 io.String.Input("cast", multiline=True, default=CAST_EMPTY, optional=True,
                                 tooltip="Everything the prompt names -- people, props, "
                                         "costumes, places -- and the one place a file is "
-                                        "described. Edited in the director's SUBJECTS "
-                                        "tab, or wired from a Subjects node."),
+                                        "described. Edited in the director's WHO & WHAT "
+                                        "tab, or wired from a Who & What node."),
                 io.Vae.Input("audio_vae", optional=True),
                 io.Image.Input("first_frame", optional=True),
                 io.Image.Input("last_frame", optional=True),
@@ -356,7 +356,7 @@ class MiniMaxDirectorCast(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxDirectorCast",
-            display_name="MiniMax Director — Subjects",
+            display_name="MiniMax Director — Who & What",
             category=CATEGORY,
             description=cls.__doc__,
             inputs=[io.String.Input("cast", multiline=True, default=CAST_EMPTY)],

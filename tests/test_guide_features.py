@@ -376,6 +376,67 @@ def test_a_guessed_word_is_pointed_at_the_unclear_marker():
     assert any("[unclear]" in note for note in messages(timeline))
 
 
+def test_a_card_that_reaches_the_prompt_as_nothing_is_flagged():
+    """A card is a `<Subject n>` or a voice. With neither it is neither, and the editor
+    draws a filled-in row either way."""
+    merged = cast.merge(clip().to_dict(), {"cards": [
+        {"id": 1, "uid": "a", "name": "football ball", "file": "", "description": "",
+         "keep": "fully_preserved", "voice": ""},
+    ]})
+    assert any("compiles to nothing" in note
+               for note in messages(Timeline.from_dict(merged)))
+
+
+@pytest.mark.parametrize("card", [
+    # A voice is enough on its own: that is every speaker with no photograph.
+    {"voice": "a low, gravelled voice"},
+    {"voice": "", "voice_from": "voice.wav"},
+])
+def test_a_card_with_a_voice_is_not_flagged(card):
+    merged = cast.merge(clip().to_dict(), {"cards": [
+        {"id": 1, "uid": "a", "name": "MAN", "file": "", "description": "",
+         "keep": "fully_preserved", **card},
+    ]})
+    assert not any("compiles to nothing" in note
+                   for note in messages(Timeline.from_dict(merged)))
+
+
+def test_a_silent_card_drawn_from_a_file_is_not_flagged():
+    """A prop or a place never speaks, and is a subject all the same."""
+    document = clip(shots=[
+        {"start": 0, "length": 24, "prompt": "A ball on the grass.",
+         "media": {"kind": "image", "filename": "ball.png", "role": "reference",
+                   "retention": "fully_preserved"}},
+    ]).to_dict()
+    merged = cast.merge(document, {"speech": False, "cards": [
+        {"id": 1, "uid": "a", "name": "BALL", "file": "ball.png",
+         "description": "a worn leather football", "keep": "fully_preserved", "voice": ""},
+    ]})
+    assert not any("compiles to nothing" in note
+                   for note in messages(Timeline.from_dict(merged)))
+
+
+def test_a_voice_nobody_speaks_with_is_flagged():
+    """A timbre reference for a speaker the model is never asked to voice."""
+    merged = cast.merge(clip().to_dict(), {"cards": [
+        {"id": 1, "uid": "a", "name": "BALL", "file": "", "description": "",
+         "keep": "fully_preserved", "voice": "a squeaky cartoon voice"},
+    ]})
+    assert any("says nothing" in note for note in messages(Timeline.from_dict(merged)))
+
+
+def test_a_voice_with_a_line_is_not_flagged():
+    document = clip(shots=[
+        {"start": 0, "length": 24, "prompt": "A ball on the grass.",
+         "lines": [{"text": "Not again.", "ids": "S1"}]},
+    ]).to_dict()
+    merged = cast.merge(document, {"cards": [
+        {"id": 1, "uid": "a", "name": "BALL", "file": "", "description": "",
+         "keep": "fully_preserved", "voice": "a squeaky cartoon voice"},
+    ]})
+    assert not any("says nothing" in note for note in messages(Timeline.from_dict(merged)))
+
+
 # -- round trips -------------------------------------------------------------
 
 

@@ -18,11 +18,15 @@
 
 import { install } from "./styles.js";
 import * as media from "./media.js";
-import { RETENTIONS, audioOf, filesOf } from "./model.js";
+import { RETENTIONS, audioOf, filesOf, items, speakerNumbers } from "./model.js";
 import { BUILD } from "../build.js";
 import { ICON } from "./icons.js";
 
 export const EMPTY = { version: 1, speech: true, cards: [] };
+
+/** User text into markup. The tokens this editor prints are literally `<Picture 1>`. */
+const text = (value) => String(value ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** A tag that survives renumbering: the pairing the compiler resolves. */
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -105,9 +109,15 @@ export class CastEditor {
     this.root.className = "mmd mmd-cast-node";
     this.root.innerHTML = `
       <div class="mmd-prompt mmd-cast-box">
-        <label>SUBJECTS
-          <span class="mmd-hint">everything the prompt has to name — people, props, costumes, places: one card each, and each is where its file is described</span>
+        <label>WHO &amp; WHAT
+          <span class="mmd-hint">everyone and everything the prompt has to name — people, props, costumes, places: one card each, and each is where its file is described</span>
         </label>
+        <div class="mmd-cast-legend">
+          <span><b>S1…Sn</b> a <b>speaker</b> — who says a line. The card supplies the
+            voice; the words are written on a shot's dialogue row.</span>
+          <span><b>&lt;Subject 1…n&gt;</b> a <b>subject on an image or video</b> —
+            something the model has to look at and keep. Only a card with a file has one.</span>
+        </div>
         <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the list"></textarea>
         <div class="mmd-cast-body">
           <div class="mmd-cast"></div>
@@ -316,9 +326,13 @@ export class CastEditor {
               <span class="mmd-card-badge" title="The speaker ID the prompt uses">S${card.id}</span>
               <span class="mmd-card-badge mmd-card-subject${index ? "" : " mmd-hide"}"
                     title="What the prompt calls this subject, computed from where its file sits on the director's timeline">&lt;Subject ${index}&gt;</span>
+              <span class="mmd-card-badge mmd-card-nosubject${index ? " mmd-hide" : ""}"
+                    title="No file, so there is nothing on screen for the model to look at and keep. This card is a speaker and nothing else. Pick a file in from to give it a <Subject n>.">no &lt;Subject&gt;</span>
+              <span class="mmd-card-badge mmd-card-heard mmd-hide"
+                    title="Which shots this card is heard in. Set on the TIMELINE tab, by ticking this face on a shot's dialogue row -- the words belong to a shot, not to a person."></span>
               <label class="mmd-card-from" title="Which file on the director's timeline this subject is drawn from. Several things out of one photograph -- a person, their coat, the room behind them -- is several cards pointing at the same file, each numbered separately.">from
                 <select class="mmd-card-file">
-                  <option value=""${file ? "" : " selected"}>— words only, no file</option>
+                  <option value=""${file ? "" : " selected"}>— no file</option>
                   ${files.map((item) => `
                   <option value="${value(item.media.filename)}"${item === file ? " selected" : ""}
                     >${item.token.replace("<", "&lt;")} ${item.media.filename || ""}</option>`).join("")}
@@ -331,7 +345,7 @@ export class CastEditor {
               ${!clips.length ? "" : `
               <label class="mmd-card-from" title="A second file for the same subject, supplying how it moves rather than what it looks like. The guide allows one subject to be defined by several assets, each with a job of its own -- a still cannot say anything about a walk.">motion from
                 <select class="mmd-card-motion">
-                  <option value=""${card.motion_from ? "" : " selected"}>— none</option>
+                  <option value=""${card.motion_from ? "" : " selected"}>— no clip</option>
                   ${clips.map((item) => `
                   <option value="${value(item.media.filename)}"${
                     item.media.filename === card.motion_from ? " selected" : ""}
@@ -359,19 +373,21 @@ export class CastEditor {
               <span class="mmd-grow"></span>
               <button class="mmd-cast-drop" title="Remove from the cast">${ICON.trash}</button>
             </div>
-            ${!file ? "" : `
+            ${file ? `
             <input class="mmd-card-description" type="text"
                    placeholder="what it is, and what must stay the same"
                    value="${value(card.description)}">
-            <div class="mmd-card-note" title="Where this sentence ends up. A file somebody is drawn out of gets no entry of its own in the prompt -- the guide asks for it to be cited inside the character's definition instead -- so this box is the one that reaches the model, and the block's own describes box stops being compiled."></div>`}
+            <div class="mmd-card-note" title="Where this sentence ends up. A file somebody is drawn out of gets no entry of its own in the prompt -- the guide asks for it to be cited inside the character's definition instead -- so this box is the one that reaches the model, and the block's own describes box stops being compiled."></div>` : `
+            <div class="mmd-card-note mmd-card-wordless"></div>`}
             <div class="mmd-card-voice-row">
               <input class="mmd-card-voice" type="text"
-                     placeholder="if it speaks — how they sound: age, gender, pitch, timbre, accent"
+                     title="How this person sounds, not what they say. Compiled as the words in front of (S1) -- age, gender, pitch, timbre, accent, pace. The lines themselves are written on a shot's dialogue row, because the same person speaks in several shots and says something different in each."
+                     placeholder="how they sound — not what they say: age, gender, pitch, timbre, accent"
                      value="${value(card.voice)}">
               ${!heard.length ? "" : `
               <label class="mmd-card-from" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
                 <select class="mmd-card-voice-from">
-                  <option value=""${card.voice_from ? "" : " selected"}>— words only</option>
+                  <option value=""${card.voice_from ? "" : " selected"}>— no recording</option>
                   ${heard.map((item) => `
                   <option value="${value(item.media.filename)}"${
                     item.media.filename === card.voice_from ? " selected" : ""}
@@ -401,28 +417,95 @@ export class CastEditor {
     const timeline = this.timeline();
     const marks = numbers || numbering(timeline, state.cards);
     const files = filesOf(timeline || {});
+    // Which speaker numbers a line actually names. A card with a voice and nobody saying
+    // anything in it is as idle as a card with no voice at all -- and the prompt is worse
+    // for it, because a timbre reference names a speaker that is never voiced.
+    const speaking = new Map();
+    const ordered = [...items(timeline || {}, "shots")].sort((a, b) => a.start - b.start);
+    ordered.forEach((shot, at) => {
+      for (const line of shot.lines || []) {
+        if (!String(line.text || "").trim()) continue;
+        for (const id of speakerNumbers(line.ids)) {
+          if (!speaking.has(id)) speaking.set(id, []);
+          if (!speaking.get(id).includes(at + 1)) speaking.get(id).push(at + 1);
+        }
+      }
+    });
     state.cards.forEach((card, position) => {
       const row = this.list.querySelector(`[data-card="${position}"]`);
       if (!row) return;
 
       const index = marks.get(card.uid || card.id) || 0;
+      const shots = speaking.get(card.id) || [];
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
         badge.textContent = `<Subject ${index}>`;
         badge.classList.toggle("mmd-hide", !index);
       }
 
-      // Painted rather than built, because it turns on at the first character typed into
-      // the description -- and rebuilding the list then would take the caret with it.
+      // Where this card is heard, mirroring the lit chips on a shot's dialogue row. The
+      // binding is authored over there and was invisible here, which made a card look
+      // unused whenever the TIMELINE tab was the one not on screen.
+      const said = row.querySelector(".mmd-card-heard");
+      if (said) {
+        said.textContent = shots.map((number) => `[Shot ${number}]`).join(" ");
+        said.classList.toggle("mmd-hide", !shots.length);
+      }
+
+      // The absence of a `<Subject n>` is a fact about this card, not a gap in the row:
+      // drawn hollow, it is the answer to "why does the other one have a badge".
+      const none = row.querySelector(".mmd-card-nosubject");
+      if (none) none.classList.toggle("mmd-hide", !!index);
+
+      // Both notes are painted rather than built: one turns on at the first character
+      // typed into the description, the other at the first character of a voice -- and
+      // rebuilding the list on a keystroke takes the caret with it.
       const note = row.querySelector(".mmd-card-note");
-      if (note) {
-        const file = files.find((item) => (item.media.filename || "") === card.file) || null;
+      const file = files.find((item) => (item.media.filename || "") === card.file) || null;
+
+      // What this card actually contributes. It is a `<Subject n>` when it names a file
+      // *and* says what that file is -- a file with nothing written about it takes no
+      // number -- or it is the words in front of `(S1)` when it describes a voice. With
+      // neither, the compiled prompt is byte-for-byte what it would be with no card here.
+      const described = !!file && !!card.description.trim();
+      const voiced = !!(card.voice.trim() || card.voice_from);
+      // A voice is an instruction about how somebody sounds; with no line naming it, it
+      // instructs nothing. Exempt while `they speak` is off, when no line is compiled at
+      // all -- the same exemption the linter makes.
+      const heard = state.speech === false || shots.length > 0;
+      const mode = !described && !voiced ? "dead"
+        : (!described && !heard ? "mute" : "ok");
+      row.classList.toggle("mmd-card-off", mode !== "ok");
+
+      if (note && note.classList.contains("mmd-card-wordless")) {
+        note.innerHTML = {
+          dead: `this card compiles to nothing — give it a voice, or point <b>from</b> at
+                 a file.`,
+          mute: `nobody speaks this card's lines — the words go on a shot's
+                 <b>dialogue</b> row, where you tick this face. The box below is
+                 <b>how they sound</b>, not what they say.`,
+          ok: `no file: this card gives a voice and nothing else. Pick one in <b>from</b>
+               to make it a &lt;Subject n&gt; you can describe.`,
+        }[mode];
+        note.title = {
+          dead: "A card reaches the prompt as a subject drawn out of a file, or as the words in front of (S1). With neither, the compiled prompt is byte-for-byte what it would be with no card here at all.",
+          mute: "A voice is an instruction about how somebody sounds, and with no line it instructs nothing. The words themselves belong to a shot, not to a person -- one card can speak in four of them.",
+          ok: "A subject is drawn out of a file. Without one there is nothing for the prompt to point at, so this card supplies a voice and nothing else -- which is all a speaker with no picture needs.",
+        }[mode];
+      } else if (note) {
+        // A file is picked. Until something is written about it the card takes no number
+        // and adds no line to the prompt, which is the same nothing as an empty card --
+        // so it reads the same way, rather than looking finished because a select is set.
         const own = file && String(file.media.role || "reference") === "reference"
           ? String(file.media.description || "").trim() : "";
-        note.textContent = !index || !file ? "" : (
-          `${file.token} has no line of its own — this sentence is ${
-            `<Subject ${index}>`}` + (own ? `, and its own “${own}” is not compiled.` : "."));
+        note.innerHTML = !described
+          ? `nothing is written about ${text(file ? file.token : "this file")} yet, so it
+             takes no &lt;Subject n&gt; — say what it is below.`
+          : (!index ? "" : `${text(file.token)} has no line of its own — this sentence is
+             &lt;Subject ${index}&gt;${
+               own ? `, and its own “${text(own)}” is not compiled.` : "."}`);
       }
+
       for (const [selector, text] of [
         [".mmd-card-name", card.name],
         [".mmd-card-description", card.description],
