@@ -122,7 +122,7 @@ export class CastEditor {
         <div class="mmd-cast-body">
           <div class="mmd-cast"></div>
           <div class="mmd-cast-foot">
-            <button class="mmd-cast-add" title="A card for one subject -- a person, but equally a costume, a prop, a place or a style. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same subject. Several cards may point at the same file: that is how one photograph names several things.">+ card</button>
+            <button class="mmd-cast-add" title="A card for one subject -- a person, but equally a costume, a prop, a place or a style. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same subject. Several cards may point at the same file: that is how one photograph names several things.">Add</button>
             <label class="mmd-switch" title="The dialogue switch for the whole clip. Off, nobody speaks: every DIALOGUE row goes off the blocks and every <d> goes out of the prompt, in one press. The cards stay -- a card can be in a clip without saying anything, and most of them never do.">
               <input class="mmd-speech" type="checkbox"> they speak
             </label>
