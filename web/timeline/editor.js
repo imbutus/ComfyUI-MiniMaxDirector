@@ -2370,13 +2370,16 @@ export class TimelineEditor {
         <div class="mmd-f-note">Typed on the block itself, before subjects were the one
           place. It still compiles; a subject card replaces it.</div>`)}
       </div>
-      <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
-        <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
-      </label>
-      <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
-        <select class="mmd-f-retention">${
-          retentionOptions(item.media.retention, item.media.kind)}</select>
-      </label>`;
+      <div class="mmd-f-fileopts">
+        <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
+          <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
+        </label>
+        <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
+          <select class="mmd-f-retention">${
+            retentionOptions(item.media.retention, item.media.kind)}</select>
+        </label>
+        <button class="mmd-f-unlink">detach media</button>
+      </div>`;
 
     // MAIN blocks only. H3 generates the voice with the picture in one pass, and the
     // guide's form is exact enough that typing it by hand is how you get it wrong: the
@@ -2518,8 +2521,7 @@ export class TimelineEditor {
         + group("shot", shotForm)
         + group("subjects", this.subjectStrip(timeline))
         + group("camera", cameras)
-        + group("file", subject
-            + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""))
+        + group("file", subject)
         // Last, because it is the longest row and the only one that is usually absent --
         // and because the cast it draws from sits directly below the panel.
         + group("dialogue", line);

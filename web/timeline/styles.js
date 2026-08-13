@@ -576,6 +576,16 @@ const CSS = `
    real claim, drawn as the absence it is. */
 .mmd-seg-fields .mmd-f-claim-none { color:#6b7280; font-style:italic; }
 .mmd-seg-fields .mmd-f-claimed .mmd-f-note { flex-basis:100%; }
+/* What the file is, and what the block does with it, are two different questions, and on
+   one line they answered each other: a description long enough to wrap ran its "edit" link
+   into "used as". The controls take a line of their own under a hairline, which also gives
+   the sentence above the full width to wrap in. */
+.mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:wrap; align-items:center;
+  gap:9px; flex:1 1 100%; padding-top:6px; border-top:1px solid #262b34; }
+/* The tag names the group, so it sits beside the first row of it -- the same rule the
+   dialogue group already follows, for the same reason. */
+.mmd-f-group:has(> .mmd-f-fileopts) { align-items:flex-start; }
+.mmd-f-group:has(> .mmd-f-fileopts) > .mmd-f-tag { padding-top:2px; }
 
 /* One row per group, and each group a box of its own. Everything used to sit in a single
    wrapping row, which broke wherever the width ran out and put the end of a block's timing
