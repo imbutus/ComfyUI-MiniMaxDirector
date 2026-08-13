@@ -104,7 +104,12 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
         # An audio the voice is taken from is marked on its own record too, so the
         # compiler can tell "nothing was said about this file" from "this file is a
         # timbre reference" without going back through the cast.
-        voice_from = str(card.get("voice_from", "")).strip()
+        #
+        # Dropped entirely when nobody speaks: a timbre reference is an instruction about
+        # a voice, and with the dialogue switch off there is no voice to instruct. The
+        # prompt used to say a recording was the timbre reference for a speaker it never
+        # asked the model to voice.
+        voice_from = str(card.get("voice_from", "")).strip() if document["speech"] else ""
         heard = files.get(voice_from)
         if heard is not None:
             listeners = heard.setdefault("voices", [])

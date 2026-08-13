@@ -385,7 +385,7 @@ export class CastEditor {
                      placeholder="how they sound — not what they say: age, gender, pitch, timbre, accent"
                      value="${value(card.voice)}">
               ${!heard.length ? "" : `
-              <label class="mmd-card-from" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
+              <label class="mmd-card-from mmd-card-voice-src" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
                 <select class="mmd-card-voice-from">
                   <option value=""${card.voice_from ? "" : " selected"}>— no recording</option>
                   ${heard.map((item) => `

@@ -154,6 +154,10 @@ empty. Fields: `name`, `file` (which attachment it is drawn from), `description`
   `_check_speakers` says so and the card draws the same sentence on screen. That half of
   the check must **not** read `timeline.speech`: `cast.merge` derives that flag as "some
   card has a voice", which is false in exactly the case it exists for.
+- `voice_from` is dropped by `cast.merge` when `they speak` is off, and the editor hides
+  the whole voice row with it. A timbre reference is an instruction about a voice; with no
+  dialogue compiled the prompt was saying a recording was the reference for a speaker it
+  never asked the model to voice.
 - The other half is the reverse -- a voice, and no line naming its `S`. `voice_from` makes
   it a wrong statement rather than an idle one: the prompt says a recording is the timbre
   reference for a speaker nothing ever asks the model to voice. This half *is* guarded on

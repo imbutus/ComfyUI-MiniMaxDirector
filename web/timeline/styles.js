@@ -86,7 +86,10 @@ const CSS = `
 .mmd-switch input { margin:0; cursor:pointer; accent-color:#6ea8c4; }
 /* Speech off hides the voices, not the people: a character can be in a clip without ever
    saying anything, and hiding the whole list took the subjects with it. */
-.mmd-cast-box.mmd-off .mmd-card-voice,
+/* Nobody speaks: the voice goes, and so does the recording it could have been taken
+   from. A timbre reference is an instruction about a voice, and with the switch off the
+   compiler drops it -- a picker still on screen would be a control with no effect. */
+.mmd-cast-box.mmd-off .mmd-card-voice-row,
 .mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
 .mmd-cast-foot { display:flex; align-items:center; gap:12px; }
 .mmd-cast-foot .mmd-grow { flex:1; }
@@ -244,9 +247,15 @@ const CSS = `
 /* What the two tokens mean, once, above the list. They are MiniMax's own -- S for
    speaker, <Subject n> for something drawn out of a file -- so they cannot be renamed
    into something self-explanatory and have to be explained instead. */
-.mmd-cast-legend { display:flex; flex-direction:column; gap:2px; margin:0 0 6px;
-  color:#6b7280; font-size:10px; line-height:1.4; }
-.mmd-cast-legend b { color:#9ca3af; font-weight:600; }
+.mmd-cast-legend { display:flex; flex-direction:column; gap:3px;
+  padding:5px 8px 6px; color:#6b7280; font-size:10px; line-height:1.45; }
+/* Hanging indent, so a line that wraps stays clear of the token that opens it. */
+.mmd-cast-legend > span { padding-left:11px; text-indent:-11px; }
+/* The token is the one thing to find again later, so it is coloured rather than merely
+   bold -- the same blue the FILE panel names a subject in. The words after it are the
+   definition and sit a step above the body, not level with the token. */
+.mmd-cast-legend b { color:#8b93a1; font-weight:600; }
+.mmd-cast-legend b:first-child { color:#8fb8cc; }
 .mmd-card-from, .mmd-card-keep { flex:0 0 auto; display:flex; align-items:center;
   gap:5px; color:#6b7280; font-size:11px; }
 .mmd-card-from select { max-width:210px; font-size:11px; cursor:pointer; }

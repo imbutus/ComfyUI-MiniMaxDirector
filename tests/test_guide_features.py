@@ -437,6 +437,25 @@ def test_a_voice_with_a_line_is_not_flagged():
     assert not any("says nothing" in note for note in messages(Timeline.from_dict(merged)))
 
 
+def test_a_timbre_reference_goes_away_when_nobody_speaks():
+    """`they speak` off compiles no dialogue, so a voice reference instructs nothing."""
+    document = clip(cues=[
+        {"start": 0, "length": 24, "prompt": "Crowd.",
+         "media": {"kind": "audio", "filename": "voice.mp3", "role": "reference",
+                   "retention": "reference"}},
+    ]).to_dict()
+    card = {"id": 1, "uid": "a", "name": "BALL", "file": "", "description": "",
+            "keep": "fully_preserved", "voice": "", "voice_from": "voice.mp3"}
+
+    quiet = compile_timeline(Timeline.from_dict(
+        cast.merge(document, {"speech": False, "cards": [card]}))).prompt
+    assert "voice-timbre reference" not in quiet
+
+    talking = compile_timeline(Timeline.from_dict(
+        cast.merge(document, {"speech": True, "cards": [card]}))).prompt
+    assert "voice-timbre reference" in talking
+
+
 # -- round trips -------------------------------------------------------------
 
 
