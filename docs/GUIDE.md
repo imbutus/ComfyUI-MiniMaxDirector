@@ -153,7 +153,9 @@ not on screen — and the TIMELINE tab shows:
   says it, `how` it is said, its `language`, and two switches — **off-screen** and
   **carries over**. **+ line** adds another row, so a block can hold a conversation; the
   red bin at the end of a row removes it — the same delete button the subject cards use.
-  Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
+  The last lit face cannot be unticked, and says why on hover: an empty speaker list is
+  compiled as `(S1)`, so a line with nobody ticked would be given to speaker 1 rather than
+  to nobody. A line nobody says is a line removed. Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
   below.
 - **FILE** — blocks carrying one: `used as`, `keep file`, **detach media**, and a
   read-only `describes` list — one subject per line, `edit` beside each, and

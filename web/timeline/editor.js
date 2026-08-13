@@ -811,16 +811,28 @@ export class TimelineEditor {
     const orphans = chosen.filter((number) =>
       !cast.cards.some((card) => card.id === number));
 
+    // Unticking the last speaker is refused, and used to be refused in silence -- the
+    // click simply did nothing. It is refused because an empty `ids` compiles as `(S1)`:
+    // the guide's form has no way to write a line nobody says, so dropping the last face
+    // would hand the words to speaker 1 rather than to nobody. The chip says so instead.
+    const SOLE = "A line needs somebody to say it, so the last face cannot be unticked -- "
+      + "an empty one is compiled as (S1), not as silence. To have nobody say these words, "
+      + "remove the line itself with the bin at the end of the row.";
+    const sole = (number) => chosen.length === 1 && chosen[0] === number;
+    const quote = (words) => String(words).replace(/"/g, "&quot;");
+
     return cast.cards.map((card) => `
       <button class="mmd-f-chip${chosen.includes(card.id) ? " mmd-on" : ""}"
               data-speaker="${card.id}"
-              title="${card.voice ? String(card.voice).replace(/"/g, "&quot;") : "no voice described yet"}">
+              title="${quote(sole(card.id) ? SOLE
+                : (card.voice || "no voice described yet"))}">
         ${this.face(fileOf(card))}
         <span>${nameOf(card)}</span>
       </button>`).join("")
       + orphans.map((number) => `
       <button class="mmd-f-chip mmd-on mmd-f-orphan" data-speaker="${number}"
-              title="This line names a speaker the cast no longer has. Click to drop them.">
+              title="${quote(sole(number) ? SOLE
+                : "This line names a speaker the cast no longer has. Click to drop them.")}">
         <span class="mmd-face mmd-face-none">?</span><span>S${number} — not in the cast</span>
       </button>`).join("");
   }
