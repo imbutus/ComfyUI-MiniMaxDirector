@@ -277,8 +277,10 @@ export class TimelineEditor {
       if (event.target.closest(".mmd-f-addcard")) {
         const item = this.selection
           && items(this.read(), this.selection.track)[this.selection.index];
-        this.onAddCard?.(item?.media?.filename || "");
+        // The tab first, the card second: a box on a hidden tab cannot take focus, and the
+        // new card is empty, so landing anywhere but its name box is landing nowhere.
         this.showTab("cast");
+        this.onAddCard?.(item?.media?.filename || "");
       }
     });
     this.global = this.root.querySelector(".mmd-global");

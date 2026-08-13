@@ -230,8 +230,15 @@ export class CastEditor {
       voice_from: "",
     });
     this.commit(state);
-    this.list.querySelector(`[data-card="${state.cards.length - 1}"] .mmd-card-name`)
-      ?.focus();
+    // A frame later: the row does not exist until the commit has been rendered, and when
+    // the card was made from a block's FILE row the tab it lives on was hidden until the
+    // click that got here.
+    requestAnimationFrame(() => {
+      const box = this.list
+        .querySelector(`[data-card="${state.cards.length - 1}"] .mmd-card-name`);
+      box?.focus();
+      box?.scrollIntoView({ block: "nearest" });
+    });
   }
 
   drop(position) {
