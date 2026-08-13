@@ -255,10 +255,10 @@ A card holds:
   `<Subject 2> …: attribute_transfer - the face…, transferred onto SPEAKER.` Empty, the
   model is told to move a trait and never told where, and the block's chip stays amber.
 - **motion from** — a second file for the same person, supplying how they move rather than
-  what they look like. A still says nothing about a walk, so pointing the card at a video
+  what it looks like. A still says nothing about a walk, so pointing the card at a video
   as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>
   and whose motion comes from <Video 1>.` Shown once there is a video on the timeline.
-- **what they look like** — for a card with a file; becomes their `subject_definitions` line
+- **what it is** — for a card with a file; becomes its `subject_definitions` line
 - **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
   voice from this, so an empty one is a voice nobody chose and the linter says so.
 - **voice from** — or take the timbre from a recording instead of describing it. Point the
@@ -268,7 +268,23 @@ A card holds:
   copied. Setting that file's `keep file` to `fully_copy` asks for both at once, and the
   linter calls it what it is.
 
-**+ character** adds a card. **they speak** switches dialogue off for the whole clip: the
+**A card that is doing nothing looks like it.** A card counts when it names a file *and*
+says what that file is — that is a `<Subject n>` — or when it describes a voice something
+actually speaks. Short of either, the compiled prompt is byte-for-byte what it would be
+with no card there, so the card goes flat: transparent, dashed, dimmed, with the reason in
+amber across it and the same line in `report`.
+
+| The card says | Because |
+|---|---|
+| this card compiles to nothing | no file and no voice: neither a subject nor a speaker |
+| nothing is written about `<Picture 1>` yet | a file is picked, but with nothing said about it the card takes no number |
+| nobody speaks this card's lines | it has a voice, and no shot's dialogue row ticks its face |
+| no file: this card gives a voice and nothing else | fine, and deliberate — a speaker with no photograph |
+
+A green **`[Shot n]`** badge says where the card is heard, which is otherwise only visible
+from the TIMELINE tab.
+
+**+ subject** adds a card. **they speak** switches dialogue off for the whole clip: the
 rows and every `<d>` go at once, and the cards stay — a character can be in a clip without
 saying anything.
 
@@ -384,7 +400,7 @@ apple"* becomes *"The camera pushes in. closing on the apple"* — write it as a
 continuation, not as a sentence of its own.
 
 Documents from before amplitude and speed were fields are read as what they meant:
-`dolly_in` was always *small, slow* and `crash_zoom` always *large, fast*, so both keep
+`dolly_in` was always *small, slow* and the retired `crash_zoom` always *large, fast*, so both keep
 those values on load and compile to exactly the sentence they always did.
 
 A camera block is written into whichever shots it overlaps. It stays a separate track in
