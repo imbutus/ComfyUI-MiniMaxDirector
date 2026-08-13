@@ -2420,11 +2420,14 @@ export class TimelineEditor {
             ? `<button class="mmd-f-delline mmd-drop" title="Remove this line">${ICON.trash}</button>` : ""}
         </div>`;
       };
+      // The reason sits under the box it is about, not beside the button it disables: the
+      // empty line is what has to be filled in, and a message halfway across the row reads
+      // as a label for the button.
       return `<div class="mmd-f-lines">${said.map(row).join("")}
+        <span class="mmd-f-addline-why">finish the empty line first — a second one
+          compiles to the same nothing</span>
         <div class="mmd-f-addline-row">
           <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
-          <span class="mmd-f-addline-why">finish the empty line first — a second one
-            compiles to the same nothing</span>
         </div>
       </div>`;
     })();

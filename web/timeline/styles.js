@@ -651,14 +651,15 @@ const CSS = `
   background:#2c313c; border-color:#4b5563; }
 /* Another line, while a line on this block still has no words in it, is another row the
    compiler ignores -- so the button goes dead in the house form: transparent, dashed,
-   dimmed, with the reason in amber beside it. The reason is a sibling rather than a title
-   because a disabled button never gets the hover that would show one. */
+   dimmed, with the reason in amber under the box it is about. The reason is a sibling
+   rather than a title because a disabled button never gets the hover that would show one,
+   and it sits above the button rather than beside it: it is about the empty line. */
 .mmd-seg-fields .mmd-f-addline-row {
   display:flex; align-items:center; gap:8px; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline[disabled] {
   background:transparent; border-style:dashed; opacity:.4; cursor:not-allowed; }
 .mmd-seg-fields .mmd-f-addline-why { display:none; color:#e0b055; font-size:11px; }
-.mmd-f-lines.mmd-f-nomore .mmd-f-addline-why { display:inline; }
+.mmd-f-lines.mmd-f-nomore .mmd-f-addline-why { display:block; margin-top:-1px; }
 .mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.
