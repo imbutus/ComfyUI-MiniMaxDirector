@@ -1758,13 +1758,16 @@ export class TimelineEditor {
    * one file with one of them silently losing is the thing this reports, and the panel
    * shows the winning sentence in place of the dead field.
    *
-   * A file used as a frame anchor or an edit source is *in* the video rather than behind
-   * it and keeps its entry however many people are lifted out of it, which is why the
-   * role is read here too. Mirrors `_only_defines` in `compile.py`.
+   * Every card drawn from the file, whatever the file is used as. Which cards point at it
+   * and whether it keeps a line of its own are two different questions: a storyboard frame
+   * or an edit source is *in* the video and keeps its entry however many people are lifted
+   * out of it, but the people are still lifted out of it. Asking one question with the
+   * other's answer is what made a storyboard block report that nothing described it while
+   * its two subjects were compiling. `silences` below is the role half, and mirrors
+   * `_only_defines` in `compile.py`.
    */
   definedBy(timeline, item) {
     if (!item.media?.filename) return [];
-    if (String(item.media.role || "reference") !== "reference") return [];
     const cards = this.castOf?.()?.cards || [];
     const mine = cards
       .map((card, at) => ({ card, at }))
@@ -1776,6 +1779,16 @@ export class TimelineEditor {
     // rows by -- so `edit` on a given line lands on that card rather than on the tab.
     return mine.map(({ card, at }) =>
       ({ card, at, index: numbers.get(card.uid || card.id) || 0 }));
+  }
+
+  /** Whether a card drawn from this file takes the file's own sentence with it.
+   *
+   *  Only a plain reference is defined entirely by the people lifted out of it. Anything
+   *  used as a frame, a storyboard or an edit source is in the video on its own account
+   *  and keeps its entry, so the block's own text goes on compiling beside the cards. */
+  silences(item, claimed) {
+    return claimed.length > 0
+      && String(item.media?.role || "reference") === "reference";
   }
 
   segment(track, index, item, scale) {
@@ -2266,7 +2279,7 @@ export class TimelineEditor {
           <button type="button" class="mmd-f-addcard" title="Another card pointed at this same file. One photograph can hold several people, or a person and their coat and the room behind them, and each takes a &lt;Subject n&gt; and a retention marker of its own.">${
             claimed.length ? "+ another card" : "add a card"}</button>
         </div>
-        ${!orphaned ? "" : (claimed.length ? `
+        ${!orphaned ? "" : (this.silences(item, claimed) ? `
         <div class="mmd-f-note">“${text(orphaned)}” is no longer compiled: the subject card
           above describes this file instead.</div>` : `
         <div class="mmd-f-note">Typed on the block itself, before subjects were the one

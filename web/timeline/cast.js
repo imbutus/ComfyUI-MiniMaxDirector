@@ -504,14 +504,22 @@ export class CastEditor {
         // A file is picked. Until something is written about it the card takes no number
         // and adds no line to the prompt, which is the same nothing as an empty card --
         // so it reads the same way, rather than looking finished because a select is set.
-        const own = file && String(file.media.role || "reference") === "reference"
-          ? String(file.media.description || "").trim() : "";
+        // A file that is in the video on its own account -- a frame, a storyboard, an edit
+        // source -- keeps its entry however many subjects are lifted out of it. Saying it
+        // has no line of its own is false there, and the prompt says so plainly: the
+        // storyboard sentence and both <Subject n> definitions are all present.
+        const role = file ? String(file.media.role || "reference") : "reference";
+        const keeps = Boolean(file) && role !== "reference";
+        const own = file && !keeps ? String(file.media.description || "").trim() : "";
         note.innerHTML = !described
           ? `nothing is written about ${text(file ? file.token : "this file")} yet, so it
              takes no &lt;Subject n&gt; — say what it is below.`
-          : (!index ? "" : `${text(file.token)} has no line of its own — this sentence is
-             &lt;Subject ${index}&gt;${
-               own ? `, and its own “${text(own)}” is not compiled.` : "."}`);
+          : (!index ? "" : (keeps
+            ? `this sentence is &lt;Subject ${index}&gt;. ${text(file.token)} keeps a line
+               of its own as a ${text(role)}.`
+            : `${text(file.token)} has no line of its own — this sentence is
+               &lt;Subject ${index}&gt;${
+                 own ? `, and its own “${text(own)}” is not compiled.` : "."}`));
       }
 
       for (const [selector, text] of [
