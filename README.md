@@ -25,6 +25,10 @@ the model was trained on, dialogue that crosses a cut or is cut off by the end o
 clip, on-screen text quoted verbatim, storyboard references, the separate marker
 vocabulary audio uses, and a linter that checks the rules the guides state outright.
 
+The editor is content-sized: the node is as tall as the panel you have open, and the card
+list is the only part with a height of its own — set by its grip or by the node's corner,
+stored on the node, restored with the workflow.
+
 It ships as a whole workflow, not just a node pack: `examples/minimax-director.json` is a
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
 and video out. Install it, open it, start writing shots. See **[Install](#install)**.
