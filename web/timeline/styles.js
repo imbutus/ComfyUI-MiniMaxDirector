@@ -314,6 +314,19 @@ const CSS = `
 .mmd-seg-fields .mmd-f-chip.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
   background:#2a1e1d; }
 .mmd-f-nobody { color:#6b7280; font-size:11px; }
+/* The speaker chip's twin, for the other half of a shot: which subjects the text names.
+   Square-cornered rather than round, because it writes a token into prose instead of
+   ticking somebody as speaking, and lit while the text already carries it. */
+.mmd-seg-fields .mmd-f-subj { display:inline-flex; align-items:center; gap:6px;
+  background:#1c1f26; border:1px solid #333a45; border-radius:6px;
+  padding:2px 9px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px;
+  margin-right:5px; }
+.mmd-seg-fields .mmd-f-subj:hover { background:#232833; border-color:#4b5563;
+  color:#cdd3dd; }
+.mmd-seg-fields .mmd-f-subj .mmd-face { width:22px; height:22px; border-radius:4px;
+  border:0; }
+.mmd-seg-fields .mmd-f-subj.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
+  background:#22303a; }
 /* Part of the sentence, not a control beside it: it reads as the words it replaces and
    underlines like a link, because that is what it does. */
 .mmd-f-tocast, .mmd-seg-fields .mmd-f-tocast,

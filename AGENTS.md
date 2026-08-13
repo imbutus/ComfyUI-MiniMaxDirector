@@ -154,6 +154,14 @@ must not write into it behind its back.
   editor has no description box on the block, so a file whose role keeps it an entry
   would otherwise have nothing to say about itself. Every card appends a speaker. Both ends carry the card's `uid`, so the `<Subject n>` a
   voice belongs to survives the renumbering that dragging a block causes.
+- `editor.subjectStrip` draws the numbered cards as the block panel's **SUBJECTS** row --
+  one chip per card, thumbnail plus token -- and clicking one calls `writeToken`, which
+  splices `<Subject n>` in at the caret of SEGMENT PROMPT. `paintSubjects` lights the
+  chips the text already names, and runs on every keystroke rather than rebuilding the row,
+  because rebuilding it takes the caret with it. The strip is a convenience, so it is
+  wrapped in a `try/catch` that logs and returns empty: a throw while the panel is being
+  built otherwise takes timing, shot, file and dialogue down with it. Note `filesOf`
+  returns an **array**, not a map -- calling `.get` on it is what emptied the row once.
 - A card reaches the prompt as a `<Subject n>` (it names a file) or as the words in front
   of `(S1)` (it describes a voice). With neither it is byte-for-byte absent, so
   `_check_speakers` says so and the card draws the same sentence on screen. That half of

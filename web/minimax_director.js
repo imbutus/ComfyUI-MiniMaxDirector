@@ -88,8 +88,15 @@ function absorb(state, surplus) {
   return took;
 }
 
-/** Height for a pulled-up editor: the content, plus the inset it now starts at. */
-function fitPulled(state, widget) {
+/**
+ * Height for a pulled-up editor: the content, plus the inset it now starts at.
+ *
+ * `give` is set only by the node's own resize handle. Dragging the corner shorter is an
+ * instruction to the list to make do with less; every other caller -- a load, a tab
+ * switch, a card edit -- must grow the node to fit instead, or a document that opens
+ * taller than its node hands the shortfall to the list and comes up as a slot.
+ */
+function fitPulled(state, widget, { give = false } = {}) {
   const root = state.editor.root;
   const margin = widget.margin ?? 0;
   // Measured at its natural height for one layout pass. The stage stretches to whatever
@@ -114,7 +121,7 @@ function fitPulled(state, widget) {
   // never taken off it. Shrinking to the content is what discarded a height the user had
   // just dragged, and every interaction did it: a tab switch, a card edit, the speech
   // switch. Room the node has and nothing can use is left as room.
-  const rest = surplus - absorb(state, surplus);
+  const rest = surplus - (surplus > 0 || give ? absorb(state, surplus) : 0);
   if (rest < -2) {
     state.node.setSize([state.node.size[0],
                         Math.max(MIN_HEIGHT, Math.round(state.node.size[1] - rest))]);
@@ -353,7 +360,8 @@ function attach(node) {
   const resized = node.onResize;
   node.onResize = function () {
     const result = resized?.apply(this, arguments);
-    requestAnimationFrame(() => fitPulled(PULLED.get(widget) ?? { node, editor }, widget));
+    requestAnimationFrame(() =>
+      fitPulled(PULLED.get(widget) ?? { node, editor }, widget, { give: true }));
     return result;
   };
 

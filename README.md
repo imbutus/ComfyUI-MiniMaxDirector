@@ -15,7 +15,9 @@ assets case. A shot then only says who speaks and what they say.
 
 A card is also the one place a file is described — there is no second description box on
 the block, because a file used to define something is cited inside that thing's definition
-rather than given a line of its own.
+rather than given a line of its own. Citing one in a shot is a click: the block's
+**SUBJECTS** row is a chip per numbered card, and clicking it writes `<Subject n>` into the
+shot's text at the caret, so the number is never typed and never wrong.
 
 The compiler covers MiniMax's published prompt guides rather than a subset of them: the
 full camera vocabulary as motion type × amplitude × speed, voiceovers in the exact form

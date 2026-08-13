@@ -270,6 +270,11 @@ export class TimelineEditor {
       // over to the tab and finding the same filename in a select. The host owns the
       // cast document, so it does the writing; with no writer -- a Who & What node wired
       // from outside -- the tab still opens and the card is made there.
+      const chip = event.target.closest(".mmd-f-subj");
+      if (chip) {
+        this.writeToken(String(chip.dataset.token || ""));
+        return;
+      }
       if (event.target.closest(".mmd-f-addcard")) {
         const item = this.selection
           && items(this.read(), this.selection.track)[this.selection.index];
@@ -462,6 +467,7 @@ export class TimelineEditor {
       item.prompt = this.segPrompt.value;
       this.write(next);
       this.refreshLabel(item);
+      this.paintSubjects(item);
     });
 
     this.global.addEventListener("input", () => {
@@ -598,6 +604,72 @@ export class TimelineEditor {
     const timeline = this.read();
     this.selection = { track, index: add(timeline, track, 1.5, this.playhead) };
     this.commit(timeline);
+  }
+
+  /**
+   * Every `<Subject n>` the clip defines, as faces you can click into the shot's text.
+   *
+   * The alternative is typing the token by hand, and getting the number wrong is silent:
+   * the prompt then names a subject that does not exist, and nothing on screen says so.
+   *
+   * Guarded: this row is a convenience, and a convenience that throws while the panel is
+   * being built takes every other row with it -- timing, shot, file, dialogue, all gone.
+   */
+  subjectStrip(timeline) {
+    try {
+      const cards = this.castOf?.()?.cards || [];
+      if (!cards.length) return "";
+      const files = filesOf(timeline || {});
+      const numbers = numbering(timeline, cards);
+      const fileOf = (card) =>
+        files.find((entry) => (entry.media.filename || "") === card.file) || null;
+
+      return cards.map((card) => {
+        const index = numbers.get(card.uid || card.id) || 0;
+        if (!index) return "";
+        const token = `<Subject ${index}>`;
+        const file = fileOf(card);
+        const src = file ? media.url(file.media) : null;
+        const face = !src || file.media.kind === "video"
+          ? `<span class="mmd-face mmd-face-none">?</span>`
+          : `<span class="mmd-face" style="background-image:url('${src}')"></span>`;
+        const name = String(card.name || "").trim();
+        return `<button type="button" class="mmd-f-subj" data-token="${text(token)}"
+          title="Write this subject into the shot's text, at the caret."
+          >${face}<span>&lt;Subject ${index}&gt;${name ? ` ${text(name)}` : ""}</span></button>`;
+      }).join("");
+    } catch (error) {
+      console.error("[MiniMaxDirector] subject strip:", error);
+      return "";
+    }
+  }
+
+  /** Light the subjects this shot's text already names. Painted rather than rebuilt: the
+   *  strip changes with every keystroke, and rebuilding takes the caret with it. */
+  paintSubjects(item) {
+    const written = String(item?.prompt || "").toLowerCase();
+    for (const chip of this.segFields.querySelectorAll(".mmd-f-subj")) {
+      chip.classList.toggle("mmd-on", written.includes(
+        String(chip.dataset.token || "").toLowerCase()));
+    }
+  }
+
+  /** Put a token where the caret is, as though it had been typed. */
+  writeToken(token) {
+    const box = this.segPrompt;
+    if (!box || box.disabled) return;
+    const at = box.selectionStart ?? box.value.length;
+    const to = box.selectionEnd ?? at;
+    const before = box.value.slice(0, at);
+    const after = box.value.slice(to);
+    // Spaced off the words around it, but never doubling a space that is already there.
+    const lead = !before || /\s$/.test(before) ? "" : " ";
+    const tail = !after || /^\s/.test(after) ? "" : " ";
+    box.value = `${before}${lead}${token}${tail}${after}`;
+    const caret = (before + lead + token).length;
+    box.focus();
+    box.setSelectionRange(caret, caret);
+    box.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   /**
@@ -2408,7 +2480,9 @@ export class TimelineEditor {
       + `:${(item.lines?.length || 1)}`
       + `:${(item.lines || []).map((said) =>
             speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`
-      + `:${claimTag}`;
+      + `:${claimTag}`
+      // The strip is markup, so a card gained, renumbered or renamed is a new shape.
+      + `:${(this.castOf?.()?.cards || []).map((card) => card.uid + card.name).join("|")}`;
     if (this.panelShape !== shape) {
       this.panelShape = shape;
       // Three groups on three rows: when a block moves, what is said in it, and what
@@ -2425,6 +2499,7 @@ export class TimelineEditor {
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
         + group("shot", shotForm)
+        + group("subjects", this.subjectStrip(timeline))
         + group("camera", cameras)
         + group("file", subject
             + (item.media ? '<button class="mmd-f-unlink">detach media</button>' : ""))
@@ -2673,6 +2748,7 @@ export class TimelineEditor {
     // The chips carry names and faces owned by the cast, so they go stale as the cast is
     // edited. Rebuilt on every render: they hold no caret to lose.
     this.paintPicker(timeline);
+    this.paintSubjects(item);
 
     // The locked mirrors are never the field under the cursor, so they follow every
     // render unconditionally -- `put`'s focus guard has nothing to protect here.
