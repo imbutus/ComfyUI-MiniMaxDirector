@@ -634,8 +634,7 @@ const CSS = `
   border-style:dashed; }
 /* The box that line is about, in the line's own colour: the empty row is the reason the
    button beside it is dead, and it is where the fix is typed. */
-.mmd-f-lines.mmd-f-nomore .mmd-f-line-row.mmd-f-quiet .mmd-f-line {
-  border-color:#e0b055; }
+.mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#e0b055; }
 /* The group you are typing in, ringed in the accent colour -- what a card does, for the
    same reason: a panel of recessed groups says nothing about which one has the caret. */
 .mmd-f-group:focus-within { border-style:solid; border-color:#3a4150;
@@ -651,15 +650,30 @@ const CSS = `
   background:#2c313c; border-color:#4b5563; }
 /* Another line, while a line on this block still has no words in it, is another row the
    compiler ignores -- so the button goes dead in the house form: transparent, dashed,
-   dimmed, with the reason in amber under the box it is about. The reason is a sibling
-   rather than a title because a disabled button never gets the hover that would show one,
-   and it sits above the button rather than beside it: it is about the empty line. */
+   dimmed, with the reason in amber under the box it is about. The reason is written rather
+   than put in a title because a disabled button never gets the hover that would show one,
+   and it lives inside the line's own label, stacked under the input: the empty box is what
+   it is about, and left of the input is under the word "line", which is not the same
+   place. Every row carries one; only the empty rows show it, which is also the only state
+   in which the button is dead. */
 .mmd-seg-fields .mmd-f-addline-row {
   display:flex; align-items:center; gap:8px; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline[disabled] {
   background:transparent; border-style:dashed; opacity:.4; cursor:not-allowed; }
+.mmd-f-linecol { display:flex; flex-direction:column; gap:4px; flex:1 1 auto;
+  min-width:0; }
+/* The name of the field is its own element now, so it needs the space the collapsed
+   whitespace used to give it. */
+.mmd-f-line-row > label > .mmd-key { margin-right:7px; }
 .mmd-seg-fields .mmd-f-addline-why { display:none; color:#e0b055; font-size:11px; }
-.mmd-f-lines.mmd-f-nomore .mmd-f-addline-why { display:block; margin-top:-1px; }
+.mmd-f-line-row.mmd-f-quiet .mmd-f-addline-why { display:block; }
+/* Everything on the row belongs beside the box, not beside the box and its message: the
+   row stops centring while the message is up, and the two labels that would ride to the
+   top of it are nudged back onto the input's own line. */
+.mmd-f-line-row.mmd-f-quiet,
+.mmd-f-line-row.mmd-f-quiet > label { align-items:flex-start; }
+.mmd-f-line-row.mmd-f-quiet > label > .mmd-key { padding-top:4px; }
+.mmd-f-line-row.mmd-f-quiet > *:not(label.mmd-f-wide) { margin-top:1px; }
 .mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.

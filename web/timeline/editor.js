@@ -661,14 +661,15 @@ export class TimelineEditor {
    * A wordless row is already ignored by the compiler, so a second one adds a second
    * nothing -- and the row that was pressed for is indistinguishable from the row that was
    * already there. Painted rather than rebuilt: it changes on the first character typed,
-   * and rebuilding the group would take the caret with it.
+   * and rebuilding the group would take the caret with it. The reason shows itself: it
+   * lives under each line box and appears with that row's own quiet state, which is the
+   * same condition.
    */
   paintAddLine() {
     const lines = this.segFields.querySelector(".mmd-f-lines");
     if (!lines) return;
     const empty = [...lines.querySelectorAll(".mmd-f-line")]
       .some((box) => !box.value.trim());
-    lines.classList.toggle("mmd-f-nomore", empty);
     const button = lines.querySelector(".mmd-f-addline");
     if (button) button.disabled = empty;
   }
@@ -2399,8 +2400,12 @@ export class TimelineEditor {
           String(line[key] ?? fallback).replace(/"/g, "&quot;");
         return `
         <div class="mmd-f-line-row" data-line="${at}">
-          <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept.">line
-            <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
+          <label class="mmd-f-wide" title="What is spoken during this shot. Sent verbatim -- never translated, punctuation kept."><span class="mmd-key">line</span>
+            <span class="mmd-f-linecol">
+              <input class="mmd-f-line" type="text" placeholder="the words, exactly as spoken" value="${value("text")}">
+              <span class="mmd-f-addline-why">finish the empty line first — a second one
+                compiles to the same nothing</span>
+            </span>
           </label>
           <div class="mmd-f-chips" title="Who says this line. Click a face; click two and they say it together, which is the guide's (S1,S2) form.">${
             this.chips(timeline, line.ids)}</div>
@@ -2420,12 +2425,7 @@ export class TimelineEditor {
             ? `<button class="mmd-f-delline mmd-drop" title="Remove this line">${ICON.trash}</button>` : ""}
         </div>`;
       };
-      // The reason sits under the box it is about, not beside the button it disables: the
-      // empty line is what has to be filled in, and a message halfway across the row reads
-      // as a label for the button.
       return `<div class="mmd-f-lines">${said.map(row).join("")}
-        <span class="mmd-f-addline-why">finish the empty line first — a second one
-          compiles to the same nothing</span>
         <div class="mmd-f-addline-row">
           <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
         </div>
