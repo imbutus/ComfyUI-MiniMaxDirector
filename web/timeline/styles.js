@@ -625,14 +625,21 @@ const CSS = `
    still clickable, just not competing with the one box that is asking to be filled. The
    box itself keeps its own weight, and so does the group's surface once anything is said:
    a dialogue group with nothing in it sinks back into the panel it sits on. */
-/* A row with no words, and the group around it: dimmed whole rather than field by field.
-   The line box used to stay lit and focus lifted the rest, which meant the one state the
-   dimming exists to show -- nothing is being said here -- looked exactly like a row being
-   typed into. It clears on the first character, which is the moment it stops being true. */
-.mmd-f-line-row.mmd-f-quiet > * { opacity:.4; }
-.mmd-f-group.mmd-f-quiet { background:#15181e; border-color:#1f232b; }
-.mmd-f-group.mmd-f-quiet > .mmd-f-tag { opacity:.55; }
-.mmd-f-group.mmd-f-quiet > .mmd-f-addline { opacity:.4; }
+/* A row with no words, and the group around it: marked by the surface it sits on, not by
+   fading the controls -- the same rule a card that compiles to nothing follows. Every box
+   on the row still works, and typing in one is exactly how the state ends, so none of them
+   may read as a box you cannot use. The group sinks into the panel and opens its outline;
+   it closes again on the first character, which is the moment it stops being true. */
+.mmd-f-group.mmd-f-quiet { background:#15181e; border-color:#1f232b;
+  border-style:dashed; }
+/* The box that line is about, in the line's own colour: the empty row is the reason the
+   button beside it is dead, and it is where the fix is typed. */
+.mmd-f-lines.mmd-f-nomore .mmd-f-line-row.mmd-f-quiet .mmd-f-line {
+  border-color:#e0b055; }
+/* The group you are typing in, ringed in the accent colour -- what a card does, for the
+   same reason: a panel of recessed groups says nothing about which one has the caret. */
+.mmd-f-group:focus-within { border-style:solid; border-color:#3a4150;
+  box-shadow:0 0 0 1px #2f6d8f; }
 /* A bulk action reads like the row's other controls, and says so when it cannot run:
    disabled rather than hidden, because a button that comes and goes is one you never
    learn about. Its title says what selection would enable it. */
