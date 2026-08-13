@@ -208,25 +208,12 @@ const CSS = `
 .mmd-card-note:empty { display:none; }
 .mmd-card-wordless { color:#6b7280; }
 .mmd-card-wordless b { color:#9ca3af; font-weight:600; }
-/* A card that reaches the prompt as nothing, dimmed the way every other control that
-   cannot act is dimmed.
-
-   The controls are dimmed one by one rather than the card as a whole: opacity on an
-   ancestor cannot be undone by a descendant, and the line saying *why* the card is dim
-   is the one thing on it that has to stay readable. The trash stays lit for the same
-   reason -- removing the card is a perfectly good answer to the message.
-
-   Focus does not lift it. The card is dim because it reaches the prompt as nothing, and
-   that is still true while the caret is sitting in it; the dimming ends on the first
-   character of a voice or the first file picked, which is a state the row is repainted
-   for on every keystroke. */
-.mmd-card.mmd-card-off > .mmd-face,
-.mmd-card.mmd-card-off .mmd-card-top > *:not(.mmd-cast-drop),
-.mmd-card.mmd-card-off .mmd-card-description,
-.mmd-card.mmd-card-off .mmd-card-voice-row { opacity:.4; }
-/* Switched off, not merely far away: sunk below the panel rather than raised off it, and
-   outlined the way every unfinished thing in this editor is outlined -- dashed. Opacity
-   alone was not enough; two cards a shade apart read as one card twice. */
+/* A card that reaches the prompt as nothing is marked by its frame, not by fading what is
+   written on it. Every control on it still works -- typing a voice or picking a file is
+   exactly how the state ends -- and a field you can edit must not read as a field you
+   cannot. So the text stays at full strength and the card is sunk below the panel rather
+   than raised off it, outlined the way every unfinished thing in this editor is outlined
+   -- dashed. */
 .mmd-card.mmd-card-off { background:transparent; border-style:dashed;
   border-color:#2c313c; }
 .mmd-card.mmd-card-off input, .mmd-card.mmd-card-off select { background:#12151b;
