@@ -513,13 +513,19 @@ const CSS = `
 .mmd-settings input.mmd-snapped { animation:mmd-snap .9s ease-out; }
 
 /* transport -------------------------------------------------------------- */
-.mmd-transport { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
+/* Two rows, and the scrubber has the first to itself. Sharing a line with the readout made
+   its left end sit wherever that sentence happened to finish -- 3 f and 124 f are different
+   widths -- so the handle moved under the pointer between one playhead and the next, and
+   the track never matched the ruler it is scrubbing. */
+.mmd-transport { flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
+.mmd-transport-read { display:flex; align-items:center; gap:9px; }
+.mmd-transport-read .mmd-grow { flex:1; }
 .mmd-transport button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
   border-radius:5px; padding:3px 10px; cursor:pointer; font:inherit; }
 .mmd-transport .mmd-clock { font-variant-numeric:tabular-nums; color:#e2564b;
   min-width:52px; }
 .mmd-transport .mmd-range { color:#9ca3af; font-variant-numeric:tabular-nums; }
-.mmd-transport .mmd-scrub { flex:1; accent-color:#e2564b; }
+.mmd-transport .mmd-scrub { display:block; width:100%; margin:0; accent-color:#e2564b; }
 
 /* prompt boxes ----------------------------------------------------------- */
 .mmd-prompt { flex:0 0 auto; display:flex; flex-direction:column; gap:3px;

@@ -197,12 +197,15 @@ export class TimelineEditor {
       </div>
 
       <div class="mmd-transport">
-        <span class="mmd-clock" title="Where the playhead is">0.00s</span>
-        <span class="mmd-range"></span>
         <input class="mmd-scrub" type="range" min="0" max="1000" value="0">
-        <button data-zoom="out">−</button>
-        <button data-zoom="fit">fit</button>
-        <button data-zoom="in">+</button>
+        <div class="mmd-transport-read">
+          <span class="mmd-clock" title="Where the playhead is">0.00s</span>
+          <span class="mmd-range"></span>
+          <span class="mmd-grow"></span>
+          <button data-zoom="out">−</button>
+          <button data-zoom="fit">fit</button>
+          <button data-zoom="in">+</button>
+        </div>
       </div>
 
       <div class="mmd-prompt">
