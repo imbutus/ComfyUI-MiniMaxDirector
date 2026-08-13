@@ -55,6 +55,39 @@ const SELECTION = new Map();
 const PULLED = new Map();
 const TOP_INSET = 6;
 
+/** The floor the card list is allowed to shrink to. Matches `min-height` in the stylesheet,
+ *  which is what the box would clamp to anyway. */
+const CAST_BOX_MIN = 120;
+
+/**
+ * Hand a difference between the node and its content to the open card list.
+ *
+ * A node dragged taller has to show more cards. The list is a fixed-height box with its own
+ * scroll, so without this the extra height is a strip of empty grey that the next fit takes
+ * straight back off the node -- which is what made a resize look like it was ignored, and a
+ * tab switch look like a collapse.
+ *
+ * Returns how much the box took, so the caller knows what is left over. `measuring` is set
+ * for the same reason it is set while measuring: `growWithPrompts` watches this box and
+ * would answer the change by growing the node by the same amount, forever.
+ */
+function absorb(state, surplus) {
+  const panel = state.editor.panels
+    ?.find((item) => item.dataset.panel === "cast" && !item.classList.contains("mmd-hide"));
+  const box = panel?.querySelector(".mmd-cast-box");
+  if (!box) return 0;
+
+  const from = box.offsetHeight;
+  const to = Math.max(CAST_BOX_MIN, from + surplus);
+  const took = to - from;
+  if (Math.abs(took) < 2) return 0;
+
+  state.editor.measuring = true;
+  box.style.height = `${Math.round(to)}px`;
+  requestAnimationFrame(() => { state.editor.measuring = false; });
+  return took;
+}
+
 /** Height for a pulled-up editor: the content, plus the inset it now starts at. */
 function fitPulled(state, widget) {
   const root = state.editor.root;
@@ -73,8 +106,19 @@ function fitPulled(state, widget) {
   root.style.height = held;
   requestAnimationFrame(() => { state.editor.measuring = false; });
   const target = TOP_INSET + content + margin * 2;
-  if (Math.abs(target - state.node.size[1]) < 2) return;
-  state.node.setSize([state.node.size[0], Math.max(MIN_HEIGHT, Math.round(target))]);
+  // Positive: the node is taller than its content. Negative: the content does not fit.
+  const surplus = state.node.size[1] - target;
+  if (Math.abs(surplus) < 2) return;
+
+  // The list takes what it can, and what it cannot take is only ever added to the node --
+  // never taken off it. Shrinking to the content is what discarded a height the user had
+  // just dragged, and every interaction did it: a tab switch, a card edit, the speech
+  // switch. Room the node has and nothing can use is left as room.
+  const rest = surplus - absorb(state, surplus);
+  if (rest < -2) {
+    state.node.setSize([state.node.size[0],
+                        Math.max(MIN_HEIGHT, Math.round(state.node.size[1] - rest))]);
+  }
   state.node.graph?.setDirtyCanvas(true, true);
 }
 
@@ -302,6 +346,16 @@ function attach(node) {
     Math.max(node.size?.[0] ?? 0, DEFAULT_SIZE[0]),
     Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
   ]);
+
+  // Dragging the node's own corner is the obvious way to ask for more room, and until now
+  // nothing listened: the panels are content-sized, so the height went nowhere and the
+  // next fit removed it. A frame later, once the widget has the new height to measure.
+  const resized = node.onResize;
+  node.onResize = function () {
+    const result = resized?.apply(this, arguments);
+    requestAnimationFrame(() => fitPulled(PULLED.get(widget) ?? { node, editor }, widget));
+    return result;
+  };
 
   stampTitle(node);
   growWithPrompts(node, editor);
