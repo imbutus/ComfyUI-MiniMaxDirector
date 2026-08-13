@@ -218,6 +218,16 @@ const CSS = `
   border-color:#2c313c; }
 .mmd-card.mmd-card-off input, .mmd-card.mmd-card-off select { background:#12151b;
   border-color:#252b34; }
+/* The one you are typing in. A dashed frame says unfinished, which is still true, but a
+   list of them says nothing about which one the caret is in -- so the card being worked on
+   closes its outline while the rest stay open, and takes a ring in the accent colour. The
+   ring is outside the border rather than in it: the border already carries two meanings
+   here, and a finished card would have had nothing left to change. */
+.mmd-card:focus-within { border-style:solid; border-color:#3a4150;
+  box-shadow:0 0 0 1px #2f6d8f; }
+/* The box that line is about, in the line's own colour: one message, said twice -- once in
+   words and once where the words have to go. */
+.mmd-card.mmd-card-off .mmd-ask { border-color:#e0b055; }
 /* The line on an off card is the only warning on it, so it is the one thing that reads
    as one -- amber, the colour a transfer with no target already uses. Full brightness on
    purpose: it is the reason the rest is dim. */

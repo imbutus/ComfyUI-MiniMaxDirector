@@ -493,6 +493,17 @@ export class CastEditor {
         : (!described && !heard ? "mute" : "ok");
       row.classList.toggle("mmd-card-off", mode !== "ok");
 
+      // Which box the amber line is about, outlined in the same amber: the line says what
+      // is missing, the outline says where it goes. Only on a card that is off -- a
+      // warning colour on a card that already compiles is a warning about nothing -- and
+      // only where there is something to point at. `mute` is the exception: the words that
+      // card is waiting for are written on a shot's dialogue row, not on the card.
+      const asks = mode === "ok" ? []
+        : (file ? [".mmd-card-description"]
+                : (voiced ? [] : [".mmd-card-file", ".mmd-card-voice"]));
+      for (const box of row.querySelectorAll(".mmd-ask")) box.classList.remove("mmd-ask");
+      for (const selector of asks) row.querySelector(selector)?.classList.add("mmd-ask");
+
       if (note && note.classList.contains("mmd-card-wordless")) {
         note.innerHTML = {
           dead: `this card compiles to nothing — give it a voice, or point <b>from</b> at
