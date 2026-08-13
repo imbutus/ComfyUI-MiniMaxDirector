@@ -2327,7 +2327,7 @@ export class TimelineEditor {
             <input class="mmd-f-carries" type="checkbox"${line.carries ? " checked" : ""}> carries over
           </label>
           ${said.length > 1
-            ? '<button class="mmd-f-delline" title="Remove this line">×</button>' : ""}
+            ? `<button class="mmd-f-delline mmd-drop" title="Remove this line">${ICON.trash}</button>` : ""}
         </div>`;
       };
       return `<div class="mmd-f-lines">${said.map(row).join("")}

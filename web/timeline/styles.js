@@ -287,11 +287,14 @@ const CSS = `
 .mmd-seg .mmd-chip-move { background:rgba(47,109,143,.9); color:#e8f3f9;
   border-radius:4px 4px 0 0; }
 .mmd-seg .mmd-chip-open { background:rgba(122,86,26,.95); color:#f6e6c8; }
-.mmd-cast-drop { flex:0 0 auto; background:#3a2422; color:#f3d3cf;
+/* The house delete button: a red-brown ground and the trash glyph, wherever something is
+   removed. A cross said "close this" and sat in the same row as three other small square
+   buttons that did not delete anything, so the one destructive control looked like them. */
+.mmd-drop, .mmd-cast-drop { flex:0 0 auto; background:#3a2422; color:#f3d3cf;
   border:1px solid #5c332d; cursor:pointer; font:inherit; padding:3px 7px;
   border-radius:5px; display:inline-flex; align-items:center;
   transition:background .12s ease, border-color .12s ease; }
-.mmd-cast-drop:hover { background:#5a3029; border-color:#8a4238; }
+.mmd-drop:hover, .mmd-cast-drop:hover { background:#5a3029; border-color:#8a4238; }
 .mmd-cast-empty { color:#6b7280; font-size:11px; padding:2px 0; }
 
 /* Who speaks a line, as faces. Two lit at once is the guide's (S1,S2) chorus, which the
@@ -610,13 +613,11 @@ const CSS = `
    disabled rather than hidden, because a button that comes and goes is one you never
    learn about. Its title says what selection would enable it. */
 .mmd-seg-fields .mmd-f-bulk[disabled] { opacity:.4; cursor:not-allowed; }
-.mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-bulk,
-.mmd-seg-fields .mmd-f-delline {
+.mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-bulk {
   background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
-.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-bulk:not([disabled]):hover,
-.mmd-seg-fields .mmd-f-delline:hover {
+.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-bulk:not([disabled]):hover {
   background:#2c313c; border-color:#4b5563; }
-.mmd-seg-fields .mmd-f-delline { padding:2px 7px; }
+.mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.
    No backticks in here: this whole sheet is a JS template literal. */
