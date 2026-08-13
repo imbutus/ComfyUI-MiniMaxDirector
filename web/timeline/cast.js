@@ -277,7 +277,9 @@ export class CastEditor {
 
       const move = (moved) => {
         const height = Math.max(120, from + (moved.clientY - start) / scale);
-        this.box.style.height = `${Math.round(height)}px`;
+        // The one place a list height is authored, besides the node's own corner. The
+        // host stores it on the node, so it comes back with the workflow.
+        this.onBoxHeight?.(Math.round(height));
       };
       const done = () => {
         grip.removeEventListener("pointermove", move);

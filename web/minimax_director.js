@@ -50,50 +50,32 @@ const SELECTION = new Map();
 const PULLED = new Map();
 const TOP_INSET = 6;
 
-/** The floor the card list is allowed to shrink to. Matches `min-height` in the stylesheet,
- *  which is what the box would clamp to anyway. */
+/** The floor the card list is allowed to shrink to. Matches `min-height` in the
+ *  stylesheet, which is what the box would clamp to anyway. */
 const CAST_BOX_MIN = 120;
 
 /**
- * Hand a difference between the node and its content to the open card list.
+ * Give the open card list a height, and remember it on the node.
  *
- * A node dragged taller has to show more cards. The list is a fixed-height box with its own
- * scroll, so without this the extra height is a strip of empty grey that the next fit takes
- * straight back off the node -- which is what made a resize look like it was ignored, and a
- * tab switch look like a collapse.
- *
- * Returns how much the box took, so the caller knows what is left over. `measuring` is set
- * for the same reason it is set while measuring: `growWithPrompts` watches this box and
- * would answer the change by growing the node by the same amount, forever.
+ * The list is the one part of this editor with a height of its own: everything else is as
+ * tall as its content and nothing else. That height is stored in the node's properties, so
+ * it comes back with the workflow rather than being re-derived from whatever the layout
+ * happened to be doing when the graph loaded -- which is what made this unpredictable.
  */
-function absorb(state, surplus) {
-  const panel = state.editor.panels
-    ?.find((item) => item.dataset.panel === "cast" && !item.classList.contains("mmd-hide"));
-  const box = panel?.querySelector(".mmd-cast-box");
-  if (!box) return 0;
-
-  const from = box.offsetHeight;
-  const to = Math.max(CAST_BOX_MIN, from + surplus);
-  const took = to - from;
-  if (Math.abs(took) < 2) return 0;
-
-  state.editor.measuring = true;
-  box.style.height = `${Math.round(to)}px`;
-  requestAnimationFrame(() => { state.editor.measuring = false; });
-  return took;
+function setListHeight(node, editor, height) {
+  const box = editor.panels
+    ?.find((item) => item.dataset.panel === "cast")
+    ?.querySelector(".mmd-cast-box");
+  if (!box) return;
+  const to = Math.max(CAST_BOX_MIN, Math.round(height));
+  node.properties = node.properties || {};
+  node.properties.castHeight = to;
+  box.style.height = `${to}px`;
 }
 
-/**
- * Height for a pulled-up editor: the content, plus the inset it now starts at.
- *
- * `give` is set only by the node's own resize handle. Dragging the corner shorter is an
- * instruction to the list to make do with less; every other caller -- a load, a tab
- * switch, a card edit -- must grow the node to fit instead, or a document that opens
- * taller than its node hands the shortfall to the list and comes up as a slot.
- */
-function fitPulled(state, widget, { give = false } = {}) {
+/** How tall a pulled-up editor wants to be: its content, plus the inset it starts at. */
+function contentHeightOf(state, widget) {
   const root = state.editor.root;
-  const margin = widget.margin ?? 0;
   // Measured at its natural height for one layout pass. The stage stretches to whatever
   // room it is given, so asking the element how tall it is only reports back the height
   // it already has -- and summing the children misses the margin that holds the stage
@@ -107,19 +89,18 @@ function fitPulled(state, widget, { give = false } = {}) {
   const content = root.scrollHeight;
   root.style.height = held;
   requestAnimationFrame(() => { state.editor.measuring = false; });
-  const target = TOP_INSET + content + margin * 2;
-  // Positive: the node is taller than its content. Negative: the content does not fit.
-  const surplus = state.node.size[1] - target;
-  if (Math.abs(surplus) < 2) return;
+  return TOP_INSET + content + (widget.margin ?? 0) * 2;
+}
 
-  // The list takes what it can, and what it cannot take is only ever added to the node --
-  // never taken off it. Shrinking to the content is what discarded a height the user had
-  // just dragged, and every interaction did it: a tab switch, a card edit, the speech
-  // switch. Room the node has and nothing can use is left as room.
-  const rest = surplus - (surplus > 0 || give ? absorb(state, surplus) : 0);
-  if (rest < -2) {
-    state.node.setSize([state.node.size[0],
-                        Math.max(MIN_HEIGHT, Math.round(state.node.size[1] - rest))]);
+function fitPulled(state, widget) {
+  // Exactly its content, up or down. There is nothing left for a shrink to discard: the
+  // one height anybody asks for by hand belongs to the card list, it is stored on the
+  // node, and it is part of that content. Everything that used to argue over this number
+  // -- a list that absorbed the node's spare room, a remembered panel height, a rule that
+  // the node may grow but never shrink -- was three answers to a question with one.
+  const target = contentHeightOf(state, widget);
+  if (Math.abs(state.node.size[1] - target) >= 2) {
+    state.node.setSize([state.node.size[0], Math.max(MIN_HEIGHT, Math.round(target))]);
   }
   state.node.graph?.setDirtyCanvas(true, true);
 }
@@ -151,9 +132,9 @@ function pullUp(node, widget, editor) {
       held.computedHeight = Math.max(MIN_HEIGHT, state.node.size[1] - TOP_INSET);
 
       // And the node itself only needed that height because the editor started low.
-      // Sized from the content rather than by subtracting the band: `fitNode` compares
-      // against the element's own height, and for the frames right after a resize that
-      // height is still the old one -- which is how the globals ended up clipped.
+      // Sized from the content rather than by subtracting the band: the element's own
+      // height is still the old one for the frames right after a resize, which is how the
+      // globals ended up clipped.
       if (learned && state.left > 0) {
         state.left -= 1;
         requestAnimationFrame(() => fitPulled(state, held));
@@ -303,10 +284,22 @@ function attach(node) {
       box?.scrollIntoView({ block: "nearest" });
     });
 
+    // The grip is the other hand allowed to set a list height; the host is what remembers
+    // it, because the height belongs to the node and travels with the workflow.
+    inside.onBoxHeight = (height) => {
+      setListHeight(node, editor, height);
+      // The node follows the list, as it does for everything else that changes height.
+      fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
+    };
+
     node.castEditor = inside;
     requestAnimationFrame(() => {
       inside.render();
       editor.paintTabCount(parseCast(cast.value).cards.length);
+      // A height asked for in an earlier session, put back before anything measures. With
+      // none, the list is simply as tall as its cards.
+      const stored = Number(node.properties?.castHeight) || 0;
+      if (stored) setListHeight(node, editor, stored);
     });
   }
 
@@ -343,29 +336,38 @@ function attach(node) {
     Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
   ]);
 
-  // Dragging the node's own corner is the obvious way to ask for more room, and until now
-  // nothing listened: the panels are content-sized, so the height went nowhere and the
-  // next fit removed it. A frame later, once the widget has the new height to measure.
+  // Dragging the node's own corner asks for room, and every panel but the card list is as
+  // tall as its content -- so on WHO & WHAT the gesture means "show me more cards" and the
+  // difference goes to the list, where it is stored and stays. Anywhere else there is
+  // nothing to stretch, and the next fit puts the node back on its content.
   const resized = node.onResize;
   node.onResize = function () {
     const result = resized?.apply(this, arguments);
-    requestAnimationFrame(() =>
-      fitPulled(PULLED.get(widget) ?? { node, editor }, widget, { give: true }));
+    requestAnimationFrame(() => {
+      const state = PULLED.get(widget) ?? { node, editor };
+      if (editor.tab === "cast" && node.castEditor?.box) {
+        const wanted = node.size[1] - contentHeightOf(state, widget);
+        if (Math.abs(wanted) >= 2) {
+          setListHeight(node, editor, node.castEditor.box.offsetHeight + wanted);
+        }
+      }
+      fitPulled(state, widget);
+    });
     return result;
   };
 
   stampTitle(node);
-  growWithPrompts(node, editor);
-  fitAfterLoad(node, editor);
+  growWithPrompts(node, editor, widget);
+  fitAfterLoad(node, editor, widget);
 
   // The first render needs a laid-out element to measure, so wait one frame.
   requestAnimationFrame(() => {
     editor.render();
     // Twice: the first pass resizes the node, and the widget's own height only follows
     // on the frame after that, so the second pass settles the remainder.
-    fitNode(node, editor);
+    fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
     requestAnimationFrame(() => {
-      fitNode(node, editor);
+      fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
       // Last, and only now: switching tabs measures the timeline on the way out, so the
       // panel inherits its height instead of opening at whatever it happens to need.
       const tab = node.properties?.tab;
@@ -493,25 +495,6 @@ function paintPromptView(node, result) {
 }
 
 /**
- * Make the node exactly as tall as the editor wants to be.
- *
- * Every part of the editor now has a height of its own -- the stage is its tracks, the
- * prompt boxes are their text. Left at a fixed node height the difference shows up as
- * dead grey space, and the size to open at stops being a guess only when it is measured.
- */
-function fitNode(node, editor, { growOnly = false } = {}) {
-  const style = getComputedStyle(editor.root);
-  const gap = parseFloat(style.rowGap) || 0;
-  const kids = [...editor.root.children];
-  const needed = kids.reduce((sum, el) => sum + el.offsetHeight, 0) + gap * (kids.length - 1);
-
-  const delta = Math.round(needed - editor.root.clientHeight);
-  if (Math.abs(delta) < 2 || (growOnly && delta < 0)) return;
-  node.setSize([node.size[0], Math.max(MIN_HEIGHT, node.size[1] + delta)]);
-  node.graph?.setDirtyCanvas(true, true);
-}
-
-/**
  * A saved graph restores its own node size, which lands *after* the editor mounted and
  * measured itself. A graph saved before the editor grew a field therefore reopens too
  * short, with the last prompt box hanging through the bottom of the node.
@@ -519,14 +502,15 @@ function fitNode(node, editor, { growOnly = false } = {}) {
  * Growing only: a node someone deliberately made taller keeps its height, and one that
  * is too short for its own content stops being too short.
  */
-function fitAfterLoad(node, editor) {
+function fitAfterLoad(node, editor, widget) {
   const configured = node.onConfigure;
   node.onConfigure = function (info) {
     const result = configured?.apply(this, arguments);
+    const state = () => PULLED.get(widget) ?? { node, editor };
     requestAnimationFrame(() => {
-      fitNode(node, editor, { growOnly: true });
+      fitPulled(state(), widget);
       requestAnimationFrame(() => {
-        fitNode(node, editor, { growOnly: true });
+        fitPulled(state(), widget);
         centreOnNode(node);
       });
     });
@@ -653,21 +637,21 @@ function refuseWidthStamp(widget) {
   });
 }
 
-function growWithPrompts(node, editor) {
+function growWithPrompts(node, editor, widget) {
   for (const box of editor.root.children) {
     let last = box.offsetHeight;
     new ResizeObserver(() => {
       const now = box.offsetHeight;
-      const delta = now - last;
       // Sub-pixel churn from layout is not a resize; only a real change moves it. Nor is
       // a box that went away with its tab, or one measured at its natural height.
-      if (Math.abs(delta) < 1 || editor.measuring || now === 0 || last === 0) {
+      if (Math.abs(now - last) < 1 || editor.measuring || now === 0 || last === 0) {
         last = now;
         return;
       }
       last = now;
-      node.setSize([node.size[0], node.size[1] + delta]);
-      node.graph?.setDirtyCanvas(true, true);
+      // The same exact fit as everything else. Adding the difference to the node was a
+      // second opinion about the height, and two opinions is how it drifted.
+      fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
     }).observe(box);
   }
 }

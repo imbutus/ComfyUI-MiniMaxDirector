@@ -135,6 +135,27 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - `transition` defaults to `cut` and is ignored on the first shot, which is entered from
   nowhere. `screen_text` is quoted verbatim into the shot's prose.
 
+## Heights
+
+Two numbers, and one function that writes each.
+
+- **The node's height is its content**, up and down, measured once by
+  `contentHeightOf` and applied by `fitPulled`. Every path goes through it: load,
+  tab switch, a card edit, a prompt box growing, the node's own corner.
+- **The card list's height is stored**, in `node.properties.castHeight`, written only by
+  `setListHeight` and only from two gestures: the list's grip, and a drag of the node's
+  corner while WHO & WHAT is open. With none stored the list is as tall as its cards.
+
+It was not always two. There were six: a fixed-height box fed by a `--mmd-cast-height`
+variable remembered from the *timeline* panel, an `absorb` that handed the node's spare
+height to that box, a `growWithPrompts` that added deltas straight to the node, a `fitNode`
+measuring children while `fitPulled` measured scrollHeight, a grow-only rule at load, and a
+`fitBox` that measured overflow -- which a stretching flex child never reports, so it could
+only ever grow. They ratcheted against each other: a pass that ran before layout settled
+asked for the same room twice, the box kept it, the next measurement read it back as
+content, and the node opened several screens tall with empty space under the last card. If
+you are tempted to add a third number here, that is what happens.
+
 ## The WHO & WHAT document
 
 A second widget, parsed by `cast.py` and folded into the timeline before compiling. One

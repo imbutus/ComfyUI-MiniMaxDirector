@@ -141,7 +141,11 @@ const CSS = `
    prompt boxes then read as two grips in one corner. Nothing to hide now: the block is not
    resizable at all as far as CSS is concerned, so there is one handle, and it drags the
    same way, with the same strokes, at the same inset as the ones on the prompt boxes. */
-.mmd-panel .mmd-cast-box { height:var(--mmd-cast-height, 420px); min-height:120px;
+/* As tall as the cards it holds. A height only exists here when somebody asked for one --
+   the grip, or a drag of the node's corner -- and that height is stored on the node, so it
+   comes back with the workflow instead of being guessed from the panel that was open when
+   the graph loaded. */
+.mmd-panel .mmd-cast-box { min-height:120px;
   overflow:hidden; position:relative; padding:0; }
 .mmd-cast-grip { display:none; }
 /* The handle is a real textarea, shrunk to the size of its own corner and doing nothing

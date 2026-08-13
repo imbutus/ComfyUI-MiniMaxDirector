@@ -721,9 +721,6 @@ export class TimelineEditor {
    * node this tall.
    */
   showTab(name) {
-    // Measured on the way out, while the timeline is still laid out: the cast then opens
-    // at the same height instead of the node jumping to a different one and back.
-    this.rememberPanelHeight();
     this.tab = name;
     for (const tab of this.tabs.querySelectorAll(".mmd-tab")) {
       tab.classList.toggle("mmd-on", tab.dataset.tab === name);
@@ -738,14 +735,6 @@ export class TimelineEditor {
     // in, a frame later, once layout has caught up with the class that was just removed.
     if (name === "timeline") requestAnimationFrame(() => this.render());
     this.onTab?.(name);
-  }
-
-  /** The height the cast list should open at: the room the timeline was using. */
-  rememberPanelHeight() {
-    const timeline = this.panels.find((panel) => panel.dataset.panel === "timeline");
-    const height = timeline && !timeline.classList.contains("mmd-hide")
-      ? timeline.offsetHeight : 0;
-    if (height > 0) this.root.style.setProperty("--mmd-cast-height", `${height}px`);
   }
 
   /** How many cards the cast holds, shown on the tab so it is not a mystery door. */
@@ -1629,7 +1618,6 @@ export class TimelineEditor {
 
     this.end.style.left = `${this.extent() * scale}px`;
     this.renderSettings(timeline);
-    this.rememberPanelHeight();
 
     // The numbers under the timeline are the only exact reading of what a drag is doing;
     // a resize with them frozen is a resize done by eye.

@@ -238,6 +238,11 @@ with a retention marker of its own, and it fills in the same card with the voice
 empty. Several cards may point at one file; that is how a single photograph names several
 things, each numbered separately.
 
+The list is as tall as the cards in it, and the node is as tall as whatever panel is open —
+nothing here is a fixed height that clips. To give the list a height of its own, drag the
+grip in its bottom-right corner, or drag the node's own corner while this tab is open: both
+write the same number, it is stored on the node, and it comes back with the workflow.
+
 Two tokens appear on every card, and they are MiniMax's, not ours:
 
 - **`S1…Sn`** — a **speaker**: who says a line. The card supplies the voice; the words
