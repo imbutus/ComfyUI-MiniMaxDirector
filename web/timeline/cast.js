@@ -113,10 +113,11 @@ export class CastEditor {
           <span class="mmd-hint">everyone and everything the prompt has to name — people, props, costumes, places: one card each, and each is where its file is described</span>
         </label>
         <div class="mmd-cast-legend">
-          <span><b>S1…Sn</b> a <b>speaker</b> — who says a line. The card supplies the
-            voice; the words are written on a shot's dialogue row.</span>
-          <span><b>&lt;Subject 1…n&gt;</b> a <b>subject on an image or video</b> —
-            something the model has to look at and keep. Only a card with a file has one.</span>
+          <span><b>S1…Sn</b> a <b>speaker</b> — who says a line. Any card with a voice.
+            The words themselves go on a shot's dialogue row.</span>
+          <span><b>&lt;Subject 1…n&gt;</b> a <b>subject</b> — a person, a costume, a prop,
+            a place, a look the model must keep. A card is one only with a file
+            <i>and</i> a description; without a file it can only be a voice.</span>
         </div>
         <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the list"></textarea>
         <div class="mmd-cast-body">
@@ -205,7 +206,14 @@ export class CastEditor {
     this.commit(state);
   }
 
-  addSubject() {
+  /**
+   * A new card, optionally bound to a file already.
+   *
+   * The FILE row on a block calls this with its own filename: a picture with three people
+   * in it needs three cards pointed at it, and walking over to this tab and picking the
+   * same file out of a select three times is the long way round to say so.
+   */
+  addSubject(file = null) {
     const state = this.read();
     const first = filesOf(this.timeline() || {})[0];
     const number = Math.max(0, ...state.cards.map((card) => card.id)) + 1;
@@ -213,7 +221,7 @@ export class CastEditor {
       id: number,
       uid: uid(),
       name: "",
-      file: first ? first.media.filename || "" : "",
+      file: file ?? (first ? first.media.filename || "" : ""),
       description: "",
       keep: RETENTIONS[0],
       onto: "",

@@ -249,6 +249,20 @@ function attach(node) {
         requestAnimationFrame(() => fitPulled(state, widget));
       });
     };
+    // The FILE row on a block can make a card already pointed at that block's file: one
+    // photograph often holds several subjects, and picking the same filename out of a
+    // select once per person is the long way to say so. Only wired when the cast is this
+    // node's own tab -- a Who & What node wired from outside owns its document, and the
+    // director must not write into it behind its back.
+    editor.onAddCard = (filename) => inside.addSubject(filename || "");
+    // `edit` beside a subject on the FILE row lands on that card's name box. A frame
+    // later, because the tab it lives on was hidden until the click that got here.
+    editor.onEditCard = (at) => requestAnimationFrame(() => {
+      const box = inside.list.querySelector(`[data-card="${at}"] .mmd-card-name`);
+      box?.focus();
+      box?.scrollIntoView({ block: "nearest" });
+    });
+
     node.castEditor = inside;
     requestAnimationFrame(() => {
       inside.render();

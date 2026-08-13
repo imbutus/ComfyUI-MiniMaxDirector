@@ -142,7 +142,12 @@ card per subject -- shown as the **WHO & WHAT** tab, and not only people: a cost
 a place or a style out of the same photograph is a card too, with the voice fields left
 empty. Fields: `name`, `file` (which attachment it is drawn from), `description`, `voice`,
 `keep` (its own `subject_retention`), `onto`, `motion_from`, `voice_from`, and a stable
-`uid`. Several cards may name one file; each is numbered separately.
+`uid`. Several cards may name one file; each is numbered separately, and the block's
+FILE row makes them: `editor.definedBy` lists the subjects drawn from that file with
+`edit` beside each, and **+ another card** calls `CastEditor.addSubject(filename)`
+through `editor.onAddCard`. That hook is wired only when the cast is the director's
+own tab -- a Who & What node wired from outside owns its document, and the director
+must not write into it behind its back.
 
 - A card **with** a file and a description appends a subject to that file's `subjects`,
   and lends its sentence to the file's own `description` when the record has none -- the

@@ -148,7 +148,9 @@ not on screen — and the TIMELINE tab shows:
   removes one. Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
   below.
 - **FILE** — blocks carrying one: `used as`, `keep file`, **detach media**, and a
-  read-only `describes` line. There is no description box here: what a file *is* is
+  read-only `describes` list — one subject per line, `edit` beside each, and
+  **+ another card** under them, which makes a card already pointed at this file. That is
+  how one photograph holds several subjects: a person, their coat, the room behind them. There is no description box here: what a file *is* is
   written once, on a subject card, and this line shows the card's sentence beside the
   `<Subject n>` it became with a link to the WHO & WHAT tab. It said `nothing describes
   this file yet` until you add one. The guide asks for a file used to define something to
@@ -229,9 +231,10 @@ Two tokens appear on every card, and they are MiniMax's, not ours:
 - **`S1…Sn`** — a **speaker**: who says a line. The card supplies the voice; the words
   themselves are written on a shot's dialogue row. `S` is for speaker, which is why it is
   not `V`.
-- **`<Subject 1…n>`** — a **subject on an image or video**: something the model has to
-  look at and keep. Only a card with a file has one, so a card that is a voice and nothing
-  else shows a hollow `no <Subject>` in its place.
+- **`<Subject 1…n>`** — a **subject**: a person, a costume, a prop, a place, a look the
+  model must keep. A card is one only with a file **and** a description; without a file
+  there is nothing on screen for the prompt to point at, so it can only be a voice and it
+  shows a hollow `no <Subject>` in place of the token.
 
 A card can be one, the other, or both. This is also the only place a file is described.
 A card holds:

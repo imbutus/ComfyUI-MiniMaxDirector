@@ -256,7 +256,23 @@ export class TimelineEditor {
     // has been written yet, and the file row, which is the only place a file is
     // described. Bound to one of them it was dead in the other.
     this.segFields.addEventListener("click", (event) => {
-      if (event.target.closest(".mmd-f-tocast")) this.showTab("cast");
+      if (event.target.closest(".mmd-f-tocast")) return this.showTab("cast");
+      // `edit` beside one subject opens that card, not merely the tab it lives on.
+      const editing = event.target.closest(".mmd-f-editcard");
+      if (editing) {
+        this.showTab("cast");
+        return this.onEditCard?.(Number(editing.dataset.card));
+      }
+      // A card for the file this block carries, made from here rather than by walking
+      // over to the tab and finding the same filename in a select. The host owns the
+      // cast document, so it does the writing; with no writer -- a Who & What node wired
+      // from outside -- the tab still opens and the card is made there.
+      if (event.target.closest(".mmd-f-addcard")) {
+        const item = this.selection
+          && items(this.read(), this.selection.track)[this.selection.index];
+        this.onAddCard?.(item?.media?.filename || "");
+        this.showTab("cast");
+      }
     });
     this.global = this.root.querySelector(".mmd-global");
     this.music = this.root.querySelector(".mmd-music");
@@ -1747,11 +1763,16 @@ export class TimelineEditor {
     if (!item.media?.filename) return [];
     if (String(item.media.role || "reference") !== "reference") return [];
     const cards = this.castOf?.()?.cards || [];
-    const mine = cards.filter((card) =>
-      card.file === item.media.filename && String(card.description || "").trim());
+    const mine = cards
+      .map((card, at) => ({ card, at }))
+      .filter(({ card }) =>
+        card.file === item.media.filename && String(card.description || "").trim());
     if (!mine.length) return [];
     const numbers = numbering(timeline, cards);
-    return mine.map((card) => ({ card, index: numbers.get(card.uid || card.id) || 0 }));
+    // `at` is the card's place in the cast document, which is what the tab addresses its
+    // rows by -- so `edit` on a given line lands on that card rather than on the tab.
+    return mine.map(({ card, at }) =>
+      ({ card, at, index: numbers.get(card.uid || card.id) || 0 }));
   }
 
   segment(track, index, item, scale) {
@@ -2229,16 +2250,19 @@ export class TimelineEditor {
     const subject = !item.media ? "" : `
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
-        ${claimed.length ? claimed.map(({ card, index }) => `
-        <span class="mmd-f-claim">
-          <span class="mmd-f-claim-who">${index ? `&lt;Subject ${index}&gt;` : "S" + card.id}${
-            String(card.name || "").trim() ? ` ${text(card.name.trim())}` : ""}</span>
-          <span class="mmd-f-claim-text">${text(card.description.trim())}</span>
-        </span>`).join("") : `
-        <span class="mmd-f-claim mmd-f-claim-none">${
-          orphaned ? text(orphaned) : "nothing describes this file yet"}</span>`}
-        <button type="button" class="mmd-f-tocast">${
-          claimed.length ? "edit on the subject card" : "add a subject"}</button>
+        <div class="mmd-f-claims">${claimed.length ? claimed.map(({ card, at, index }) => `
+          <span class="mmd-f-claim">
+            <span class="mmd-f-claim-who">${index ? `&lt;Subject ${index}&gt;` : "S" + card.id}${
+              String(card.name || "").trim() ? ` ${text(card.name.trim())}` : ""}</span>
+            <span class="mmd-f-claim-text">${text(card.description.trim())}</span>
+            <button type="button" class="mmd-f-editcard" data-card="${at}"
+                    title="Open this card on the WHO &amp; WHAT tab">edit</button>
+          </span>`).join("") : `
+          <span class="mmd-f-claim mmd-f-claim-none">${
+            orphaned ? text(orphaned) : "nothing describes this file yet"}</span>`}
+          <button type="button" class="mmd-f-addcard" title="Another card pointed at this same file. One photograph can hold several people, or a person and their coat and the room behind them, and each takes a &lt;Subject n&gt; and a retention marker of its own.">${
+            claimed.length ? "+ another card" : "add a card"}</button>
+        </div>
         ${!orphaned ? "" : (claimed.length ? `
         <div class="mmd-f-note">“${text(orphaned)}” is no longer compiled: the subject card
           above describes this file instead.</div>` : `

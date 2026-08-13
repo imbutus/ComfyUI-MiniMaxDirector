@@ -256,6 +256,7 @@ const CSS = `
    definition and sit a step above the body, not level with the token. */
 .mmd-cast-legend b { color:#8b93a1; font-weight:600; }
 .mmd-cast-legend b:first-child { color:#8fb8cc; }
+.mmd-cast-legend i { font-style:normal; color:#8b93a1; }
 .mmd-card-from, .mmd-card-keep { flex:0 0 auto; display:flex; align-items:center;
   gap:5px; color:#6b7280; font-size:11px; }
 .mmd-card-from select { max-width:210px; font-size:11px; cursor:pointer; }
@@ -312,14 +313,25 @@ const CSS = `
 .mmd-f-nobody { color:#6b7280; font-size:11px; }
 /* Part of the sentence, not a control beside it: it reads as the words it replaces and
    underlines like a link, because that is what it does. */
-.mmd-f-tocast, .mmd-seg-fields .mmd-f-tocast { background:none; border:0; padding:0;
+.mmd-f-tocast, .mmd-seg-fields .mmd-f-tocast,
+.mmd-f-addcard, .mmd-seg-fields .mmd-f-addcard,
+.mmd-f-editcard, .mmd-seg-fields .mmd-f-editcard { background:none; border:0; padding:0;
   font:inherit; color:#8fb8cc; text-decoration:underline; text-underline-offset:2px;
   cursor:pointer; }
 /* Scoped copy on purpose: the panel's own '.mmd-seg-fields button' rule is the red
    "detach media" style and outranks a bare class, so this link came out looking like the
    one destructive control on the node. */
-.mmd-f-tocast:hover, .mmd-seg-fields .mmd-f-tocast:hover { color:#cde3ef;
+.mmd-f-tocast:hover, .mmd-seg-fields .mmd-f-tocast:hover,
+.mmd-f-addcard:hover, .mmd-seg-fields .mmd-f-addcard:hover,
+.mmd-f-editcard:hover, .mmd-seg-fields .mmd-f-editcard:hover { color:#cde3ef;
   background:none; border-color:transparent; }
+/* The edit link belongs to the line it sits on, so it follows the text rather than
+   lining up in a column of its own; add-another closes the list underneath. */
+.mmd-seg-fields .mmd-f-editcard { flex:0 0 auto; margin-left:2px; font-size:10px; }
+.mmd-seg-fields .mmd-f-addcard { align-self:flex-start; margin-top:2px; }
+/* The claim is a reading, not a control: no border, or it reads as a select somebody
+   should have been able to open. */
+
 .mmd-cast-add { align-self:flex-start; margin-top:5px; background:#2c313c; color:#e5e7eb;
   border:1px solid #3a4150; border-radius:5px; padding:4px 9px; cursor:pointer;
   font:inherit; font-size:11px; }
@@ -531,13 +543,22 @@ const CSS = `
 /* A file somebody has been lifted out of. The sentence that reaches the prompt is the
    cast card's, so the box that no longer feeds anything is replaced by the one that
    does -- flat, unbordered, obviously not a field you type into. */
-.mmd-seg-fields .mmd-f-claimed { display:flex; align-items:center; gap:8px;
+.mmd-seg-fields .mmd-f-claimed { display:flex; align-items:flex-start; gap:8px;
   flex-wrap:wrap; color:#9ca3af; font-size:11px; }
-.mmd-seg-fields .mmd-f-claim-head { color:#9ca3af; }
-.mmd-seg-fields .mmd-f-claim { display:flex; align-items:center; gap:6px;
-  background:#1c1f26; border:1px solid #2c313c; border-radius:4px; padding:2px 8px; }
+.mmd-seg-fields .mmd-f-claim-head { color:#9ca3af; padding-top:1px; }
+/* One subject per line. A picture can hold as many as it holds -- three people, or a
+   person and their coat and the room behind them -- and a row of them ran off the end of
+   the panel at the second one. */
+.mmd-seg-fields .mmd-f-claims { display:flex; flex-direction:column; gap:3px;
+  flex:1 1 260px; min-width:0; }
+/* A reading, not a control: the border on this made it look like a select somebody
+   should have been able to open, and the first question about the row was why the second
+   subject could not be picked. */
+.mmd-seg-fields .mmd-f-claim { display:flex; align-items:baseline; gap:6px;
+  background:none; border:0; padding:0; min-width:0; }
 .mmd-seg-fields .mmd-f-claim-who { color:#8fb8cc; white-space:nowrap; }
-.mmd-seg-fields .mmd-f-claim-text { color:#e5e7eb; }
+.mmd-seg-fields .mmd-f-claim-text { color:#e5e7eb; white-space:normal;
+  overflow-wrap:anywhere; min-width:0; }
 /* No card names this file yet, or only an older build's block text does: same shape as a
    real claim, drawn as the absence it is. */
 .mmd-seg-fields .mmd-f-claim-none { color:#6b7280; font-style:italic; }
