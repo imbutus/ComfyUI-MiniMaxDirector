@@ -653,6 +653,24 @@ export class TimelineEditor {
     }
   }
 
+  /**
+   * `+ line` is dead while a line on this block has no words.
+   *
+   * A wordless row is already ignored by the compiler, so a second one adds a second
+   * nothing -- and the row that was pressed for is indistinguishable from the row that was
+   * already there. Painted rather than rebuilt: it changes on the first character typed,
+   * and rebuilding the group would take the caret with it.
+   */
+  paintAddLine() {
+    const lines = this.segFields.querySelector(".mmd-f-lines");
+    if (!lines) return;
+    const empty = [...lines.querySelectorAll(".mmd-f-line")]
+      .some((box) => !box.value.trim());
+    lines.classList.toggle("mmd-f-nomore", empty);
+    const button = lines.querySelector(".mmd-f-addline");
+    if (button) button.disabled = empty;
+  }
+
   /** Put a token where the caret is, as though it had been typed. */
   writeToken(token) {
     const box = this.segPrompt;
@@ -2410,7 +2428,11 @@ export class TimelineEditor {
         </div>`;
       };
       return `<div class="mmd-f-lines">${said.map(row).join("")}
-        <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
+        <div class="mmd-f-addline-row">
+          <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
+          <span class="mmd-f-addline-why">finish the empty line first — a second one
+            compiles to the same nothing</span>
+        </div>
       </div>`;
     })();
 
@@ -2617,6 +2639,7 @@ export class TimelineEditor {
               "mmd-f-quiet",
               ![...(row?.closest(".mmd-f-lines")?.querySelectorAll(".mmd-f-line") || [])]
                 .some((box) => box.value.trim()));
+            this.paintAddLine();
           }
           patchLine({ [key]: e.target.value }, true, rowOf(e.target));
         });
@@ -2756,6 +2779,7 @@ export class TimelineEditor {
     // edited. Rebuilt on every render: they hold no caret to lose.
     this.paintPicker(timeline);
     this.paintSubjects(item);
+    this.paintAddLine();
 
     // The locked mirrors are never the field under the cursor, so they follow every
     // render unconditionally -- `put`'s focus guard has nothing to protect here.

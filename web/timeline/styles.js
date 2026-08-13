@@ -628,8 +628,19 @@ const CSS = `
 .mmd-seg-fields .mmd-f-bulk[disabled] { opacity:.4; cursor:not-allowed; }
 .mmd-seg-fields .mmd-f-addline, .mmd-seg-fields .mmd-f-bulk {
   background:#232833; color:#cdd3dd; border-color:#3a4150; align-self:flex-start; }
-.mmd-seg-fields .mmd-f-addline:hover, .mmd-seg-fields .mmd-f-bulk:not([disabled]):hover {
+.mmd-seg-fields .mmd-f-addline:not([disabled]):hover,
+.mmd-seg-fields .mmd-f-bulk:not([disabled]):hover {
   background:#2c313c; border-color:#4b5563; }
+/* Another line, while a line on this block still has no words in it, is another row the
+   compiler ignores -- so the button goes dead in the house form: transparent, dashed,
+   dimmed, with the reason in amber beside it. The reason is a sibling rather than a title
+   because a disabled button never gets the hover that would show one. */
+.mmd-seg-fields .mmd-f-addline-row {
+  display:flex; align-items:center; gap:8px; align-self:flex-start; }
+.mmd-seg-fields .mmd-f-addline[disabled] {
+  background:transparent; border-style:dashed; opacity:.4; cursor:not-allowed; }
+.mmd-seg-fields .mmd-f-addline-why { display:none; color:#e0b055; font-size:11px; }
+.mmd-f-lines.mmd-f-nomore .mmd-f-addline-why { display:inline; }
 .mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.

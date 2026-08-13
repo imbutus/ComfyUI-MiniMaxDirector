@@ -151,7 +151,9 @@ not on screen — and the TIMELINE tab shows:
   options contribute no words. A static shot has neither, and the two pickers go away.
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
   says it, `how` it is said, its `language`, and two switches — **off-screen** and
-  **carries over**. **+ line** adds another row, so a block can hold a conversation; the
+  **carries over**. **+ line** adds another row, so a block can hold a conversation — dead, dashed and
+  amber while a row on this block still has no words, because the compiler ignores a
+  wordless row and a second one is a second nothing. The
   red bin at the end of a row removes it — the same delete button the subject cards use.
   The last lit face cannot be unticked, and says why on hover: an empty speaker list is
   compiled as `(S1)`, so a line with nobody ticked would be given to speaker 1 rather than
