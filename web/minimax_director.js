@@ -691,8 +691,10 @@ function fitAfterLoad(node, editor) {
  *
  * Only on load. Panning afterwards is the author's business.
  */
-/** Where the director's top-left corner should sit on screen, in pixels. */
-const MARGIN = [170, 258];
+/** Where the director's top-left corner should sit on screen, in pixels. Measured from the
+ *  view a first-time reader should get: the title clear of the tab strip and the toolbar,
+ *  the sidebar beside it rather than under it, and the whole panel on screen. */
+const MARGIN = [139, 154];
 /** The zoom a workflow opens at: the whole director readable without scrolling to it. */
 const OPENING_ZOOM = 0.91;
 
