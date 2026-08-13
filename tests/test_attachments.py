@@ -66,7 +66,7 @@ def test_the_prompt_names_an_attached_file_without_being_asked():
     timeline = build(shots=[
         {"start": 0, "length": 24, "prompt": "the alley", "media": image("a.png")},
     ])
-    assert "the alley <Picture 1>" in compile_timeline(timeline).prompt
+    assert "the alley. <Picture 1>" in compile_timeline(timeline).prompt
 
 
 def test_a_token_the_author_placed_is_not_repeated():
@@ -86,7 +86,7 @@ def test_an_attached_audio_names_itself_in_the_audio_block():
         shots=[{"start": 0, "length": 24, "prompt": "x"}],
         cues=[{"start": 0, "length": 24, "prompt": "siren", "media": audio("r.mp3")}],
     )
-    assert "siren <Audio 1>" in compile_timeline(timeline).prompt
+    assert "siren. <Audio 1>" in compile_timeline(timeline).prompt
 
 
 def test_segments_without_media_are_untouched():

@@ -614,4 +614,8 @@ def _with_tokens(text: str, tokens: list[str]) -> str:
     if not missing:
         return text
     joined = " ".join(missing)
-    return f"{text} {joined}" if text else joined
+    # Closed first, or the author's sentence and the tokens read as one phrase: "cuts to
+    # second one pmpt <Subject 1>" says the prompt describes the subject. The dialogue path
+    # closes it on the way past, so without this the same shot was punctuated one way with
+    # `they speak` on and another way with it off.
+    return f"{_sentence(text)} {joined}" if text else joined
