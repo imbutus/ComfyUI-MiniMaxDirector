@@ -646,7 +646,7 @@ const CSS = `
   border-style:dashed; }
 /* The box that line is about, in the line's own colour: the empty row is the reason the
    button beside it is dead, and it is where the fix is typed. */
-.mmd-f-lines.mmd-f-many .mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#6b5533; }
+.mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#6b5533; }
 /* The group you are typing in, ringed in the accent colour -- what a card does, for the
    same reason: a panel of recessed groups says nothing about which one has the caret. */
 .mmd-f-group:focus-within { border-style:solid; border-color:#3a4150;
@@ -681,18 +681,18 @@ const CSS = `
    is the only thing wrong with it; here the row still works and the only thing missing is
    the words -- one step above the labels around it, and no further. */
 .mmd-seg-fields .mmd-f-addline-why { display:none; color:#a2854f; font-size:11px; }
-.mmd-f-many .mmd-f-line-row.mmd-f-quiet .mmd-f-addline-why { display:block; }
+.mmd-f-line-row.mmd-f-quiet .mmd-f-addline-why { display:block; }
 /* With nobody on WHO & WHAT there is a first thing to do, and it is not this: the row is
    waiting on a card, which the row already says and links to. Nothing is marked. */
 .mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-addline-why { display:none; }
 .mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-line { border-color:#252b34; }
 /* Everything on the row belongs beside the box, not beside the box and its message: the
-   row stops centring while the message is up, and the two labels that would ride to the
-   top of it are nudged back onto the input's own line. */
+   row stops centring while the message is up. Only the line's own label follows it to the
+   top -- "how" and "language" keep their text centred against their own inputs, which is
+   what the row looks like the rest of the time. */
 .mmd-f-line-row.mmd-f-quiet,
-.mmd-f-line-row.mmd-f-quiet > label { align-items:flex-start; }
-.mmd-f-line-row.mmd-f-quiet > label > .mmd-key { padding-top:4px; }
-.mmd-f-line-row.mmd-f-quiet > *:not(label.mmd-f-wide) { margin-top:1px; }
+.mmd-f-line-row.mmd-f-quiet > label.mmd-f-wide { align-items:flex-start; }
+.mmd-f-line-row.mmd-f-quiet > label.mmd-f-wide > .mmd-key { padding-top:4px; }
 .mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.

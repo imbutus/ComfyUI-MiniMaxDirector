@@ -2461,10 +2461,7 @@ export class TimelineEditor {
             ? `<button class="mmd-f-delline mmd-drop" title="Remove this line">${ICON.trash}</button>` : ""}
         </div>`;
       };
-      // The reason `+ line` is dead is only worth saying once there is a line to finish:
-      // on a block nobody has typed in yet, an empty row is the state it starts in, not a
-      // fault to answer.
-      return `<div class="mmd-f-lines${said.length > 1 ? " mmd-f-many" : ""}">${said.map(row).join("")}
+      return `<div class="mmd-f-lines">${said.map(row).join("")}
         <div class="mmd-f-addline-row">
           <button class="mmd-f-addline" title="Another line in this shot -- somebody else, or the same person answering">+ line</button>
         </div>
