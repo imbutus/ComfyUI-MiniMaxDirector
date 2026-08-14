@@ -71,8 +71,12 @@ lattice before it reaches the compiler.
 otherwise the keyframe node. **The checkpoints are not interchangeable** — loading
 `ref2va` and taking the keyframe path is a silent mismatch the graph cannot detect.
 
-Because the reference node has no `first_frame`, wiring both is impossible to honour;
-the node reports an error rather than dropping the keyframe quietly.
+Both keyframes come off the timeline: a block whose `used as` is one of `ANCHOR_ROLES`
+(`first frame`, `last frame`) has its image loaded into that argument instead of into the
+reference list — the first block claiming each role takes it. The director declares no
+sockets for them, or for references. Because the reference node has no `first_frame`, a
+timeline holding an anchor *and* a reference is impossible to honour; the node reports an
+error rather than dropping the keyframe quietly.
 
 ## The timeline document
 

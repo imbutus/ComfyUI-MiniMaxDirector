@@ -199,6 +199,11 @@ it compiles as *"<Picture 3> is a storyboard reference for [Shot 1], defining vi
 subject placement, and shot order."*), `first frame` / `keyframe` / `last frame` (a real
 frame of the target video), `continue from`, `edit`.
 
+`first frame` and `last frame` are the two the model has an input for: that block's image
+is sent as the keyframe rather than as a reference beside one, so a transformation between
+two stills is two blocks — the opening image used as `first frame`, the closing one as
+`last frame`. There is nothing to wire; the node has no sockets for them.
+
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the
 finished soundtrack), `partially_copy`, `reference` (only the timbre or texture is

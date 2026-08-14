@@ -37,7 +37,7 @@ from dataclasses import dataclass
 
 from . import attachments, lattice
 from .timeline import (
-    AUDIO_RETENTIONS, FRAME_ROLES, RETENTION_ACROSS, RETENTIONS, ROLE_TASKS,
+    ANCHOR_ROLES, AUDIO_RETENTIONS, FRAME_ROLES, RETENTION_ACROSS, RETENTIONS, ROLE_TASKS,
     Move, Shot, Timeline,
 )
 
@@ -83,10 +83,14 @@ def _alignment(timeline: Timeline, length: int, first: bool, last: bool) -> str:
     to improve on the English. `S.SS` is the effective duration to exactly two decimals,
     and `N` the index of the real final shot.
 
-    Nothing is emitted for a timeline with references: that path routes to
-    `MiniMaxH3ReferenceToVideo`, which has no keyframe inputs to align to.
+    Nothing is emitted for a timeline carrying references: that path routes to
+    `MiniMaxH3ReferenceToVideo`, which has no keyframe inputs to align to. The frame
+    anchors themselves are the exception -- they are where `first` and `last` come from,
+    and a block used as one is the keyframe rather than a reference beside it.
     """
-    if not (first or last) or attachments.collect(timeline):
+    others = [item for item in attachments.collect(timeline)
+              if str(item.record.get("role", "")).strip() not in ANCHOR_ROLES]
+    if not (first or last) or others:
         return ""
 
     shots = len(timeline.ordered_shots()) or 1

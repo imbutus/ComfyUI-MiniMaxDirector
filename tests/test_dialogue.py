@@ -194,6 +194,13 @@ def test_references_suppress_the_instruction():
         "For the target video")
 
 
+def test_a_frame_anchor_does_not_suppress_the_instruction():
+    """The anchor is where the keyframe comes from: a block used as a first frame *is*
+    that frame, not a reference standing beside one."""
+    assert compile_timeline(attached("first frame"), first_frame=True).prompt.startswith(
+        "For the target video")
+
+
 # -- lint --------------------------------------------------------------------
 
 

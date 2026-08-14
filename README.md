@@ -96,9 +96,11 @@ arrange is the clip that is generated, with no frames on the end that no shot de
 
 The director calls the core `MiniMaxH3ImageToVideo` / `MiniMaxH3ReferenceToVideo` nodes
 rather than reimplementing them, resolving both by introspection so an upstream signature
-change surfaces as a clear message instead of a stack trace. Reference slots are picked
-automatically: wire nothing and you get text-to-video, wire `first_frame` and you get
-image-to-video, wire any `picture_*` / `audio_1` / `video_1` and you get reference-to-video.
+change surfaces as a clear message instead of a stack trace. The path is picked automatically from the
+timeline: no files and you get text-to-video, a block used as `first frame` or `last frame`
+and you get image-to-video, any other attached file and you get reference-to-video. The
+node has no reference or keyframe sockets of its own -- every file comes off the timeline,
+which is the one place a file is also described.
 
 ## Install
 

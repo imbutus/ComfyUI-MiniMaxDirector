@@ -111,8 +111,6 @@ class MiniMaxDirector(io.ComfyNode):
                                         "described. Edited in the director's WHO & WHAT "
                                         "tab."),
                 io.Vae.Input("audio_vae", optional=True),
-                io.Image.Input("first_frame", optional=True),
-                io.Image.Input("last_frame", optional=True),
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
@@ -125,14 +123,28 @@ class MiniMaxDirector(io.ComfyNode):
 
     @classmethod
     def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",
-                cast=None, audio_vae=None, first_frame=None,
-                last_frame=None) -> io.NodeOutput:
+                cast=None, audio_vae=None) -> io.NodeOutput:
         document = Timeline.from_json(cast_merge(timeline, cast))
 
         # Every reference comes off the timeline. It is the only place a file can be
         # described -- a socket carries a tensor and nothing that says what it is -- so a
         # wired one could only ever be an unnamed reference the prompt never mentions.
-        pictures = [_load(a.record)[0] for a in attachments.of_kind(document, "image")]
+        # A block whose `used as` says it is a frame of the video is exactly that: its
+        # image goes to the model's keyframe input instead of into the reference list,
+        # which is the only way H3 can be given one. Two slots, so the first block claiming
+        # each role takes it; a `keyframe` in the middle has nowhere to go and stays a
+        # reference, as it always was.
+        first_frame = last_frame = None
+        pictures = []
+        for item in attachments.of_kind(document, "image"):
+            role = str(item.record.get("role", "")).strip()
+            image = _load(item.record)[0]
+            if role == "first frame" and first_frame is None:
+                first_frame = image
+            elif role == "last frame" and last_frame is None:
+                last_frame = image
+            else:
+                pictures.append(image)
         videos, soundtracks = [], []
         for item in attachments.of_kind(document, "video"):
             frames, sound = _load(item.record)
@@ -148,14 +160,15 @@ class MiniMaxDirector(io.ComfyNode):
             last_frame=last_frame is not None)
         issues = lint(document)
 
-        # The core reference node has no `first_frame`, so wiring both would silently
-        # drop the keyframe rather than fail.
+        # The core reference node has no `first_frame`, so a timeline holding both would
+        # silently drop the keyframe rather than fail.
         if first_frame is not None and (
             _present(pictures) or _present(videos) or _present(audios)):
             issues.insert(0, Issue(
                 "error",
-                "first_frame is ignored when references are wired: MiniMax H3 has no "
-                "reference-plus-keyframe path. Use one or the other.",
+                "a block used as first frame is ignored while the timeline also carries "
+                "references: MiniMax H3 has no reference-plus-keyframe path. Use one or "
+                "the other.",
             ))
 
         report = _report(issues)

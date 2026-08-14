@@ -38,6 +38,11 @@ is authored, and only the mapping to the guide's vocabulary lives here.
 
 ROLES: tuple[str, ...] = tuple(ROLE_TASKS)
 
+ANCHOR_ROLES = ("first frame", "last frame")
+"""The two the model has an input for: a block used as one of these *is* that frame of the
+clip, so its picture goes to the keyframe input instead of into the reference list. A
+`keyframe` in the middle has no input to go to and stays a reference."""
+
 FRAME_ROLES = ("first frame", "keyframe", "last frame")
 """Roles that make a picture a concrete frame of the target video.
 
