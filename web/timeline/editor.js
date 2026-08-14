@@ -2352,6 +2352,16 @@ export class TimelineEditor {
     // mode, where the prompt has to say what each reference is and how much of it must
     // survive -- questions that have no meaning for a block with nothing attached.
     const subject = !item.media ? "" : `
+      <div class="mmd-f-fileopts">
+        <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
+          <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
+        </label>
+        <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
+          <select class="mmd-f-retention">${
+            retentionOptions(item.media.retention, item.media.kind)}</select>
+        </label>
+        <button class="mmd-f-unlink">detach media</button>
+      </div>
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
         <div class="mmd-f-claims">${claimed.length ? claimed.map(({ card, at, index }) => `
@@ -2372,16 +2382,6 @@ export class TimelineEditor {
           above describes this file instead.</div>` : `
         <div class="mmd-f-note">Typed on the block itself, before subjects were the one
           place. It still compiles; a subject card replaces it.</div>`)}
-      </div>
-      <div class="mmd-f-fileopts">
-        <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
-          <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
-        </label>
-        <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
-          <select class="mmd-f-retention">${
-            retentionOptions(item.media.retention, item.media.kind)}</select>
-        </label>
-        <button class="mmd-f-unlink">detach media</button>
       </div>`;
 
     // MAIN blocks only. H3 generates the voice with the picture in one pass, and the
