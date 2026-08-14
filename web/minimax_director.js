@@ -377,11 +377,17 @@ function attach(node) {
 }
 
 /**
- * Carry the selection across a rebuild of the node.
+ * Carry the selection across a rebuild of the node, and across a reload of the page.
  *
  * The editor reports its state after every panel render; the last report for this node id
  * is handed back to whatever editor is mounted next. The view state travels with it --
  * the playhead and the zoom are equally annoying to lose, and for the same reason.
+ *
+ * The map is memory, so it is empty on a page that has just loaded, and the block being
+ * worked on came back deselected -- the panel that was full of that block's fields was
+ * suddenly "no segment selected". Which block that was is written into the node's
+ * properties as well, where the tab already lives, because those are what a workflow
+ * carries. Only the one block: a marquee is a gesture, not a place you were.
  */
 function remember(node, editor) {
   // A frame late, and deliberately: `onNodeCreated` runs during construction, before the
@@ -389,19 +395,34 @@ function remember(node, editor) {
   // This callback is registered before the one that renders, so it still lands first.
   requestAnimationFrame(() => {
     const saved = SELECTION.get(node.id);
-    if (!saved) return;
-    editor.selection = saved.selection;
-    editor.selected = saved.selected;
-    editor.playhead = saved.playhead;
-    editor.zoom = saved.zoom;
+    if (saved) {
+      editor.selection = saved.selection;
+      editor.selected = saved.selected;
+      editor.playhead = saved.playhead;
+      editor.zoom = saved.zoom;
+      return;
+    }
+    // Nothing in memory: the page is new, and the workflow is the only record. An index
+    // naming a block that is no longer there is dropped by the panel on the first render,
+    // so nothing here has to check the document.
+    const stored = node.properties?.selection;
+    if (stored && Number.isInteger(stored.index)) {
+      editor.selection = { track: stored.track, index: stored.index };
+    }
   });
 
-  editor.onState = (source) => SELECTION.set(node.id, {
-    selection: source.selection,
-    selected: [...source.selected],
-    playhead: source.playhead,
-    zoom: source.zoom,
-  });
+  editor.onState = (source) => {
+    SELECTION.set(node.id, {
+      selection: source.selection,
+      selected: [...source.selected],
+      playhead: source.playhead,
+      zoom: source.zoom,
+    });
+    node.properties = node.properties || {};
+    node.properties.selection = source.selection
+      ? { track: source.selection.track, index: source.selection.index }
+      : null;
+  };
 }
 
 /**

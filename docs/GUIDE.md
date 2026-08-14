@@ -114,7 +114,8 @@ that still round — a clip following its content — and stays silent otherwise
 ### The three tabs
 
 The panel under the toolbar shows one of three things, and remembers which one across a
-reload:
+reload — along with the block that was selected, so a reload comes back to the fields you
+were in:
 
 - **TIMELINE** — the tracks, and the fields of whatever block is selected
 - **WHO & WHAT** — one card per thing the prompt has to name
