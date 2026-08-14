@@ -211,6 +211,7 @@ export class TimelineEditor {
       <div class="mmd-prompt">
         <label>SEGMENT PROMPT</label>
         <textarea class="mmd-seg-prompt" placeholder="Select a segment, then describe what happens in it"></textarea>
+        <div class="mmd-subj-strip mmd-hide"></div>
         <div class="mmd-seg-fields"></div>
       </div>
 
@@ -223,6 +224,7 @@ export class TimelineEditor {
         <div class="mmd-prompt">
           <label>GLOBAL PROMPT</label>
           <textarea class="mmd-global" placeholder="Style and scene constants for the whole clip"></textarea>
+          <div class="mmd-subj-strip mmd-hide"></div>
         </div>
 
         <div class="mmd-prompt">
@@ -269,9 +271,14 @@ export class TimelineEditor {
       // A card for the file this block carries, made from here rather than by walking
       // over to the tab and finding the same filename in a select. The host owns the
       // document, so it does the writing; the tab opens either way.
+      // A chip writes into the box it sits in, and it sits in the box it writes into: the
+      // shot's text on TIMELINE, the clip-wide one on GLOBAL. A style or a place is named
+      // once for the whole piece, and typing `<Subject 1>` there by hand is the same silent
+      // mistake it is in a shot.
       const chip = event.target.closest(".mmd-f-subj");
       if (chip) {
-        this.writeToken(String(chip.dataset.token || ""));
+        this.writeToken(String(chip.dataset.token || ""),
+          chip.closest(".mmd-prompt")?.querySelector("textarea"));
         return;
       }
       if (event.target.closest(".mmd-f-addcard")) {
@@ -468,7 +475,7 @@ export class TimelineEditor {
       item.prompt = this.segPrompt.value;
       this.write(next);
       this.refreshLabel(item);
-      this.paintSubjects(item);
+      this.paintSubjects();
     });
 
     this.global.addEventListener("input", () => {
@@ -476,6 +483,7 @@ export class TimelineEditor {
       const next = this.read();
       next.global_prompt = this.global.value;
       this.write(next);
+      this.paintSubjects();
     });
 
     this.music.addEventListener("input", () => {
@@ -645,13 +653,30 @@ export class TimelineEditor {
     }
   }
 
-  /** Light the subjects this shot's text already names. Painted rather than rebuilt: the
-   *  strip changes with every keystroke, and rebuilding takes the caret with it. */
-  paintSubjects(item) {
-    const written = String(item?.prompt || "").toLowerCase();
-    for (const chip of this.segFields.querySelectorAll(".mmd-f-subj")) {
-      chip.classList.toggle("mmd-on", written.includes(
-        String(chip.dataset.token || "").toLowerCase()));
+  /**
+   * The chips under every prompt box, and which of them that box already names.
+   *
+   * Rebuilt only when the cast changes; lit on every keystroke. Rebuilding a strip takes
+   * the caret out of the box above it, and the box above it is the one being typed in.
+   */
+  renderChips(timeline) {
+    const chips = this.subjectStrip(timeline);
+    for (const strip of this.root.querySelectorAll(".mmd-subj-strip")) {
+      if (strip.innerHTML !== chips) strip.innerHTML = chips;
+      strip.classList.toggle("mmd-hide", !chips);
+    }
+    this.paintSubjects();
+  }
+
+  /** Light the subjects each box's own text already names. */
+  paintSubjects() {
+    for (const strip of this.root.querySelectorAll(".mmd-subj-strip")) {
+      const box = strip.closest(".mmd-prompt")?.querySelector("textarea");
+      const written = String(box?.value || "").toLowerCase();
+      for (const chip of strip.querySelectorAll(".mmd-f-subj")) {
+        chip.classList.toggle("mmd-on", written.includes(
+          String(chip.dataset.token || "").toLowerCase()));
+      }
     }
   }
 
@@ -675,8 +700,7 @@ export class TimelineEditor {
   }
 
   /** Put a token where the caret is, as though it had been typed. */
-  writeToken(token) {
-    const box = this.segPrompt;
+  writeToken(token, box = this.segPrompt) {
     if (!box || box.disabled) return;
     const at = box.selectionStart ?? box.value.length;
     const to = box.selectionEnd ?? at;
@@ -2249,6 +2273,10 @@ export class TimelineEditor {
     // outside the editor cares.
     this.onState?.(this);
 
+    // Both strips, before any of the early returns below: the GLOBAL box has its chips
+    // whether or not a block is selected, and its subjects are the clip's, not a shot's.
+    this.renderChips(timeline);
+
     if (document.activeElement !== this.global) this.global.value = timeline.global_prompt || "";
     if (document.activeElement !== this.music) this.music.value = timeline.music || "";
 
@@ -2524,7 +2552,6 @@ export class TimelineEditor {
         <label title="How long this block runs, in frames.">length <input class="mmd-f-len" type="number" min="1" step="1"><span class="mmd-unit">f</span></label>
         <label class="mmd-f-locked" title="The same length in seconds. Read-only."><span class="mmd-key">=</span><span class="mmd-mirror mmd-f-secs"></span><span class="mmd-unit">s</span></label>`)
         + group("shot", shotForm)
-        + group("subjects", this.subjectStrip(timeline))
         + group("camera", cameras)
         + group("file", subject)
         // Last, because it is the longest row and the only one that is usually absent --
@@ -2773,7 +2800,7 @@ export class TimelineEditor {
     // The chips carry names and faces owned by the cast, so they go stale as the cast is
     // edited. Rebuilt on every render: they hold no caret to lose.
     this.paintPicker(timeline);
-    this.paintSubjects(item);
+    this.paintSubjects();
     this.paintAddLine();
 
     // The locked mirrors are never the field under the cursor, so they follow every

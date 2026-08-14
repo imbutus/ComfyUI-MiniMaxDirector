@@ -138,13 +138,15 @@ not on screen — and the TIMELINE tab shows:
   shot, which is entered from nowhere. `on-screen text` is any words actually visible in
   frame — a sign, a banner, a label — sent in double quotes, verbatim and untranslated,
   the same service the dialogue row does for the spoken words.
-- **SUBJECTS** — one chip per card WHO & WHAT has numbered, each with the file's thumbnail
-  and the token it became: `<Subject 1> man`. Click one and the token is written into
-  SEGMENT PROMPT at the caret; a chip whose token the text already names is lit. Typing
-  the number by hand is the alternative, and getting it wrong is silent — the prompt then
-  cites a subject that does not exist and nothing on screen says so. A card with no
-  description takes no number and so has no chip, and the row is absent until WHO & WHAT
-  has at least one numbered card.
+- **The subject chips** sit along the bottom of the prompt box itself — one per card
+  WHO & WHAT has numbered, each with the file's thumbnail and the token it became:
+  `<Subject 1> man`. Click one and the token is written into the box above it at the
+  caret; a chip whose token that box already names is lit. The GLOBAL PROMPT box carries
+  the same strip, because a style or a place is usually named once for the whole clip.
+  Typing the number by hand is the alternative, and getting it wrong is silent — the
+  prompt then cites a subject that does not exist and nothing on screen says so. A card
+  with no description takes no number and so has no chip, and the strip is absent until
+  WHO & WHAT has at least one numbered card.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
   `amplitude` and `speed` sit beside it: how far the framing travels and how fast. Both
