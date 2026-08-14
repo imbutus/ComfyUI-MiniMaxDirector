@@ -225,3 +225,50 @@ def test_a_cue_is_never_asked_for_twice():
         cues=[{"start": 0, "length": 24, "prompt": "One clear bell chime."}],
     )
     assert compile_timeline(timeline).prompt.count("One clear bell chime") == 1
+
+
+# -- pasted text -------------------------------------------------------------
+#
+# The compiled prompt uses newlines as structure: `subject_definitions` and
+# `retention_analysis` are one entry per line, and the top-level fields are separated by a
+# blank line. A paragraph pasted in from a document carries both, so every value somebody
+# types is flattened on the way in.
+
+
+def test_a_pasted_newline_never_reaches_the_prompt():
+    timeline = build(
+        global_prompt="Neon alley,\r\n\r\nrain everywhere.",
+        shots=[{"start": 0, "length": 24, "prompt": "The apple\r\nturning.",
+                "screen_text": "TWO\nWORDS"}],
+        cues=[{"start": 0, "length": 24, "prompt": "One chime,\nthen silence."}],
+        moves=[{"start": 0, "length": 24, "camera": "static", "prompt": "held\n still"}],
+    )
+    body = compile_timeline(timeline).prompt.split("overall_soundscape:")[0]
+    assert "\r" not in body
+    assert "The apple turning." in body
+    assert "\n" not in body.split("detailed_description:")[-1].rstrip("\n")
+
+
+def test_a_pasted_newline_never_splits_a_subject_definition():
+    timeline = build(
+        shots=[{"start": 0, "length": 24, "prompt": "A raccoon.",
+                "media": {"kind": "image", "filename": "a.png", "role": "reference",
+                          "retention": "fully_preserved",
+                          "description": "the raccoon:\r\ngrey fur, a ringed tail"}}],
+    )
+    prompt = compile_timeline(timeline).prompt
+    definitions = prompt.split("subject_definitions:\n")[1].split("\n\n")[0]
+    assert definitions.count("\n") == 0
+    assert definitions == "<Picture 1> is the raccoon: grey fur, a ringed tail."
+
+
+def test_a_pasted_newline_never_breaks_a_dialogue_tag():
+    timeline = build(
+        shots=[{"start": 0, "length": 24, "prompt": "The apple.",
+                "lines": [{"ids": "S1", "delivery": "says", "language": "English",
+                           "text": "Line one.\r\nLine two."}]}],
+        speakers=[{"id": 1, "voice": "A dry voice,\nclose to the microphone"}],
+    )
+    prompt = compile_timeline(timeline).prompt
+    assert "<d>[English] Line one. Line two.</d>" in prompt
+    assert "A dry voice, close to the microphone (S1) says" in prompt

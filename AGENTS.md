@@ -376,6 +376,14 @@ no weights, in about 0.2 seconds.
     edit repaints the blocks, which carry its chips) left the whole clip drawn into a
     corner, still there when the tab came back. `showTab` re-renders on the way into
     `timeline`, one frame later so layout has caught up with the class it just removed.
+17. **Newlines are structure, so no typed value may contain one.** `subject_definitions`
+    and `retention_analysis` are one entry per line and the top-level fields are joined by
+    a blank line, so a paragraph pasted in from a document fabricated a subject entry and
+    could open what read as a field of its own. `timeline.flat()` collapses every run of
+    whitespace to one space, applied in `Timeline.from_dict` -- including `_media`, which
+    reaches the record's `description`, `subject`, `onto` and each `subjects[]` entry --
+    so the rest of the compiler never has to defend itself. Text arriving any other way
+    (a new field, a new record key) needs the same treatment at the door.
 
 ## Calling into ComfyUI
 

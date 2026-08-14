@@ -200,6 +200,43 @@ class Reference:
         return f"<{self.kind.capitalize()} {self.index}>"
 
 
+def flat(text: Any) -> str:
+    """One line, always: every run of whitespace becomes a single space.
+
+    Nothing the author types has a newline that means anything -- the compiled prompt uses
+    them as structure. `subject_definitions` and `retention_analysis` are one entry per
+    line, and the top-level fields are separated by a blank line, so a paragraph pasted in
+    from a document or a browser fabricates an entry, or worse, looks like the start of a
+    field the guide never asked for. Text arrives here on the way in and is flat from then
+    on, rather than being defended against at each of the thirty places it is read.
+    """
+    return " ".join(str(text or "").split())
+
+
+def _media(record: Any) -> dict[str, Any] | None:
+    """An attached file's record, with the sentences somebody typed into it flattened.
+
+    A record is otherwise passed through untouched: filenames, retention markers and roles
+    are vocabulary, not prose, and a copy is taken so nothing upstream changes under the
+    caller. `subjects` holds one entry per thing drawn out of the file, and each entry's
+    `name` is the sentence that becomes a `subject_definitions` line.
+    """
+    if not isinstance(record, dict) or not record:
+        return record or None
+    copy = dict(record)
+    for key in ("description", "subject", "onto"):
+        if key in copy:
+            copy[key] = flat(copy[key])
+    entries = copy.get("subjects")
+    if isinstance(entries, list):
+        copy["subjects"] = [
+            {**entry, **{key: flat(entry[key]) for key in ("name", "onto") if key in entry}}
+            if isinstance(entry, dict) else entry
+            for entry in entries
+        ]
+    return copy
+
+
 def _speech(data: dict[str, Any]) -> bool:
     """Whether this document has dialogue, stated or inferred.
 
@@ -240,8 +277,8 @@ def _speakers(data: dict[str, Any]) -> list["Speaker"]:
                 except (TypeError, ValueError):
                     subject = 0
                 found.append(Speaker(
-                    id=number, voice=str(item.get("voice", "")),
-                    name=str(item.get("name", "")), uid=str(item.get("uid", "")),
+                    id=number, voice=flat(item.get("voice", "")),
+                    name=flat(item.get("name", "")), uid=str(item.get("uid", "")),
                     subject=max(0, subject),
                     voice_from=str(item.get("voice_from", ""))))
         if found:
@@ -270,8 +307,8 @@ def _lines(data: Any) -> tuple["Line", ...]:
         return ()
     return tuple(
         Line(
-            text=str(item.get("text", "")),
-            speaker=str(item.get("speaker", "")),
+            text=flat(item.get("text", "")),
+            speaker=flat(item.get("speaker", "")),
             ids=str(item.get("ids", "S1")),
             delivery=str(item.get("delivery", "says")),
             language=str(item.get("language", "English")),
@@ -661,17 +698,17 @@ class Timeline:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Timeline":
         return cls(
-            global_prompt=str(data.get("global_prompt", "")),
-            music=str(data.get("music", "")),
+            global_prompt=flat(data.get("global_prompt", "")),
+            music=flat(data.get("music", "")),
             shots=[
                 Shot(
                     start=int(item.get("start", 0)),
                     length=int(item.get("length", 0)),
-                    prompt=str(item.get("prompt", "")),
+                    prompt=flat(item.get("prompt", "")),
                     camera=str(item.get("camera", "")),
-                    media=item.get("media") or None,
+                    media=_media(item.get("media")),
                     lines=_lines(item.get("lines")),
-                    screen_text=str(item.get("screen_text", "")),
+                    screen_text=flat(item.get("screen_text", "")),
                     transition=str(item.get("transition", "") or "cut"),
                 )
                 for item in data.get("shots", [])
@@ -680,8 +717,8 @@ class Timeline:
                 Cue(
                     start=int(item.get("start", 0)),
                     length=int(item.get("length", 0)),
-                    prompt=str(item.get("prompt", "")),
-                    media=item.get("media") or None,
+                    prompt=flat(item.get("prompt", "")),
+                    media=_media(item.get("media")),
                 )
                 for item in data.get("cues", [])
             ],
@@ -690,7 +727,7 @@ class Timeline:
                     start=int(item.get("start", 0)),
                     length=int(item.get("length", 0)),
                     camera=str(item.get("camera", "")),
-                    prompt=str(item.get("prompt", "")),
+                    prompt=flat(item.get("prompt", "")),
                     # Absent means written before the two fields existed, which is not the
                     # same as chosen empty: see `LEGACY_AMPLITUDE_SPEED`.
                     **_dynamics(item),
@@ -701,7 +738,7 @@ class Timeline:
                 Reference(
                     kind=str(item.get("kind", "picture")),  # type: ignore[arg-type]
                     index=int(item.get("index", 1)),
-                    label=str(item.get("label", "")),
+                    label=flat(item.get("label", "")),
                 )
                 for item in data.get("references", [])
             ],

@@ -476,6 +476,12 @@ Attach a file and the prompt switches to H3's six-section full-reference format 
 different name, with one difference the guide asks for: the GLOBAL PROMPT is stated on its
 own line **above** `[Shot 1]` rather than folded into it.
 
+**Paste anything you like.** Line breaks in the format mean something — `subject_definitions`
+and `retention_analysis` list one entry per line, and a blank line starts a new field — so
+every box you type or paste into is flattened to a single line on the way out. A paragraph
+copied from a document arrives as one sentence with single spaces, not as an extra subject
+the model was never told about.
+
 ---
 
 ## The outputs
