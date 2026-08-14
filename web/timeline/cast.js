@@ -234,11 +234,30 @@ export class CastEditor {
     // the card was made from a block's FILE row the tab it lives on was hidden until the
     // click that got here.
     requestAnimationFrame(() => {
+      this.growForNewCard();
       const box = this.list
         .querySelector(`[data-card="${state.cards.length - 1}"] .mmd-card-name`);
       box?.focus();
       box?.scrollIntoView({ block: "nearest" });
     });
+  }
+
+  /**
+   * Make room for a card that was just added.
+   *
+   * The list has a height of its own only when somebody asked for one, and a card added
+   * under a height like that lands below the fold: half a row, and the Add button that
+   * made it still sitting where it was. The box grows by exactly what is now hidden.
+   *
+   * Written through `onBoxHeight`, the channel the grip already uses, so there is still
+   * one hand on this number. It only ever grows, and only on an add -- the measurement is
+   * one-way, and a pass that ran on every render with it would ratchet the box open.
+   */
+  growForNewCard() {
+    if (!this.box?.style.height) return;
+    const hidden = this.list.scrollHeight - this.list.clientHeight;
+    if (hidden <= 0) return;
+    this.onBoxHeight?.(Math.round(this.box.getBoundingClientRect().height + hidden));
   }
 
   drop(position) {
