@@ -175,34 +175,7 @@ app.registerExtension({
   },
 });
 
-/**
- * Sockets this node used to have, on a node that already exists.
- *
- * The four `ref_*` autogrow families are gone from the schema, but a node on a canvas
- * keeps the slots it was built with -- a workflow saved with them, or a tab that has been
- * open since before the change -- and they stay on screen as sockets the server no longer
- * declares. Removed here, on the node itself, so a graph cleans itself up on load rather
- * than needing to be rebuilt by hand.
- */
-const GONE = /^ref_(image|video|video_audio|audio)_\d+$/;
-
-function dropRetiredInputs(node) {
-  for (let index = (node.inputs?.length || 0) - 1; index >= 0; index -= 1) {
-    if (!GONE.test(node.inputs[index]?.name || "")) continue;
-    if (node.inputs[index].link != null) node.disconnectInput(index);
-    node.removeInput(index);
-  }
-}
-
 function attach(node) {
-  dropRetiredInputs(node);
-  const configuredDrop = node.onConfigure;
-  node.onConfigure = function () {
-    const result = configuredDrop?.apply(this, arguments);
-    dropRetiredInputs(this);
-    return result;
-  };
-
   const json = node.widgets?.find((widget) => widget.name === STATE_WIDGET);
   if (!json) return;
 
