@@ -592,8 +592,8 @@ const CSS = `
    in a column of their own, sized to themselves, the sentence wrapping in what is left.
    Under a rule across the row they were correct and mostly empty: three short selects had
    a whole line to sit at the left of. */
-.mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:wrap; align-items:center;
-  gap:9px; flex:0 0 auto; align-self:stretch; padding-left:9px;
+.mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:nowrap; align-items:center;
+  white-space:nowrap; gap:9px; flex:0 0 auto; align-self:stretch; padding-left:9px;
   border-left:1px solid #262b34; }
 /* The tag names the group, so it sits beside the first row of it -- the same rule the
    dialogue group already follows, for the same reason. */
