@@ -133,6 +133,8 @@ export class TimelineEditor {
     this.widgets = widgets;
     /** Called after every panel render, so the host can remember what was selected. */
     this.onState = null;
+    /** Called by Clear, for the half of the document this editor does not own. */
+    this.onClearCast = null;
     this.selected = [];
     this.drag = null;
     this.scrubbing = false;
@@ -878,21 +880,29 @@ export class TimelineEditor {
   }
 
   /**
-   * Empty the timeline.
+   * Empty the piece.
    *
    * Everything: the blocks on all three tracks, the global prompt, the music, the clip
-   * settings the document owns. Deleting blocks one selection at a time leaves the prose
+   * settings the document owns -- and the cards on WHO & WHAT, which are the same piece
+   * written on another tab. Deleting blocks one selection at a time leaves the prose
    * behind, and a global prompt describing a scene that no longer exists is the kind of
-   * leftover that ends up in a render.
+   * leftover that ends up in a render; a card is worse, because it points `from` at a file
+   * that is not on the timeline any more.
    *
-   * One undo step, and the confirm is skipped for a document that is already empty --
-   * asking whether to clear nothing is a dialog with one correct answer.
+   * The confirm is skipped for a document that is already empty -- asking whether to clear
+   * nothing is a dialog with one correct answer. Undo covers the timeline; the cards are
+   * a document of their own and the history stack does not hold them, which is what the
+   * wording says.
    */
   clear() {
     const current = this.read();
+    const cards = (this.castOf?.()?.cards || []).length;
     const populated = TRACKS.some(({ key }) => items(current, key).length)
-      || current.global_prompt?.trim() || current.music?.trim();
-    if (populated && !confirm("Clear the timeline? Cmd/Ctrl+Z puts it back.")) return;
+      || current.global_prompt?.trim() || current.music?.trim() || cards;
+    const ask = cards
+      ? "Clear the timeline and every card? Cmd/Ctrl+Z puts the timeline back."
+      : "Clear the timeline? Cmd/Ctrl+Z puts it back.";
+    if (populated && !confirm(ask)) return;
 
     this.selected = [];
     this.selection = null;
@@ -901,6 +911,8 @@ export class TimelineEditor {
     // The duration is kept: it is a property of the piece being made, not of its content,
     // and clearing it would silently drop back to whatever the blocks happened to need.
     this.commit({ ...emptyTimeline(), duration: current.duration || 0 });
+    // Second, because the cast editor's own commit renders this one on the way out.
+    this.onClearCast?.();
   }
 
   /**

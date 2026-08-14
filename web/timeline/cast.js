@@ -252,6 +252,17 @@ export class CastEditor {
     this.commit(state);
   }
 
+  /**
+   * Every card gone, and `they speak` back on.
+   *
+   * The toolbar's Clear empties the piece, not the tab that happens to be open: cards
+   * describe files that are no longer on the timeline, so leaving them behind leaves a
+   * list of subjects pointed at nothing. Its own confirm has already been answered.
+   */
+  clear() {
+    this.commit({ ...EMPTY, cards: [] });
+  }
+
   /** A person's face: the file they were drawn from, at thumbnail size. */
   face(card, file) {
     const src = file ? media.url(file.media) : null;

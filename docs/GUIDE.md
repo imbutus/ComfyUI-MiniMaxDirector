@@ -327,8 +327,10 @@ selection; `Cmd/Ctrl+A` selects every block on every track; `S` cuts the selecti
 at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
 it, keeping its spacing; `Cmd/Ctrl+Z` undoes.
 
-**Clear** in the toolbar empties the timeline — every block, the global prompt and the
-music. One undo step puts it back.
+**Clear** in the toolbar empties the piece — every block, the global prompt, the music and
+every card on WHO & WHAT, because a card left behind points `from` at a file that is no
+longer on the timeline. One undo step puts the timeline back; the cards are a document of
+their own and do not come back with it.
 
 The red playhead is the timeline's one landmark. Click empty track to move it, and it
 becomes where new blocks land, what a drag snaps to, and what `+` / `-` zoom around.

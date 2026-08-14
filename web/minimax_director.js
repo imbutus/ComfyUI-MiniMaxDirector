@@ -276,6 +276,9 @@ function attach(node) {
     // photograph often holds several subjects, and picking the same filename out of a
     // select once per person is the long way to say so.
     editor.onAddCard = (filename) => inside.addSubject(filename || "");
+    // Clear empties the piece, and the cards are part of the piece -- they just live in a
+    // widget of their own, which the timeline editor has no hand on.
+    editor.onClearCast = () => inside.clear();
     // `edit` beside a subject on the FILE row lands on that card's name box. A frame
     // later, because the tab it lives on was hidden until the click that got here.
     editor.onEditCard = (at) => requestAnimationFrame(() => {
