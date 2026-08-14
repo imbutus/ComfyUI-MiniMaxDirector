@@ -238,7 +238,6 @@ export class CastEditor {
     // the card was made from a block's FILE row the tab it lives on was hidden until the
     // click that got here.
     requestAnimationFrame(() => {
-      this.growForNewCard();
       const box = this.list
         .querySelector(`[data-card="${state.cards.length - 1}"] .mmd-card-name`);
       box?.focus();
@@ -247,17 +246,19 @@ export class CastEditor {
   }
 
   /**
-   * Make room for a card that was just added.
+   * Make room for whatever the list now holds.
    *
-   * The list has a height of its own only when somebody asked for one, and a card added
-   * under a height like that lands below the fold: half a row, and the Add button that
-   * made it still sitting where it was. The box grows by exactly what is now hidden.
+   * The list has a height of its own only when somebody asked for one, and content that
+   * outgrows it -- a card added, a description wrapping onto a second line -- lands below
+   * the fold behind a scrollbar. The box grows by exactly what is hidden.
    *
    * Written through `onBoxHeight`, the channel the grip already uses, so there is still
-   * one hand on this number. It only ever grows, and only on an add -- the measurement is
-   * one-way, and a pass that ran on every render with it would ratchet the box open.
+   * one hand on this number. It only grows, never shrinks: a height somebody dragged is
+   * a floor, not a ceiling. Run from `render`, so it answers a change in the cards rather
+   * than a keystroke -- and a drag that makes the box smaller holds until the cards
+   * themselves change.
    */
-  growForNewCard() {
+  growToFit() {
     if (!this.box?.style.height) return;
     // The list's own gap on top of the overflow: exactly the hidden pixels leaves the new
     // card flush against the bottom edge, which reads as a card that is still cut off --
@@ -462,7 +463,10 @@ export class CastEditor {
     // A card taller or shorter than the room the list has been given is what the host
     // needs to know about, so the height follows the list on every render rather than on
     // a gesture.
-    requestAnimationFrame(() => this.onResize?.());
+    requestAnimationFrame(() => {
+      this.growToFit();
+      this.onResize?.();
+    });
   }
 
   /** Values and numbers, for a list whose shape has not changed. */
