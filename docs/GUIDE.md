@@ -325,7 +325,7 @@ move, and drag a box over several to select them together. Clicking one member o
 selection singles it out; `Cmd/Ctrl`-clicking one takes it out and leaves the rest. `Delete` removes the
 selection; `Cmd/Ctrl+A` selects every block on every track; `S` cuts the selection in two
 at the playhead; `Cmd/Ctrl+C` / `Cmd/Ctrl+V` copy and paste
-it, keeping its spacing; `Cmd/Ctrl+D` duplicates; `Cmd/Ctrl+Z` undoes.
+it, keeping its spacing; `Cmd/Ctrl+Z` undoes.
 
 **Clear** in the toolbar empties the timeline — every block, the global prompt and the
 music. One undo step puts it back.

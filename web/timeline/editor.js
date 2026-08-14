@@ -412,11 +412,6 @@ export class TimelineEditor {
         event.preventDefault();
         event.stopPropagation();
         this.copySelected();
-      } else if (chord && key === "d") {
-        event.preventDefault();
-        event.stopPropagation();
-        this.copySelected();
-        this.paste();
       } else if (event.key === "Escape") {
         event.stopPropagation();
         this.selected = [];
