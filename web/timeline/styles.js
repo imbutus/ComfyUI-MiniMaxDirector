@@ -646,7 +646,7 @@ const CSS = `
   border-style:dashed; }
 /* The box that line is about, in the line's own colour: the empty row is the reason the
    button beside it is dead, and it is where the fix is typed. */
-.mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#e0b055; }
+.mmd-f-lines.mmd-f-many .mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#6b5533; }
 /* The group you are typing in, ringed in the accent colour -- what a card does, for the
    same reason: a panel of recessed groups says nothing about which one has the caret. */
 .mmd-f-group:focus-within { border-style:solid; border-color:#3a4150;
@@ -677,8 +677,15 @@ const CSS = `
 /* The name of the field is its own element now, so it needs the space the collapsed
    whitespace used to give it. */
 .mmd-f-line-row > label > .mmd-key { margin-right:7px; }
-.mmd-seg-fields .mmd-f-addline-why { display:none; color:#e0b055; font-size:11px; }
-.mmd-f-line-row.mmd-f-quiet .mmd-f-addline-why { display:block; }
+/* Quiet amber. The card notes are full brightness because a card that compiles to nothing
+   is the only thing wrong with it; here the row still works and the only thing missing is
+   the words -- one step above the labels around it, and no further. */
+.mmd-seg-fields .mmd-f-addline-why { display:none; color:#a2854f; font-size:11px; }
+.mmd-f-many .mmd-f-line-row.mmd-f-quiet .mmd-f-addline-why { display:block; }
+/* With nobody on WHO & WHAT there is a first thing to do, and it is not this: the row is
+   waiting on a card, which the row already says and links to. Nothing is marked. */
+.mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-addline-why { display:none; }
+.mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-line { border-color:#252b34; }
 /* Everything on the row belongs beside the box, not beside the box and its message: the
    row stops centring while the message is up, and the two labels that would ride to the
    top of it are nudged back onto the input's own line. */
