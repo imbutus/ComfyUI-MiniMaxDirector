@@ -318,7 +318,9 @@ from the TIMELINE tab.
 every `<d>` go at once, and the cards stay — a character can be in a clip without saying
 anything. The voice row goes with them, `voice from` included: a timbre reference is an
 instruction about a voice, and with nobody speaking the compiler drops it rather than
-telling the model a recording is the reference for a speaker it never voices.
+telling the model a recording is the reference for a speaker it never voices. The `Sn`
+badge goes too, on the cards and in the legend: it is the number a card is called by when
+it says something, and with the switch off no card says anything.
 
 WHO & WHAT lives on the document rather than on each line because a speaker is not a property
 of one shot. Describing the same `S1` two different ways in two blocks was possible before,

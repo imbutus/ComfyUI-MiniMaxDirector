@@ -193,7 +193,8 @@ through `editor.onAddCard`.
 - `voice_from` is dropped by `cast.merge` when `they speak` is off, and the editor hides
   the whole voice row with it. A timbre reference is an instruction about a voice; with no
   dialogue compiled the prompt was saying a recording was the reference for a speaker it
-  never asked the model to voice.
+  never asked the model to voice. `.mmd-card-sid` — the `Sn` badge on a card and the `S1…Sn`
+  line of the legend — is hidden by the same rule, for the same reason.
 - The other half is the reverse -- a voice, and no line naming its `S`. `voice_from` makes
   it a wrong statement rather than an idle one: the prompt says a recording is the timbre
   reference for a speaker nothing ever asks the model to voice. This half *is* guarded on

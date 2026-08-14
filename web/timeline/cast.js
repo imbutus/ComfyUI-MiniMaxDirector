@@ -117,7 +117,7 @@ export class CastEditor {
           <span class="mmd-hint">everyone and everything the prompt has to name — people, props, costumes, places: one card each, and each is where its file is described</span>
         </label>
         <div class="mmd-cast-legend">
-          <span><b>S1…Sn</b> a <b>speaker</b> — who says a line. Any card with a voice.
+          <span class="mmd-card-sid"><b>S1…Sn</b> a <b>speaker</b> — who says a line. Any card with a voice.
             The words themselves go on a shot's dialogue row.</span>
           <span><b>&lt;Subject 1…n&gt;</b> a <b>subject</b> — a person, a costume, a prop,
             a place, a look the model must keep. A card is one only with a file
@@ -378,7 +378,7 @@ export class CastEditor {
             <div class="mmd-card-top">
               <input class="mmd-card-name" type="text" placeholder="name it: WOMAN, COAT"
                      value="${value(card.name)}">
-              <span class="mmd-card-badge" title="The speaker ID the prompt uses">S${card.id}</span>
+              <span class="mmd-card-badge mmd-card-sid" title="The speaker ID the prompt uses">S${card.id}</span>
               <span class="mmd-card-badge mmd-card-subject${index ? "" : " mmd-hide"}"
                     title="What the prompt calls this subject, computed from where its file sits on the director's timeline">&lt;Subject ${index}&gt;</span>
               <span class="mmd-card-badge mmd-card-nosubject${index ? " mmd-hide" : ""}"

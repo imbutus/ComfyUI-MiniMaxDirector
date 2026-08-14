@@ -89,7 +89,11 @@ const CSS = `
 /* Nobody speaks: the voice goes, and so does the recording it could have been taken
    from. A timbre reference is an instruction about a voice, and with the switch off the
    compiler drops it -- a picker still on screen would be a control with no effect. */
+/* And the speaker ID goes with them. Sn is the number a card is called by when it says
+   something; with the switch off no card says anything, so the badge names a role nothing
+   in the compiled prompt can play. */
 .mmd-cast-box.mmd-off .mmd-card-voice-row,
+.mmd-cast-box.mmd-off .mmd-card-sid,
 .mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
 .mmd-cast-foot { display:flex; align-items:center; gap:12px; }
 .mmd-cast-foot .mmd-grow { flex:1; }
