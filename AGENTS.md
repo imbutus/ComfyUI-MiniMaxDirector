@@ -48,7 +48,7 @@ These are the model's, not design choices. Verified in
 | Frame rate | fixed **24 fps** (`FPS = 24`) | no rate to expose; Wan2GP raises on anything else |
 | Clip length | `length % 17 == 5` | 5, 22, 39, 56, 73, 90, 107, 124 … only 8s, 25s, 42s are whole seconds |
 | Trained range | ~124–362 frames (5.2–15.1s) | the node accepts up to 3600, untested there |
-| Reference caps | 9 images, 3 videos, 3 video-soundtracks, 3 audios | `io.Autogrow` templates |
+| Reference caps | 9 images, 3 videos, 3 video-soundtracks, 3 audios | the core node's own autogrow templates; the director has no reference sockets and sends what its timeline holds |
 | Guidance | CFG-free | official graphs use `BasicGuider`, never a negative prompt |
 
 The 17 comes from the video VAE's time axis: the latent is a row of slots, 17 frames pack
@@ -379,7 +379,8 @@ entry point from `FUNCTION`, drops arguments the installed version does not decl
 unwraps the result. The H3 nodes use ComfyUI's **V3 schema**: `FUNCTION` is
 `EXECUTE_NORMALIZED` and the return is a `NodeOutput` carrying values on `.result`.
 Autogrow inputs arrive as **dicts** — `ref_images={"ref_image_0": tensor}` — not as flat
-keyword arguments.
+keyword arguments. The director declares none of them; it builds those dicts with
+`references.slots()` from the files on its timeline.
 
 ## Tests
 

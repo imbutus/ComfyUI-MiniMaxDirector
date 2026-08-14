@@ -1,9 +1,10 @@
 """The nodes ComfyUI sees.
 
-These use ComfyUI's V3 schema, for one reason that matters: `io.Autogrow`. Declaring
-nine picture slots as plain optional inputs puts a wall of 27 sockets on the node and
-pushes the timeline off the bottom of it. Autogrow shows only the slots in use plus one
-spare, which is what the core H3 node does and what leaves room for the editor.
+Every reference the director sends comes off its own timeline, so the node has no
+reference sockets at all -- the four autogrow families it used to carry put four spare
+sockets on the node for a path nobody took. A socket carries a tensor and nothing that
+says what the tensor is, and a file with nothing said about it is a file the prompt
+cannot name; the timeline is where a file is attached *and* described.
 """
 
 from __future__ import annotations
@@ -20,11 +21,6 @@ from ..timeline import Timeline
 CATEGORY = "MiniMaxDirector"
 MAX_RESOLUTION = 16384
 
-MAX_PICTURES = 9
-MAX_VIDEOS = 3
-MAX_AUDIOS = 3
-"""Mirrors the core node's autogrow templates exactly."""
-
 DEFAULT_TIMELINE = """{
   "version": 1,
   "fps": 24,
@@ -40,16 +36,6 @@ DEFAULT_TIMELINE = """{
 Starting with an explicit duration rather than none is what makes the clip a fixed thing
 you arrange segments inside, instead of a bag that silently grows to fit whatever the
 last drag did."""
-
-
-def _grow(name: str, prefix: str, input_type, maximum: int):
-    return io.Autogrow.Input(
-        name,
-        optional=True,
-        template=io.Autogrow.TemplatePrefix(
-            input=input_type, prefix=prefix, min=0, max=maximum
-        ),
-    )
 
 
 def _path(record: dict) -> str:
@@ -127,11 +113,6 @@ class MiniMaxDirector(io.ComfyNode):
                 io.Vae.Input("audio_vae", optional=True),
                 io.Image.Input("first_frame", optional=True),
                 io.Image.Input("last_frame", optional=True),
-                _grow("ref_images", "ref_image_", io.Image.Input("ref_image"), MAX_PICTURES),
-                _grow("ref_videos", "ref_video_", io.Image.Input("ref_video"), MAX_VIDEOS),
-                _grow("ref_video_audios", "ref_video_audio_",
-                      io.Audio.Input("ref_video_audio"), MAX_VIDEOS),
-                _grow("ref_audios", "ref_audio_", io.Audio.Input("ref_audio"), MAX_AUDIOS),
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
@@ -144,14 +125,13 @@ class MiniMaxDirector(io.ComfyNode):
 
     @classmethod
     def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",
-                cast=None, audio_vae=None, first_frame=None, last_frame=None,
-                ref_images=None, ref_videos=None, ref_video_audios=None,
-                ref_audios=None) -> io.NodeOutput:
+                cast=None, audio_vae=None, first_frame=None,
+                last_frame=None) -> io.NodeOutput:
         document = Timeline.from_json(cast_merge(timeline, cast))
 
-        # Files on the timeline come first and files wired into sockets follow, so the
-        # ordinals the compiler wrote into the prompt are the ones the model receives.
-        # The timeline is where an author actually looks, so it owns the numbering.
+        # Every reference comes off the timeline. It is the only place a file can be
+        # described -- a socket carries a tensor and nothing that says what it is -- so a
+        # wired one could only ever be an unnamed reference the prompt never mentions.
         pictures = [_load(a.record)[0] for a in attachments.of_kind(document, "image")]
         videos, soundtracks = [], []
         for item in attachments.of_kind(document, "video"):
@@ -159,11 +139,6 @@ class MiniMaxDirector(io.ComfyNode):
             videos.append(frames)
             soundtracks.append(sound)
         audios = [_load(a.record)[0] for a in attachments.of_kind(document, "audio")]
-
-        pictures += references.ordered("ref_image_", ref_images, MAX_PICTURES)
-        videos += references.ordered("ref_video_", ref_videos, MAX_VIDEOS)
-        soundtracks += references.ordered("ref_video_audio_", ref_video_audios, MAX_VIDEOS)
-        audios += references.ordered("ref_audio_", ref_audios, MAX_AUDIOS)
 
         document = document.with_references(
             references.assign(pictures, videos, soundtracks, audios)
