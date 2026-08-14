@@ -24,6 +24,10 @@ import { ICON } from "./icons.js";
 
 export const EMPTY = { version: 1, speech: true, cards: [] };
 
+/** The gap between two cards, as `.mmd-cast` sets it. Kept here because growing the box
+ *  for a new card has to leave that much under it, or the card reads as clipped. */
+const LIST_GAP = 6;
+
 /** User text into markup. The tokens this editor prints are literally `<Picture 1>`. */
 const text = (value) => String(value ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -255,8 +259,11 @@ export class CastEditor {
    */
   growForNewCard() {
     if (!this.box?.style.height) return;
-    const hidden = this.list.scrollHeight - this.list.clientHeight;
-    if (hidden <= 0) return;
+    // The list's own gap on top of the overflow: exactly the hidden pixels leaves the new
+    // card flush against the bottom edge, which reads as a card that is still cut off --
+    // and one stray pixel of rounding puts the scrollbar back.
+    const hidden = this.list.scrollHeight - this.list.clientHeight + LIST_GAP;
+    if (hidden <= LIST_GAP) return;
     this.onBoxHeight?.(Math.round(this.box.getBoundingClientRect().height + hidden));
   }
 
