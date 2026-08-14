@@ -588,10 +588,13 @@ const CSS = `
 .mmd-seg-fields .mmd-f-claimed .mmd-f-note { flex-basis:100%; }
 /* What the file is, and what the block does with it, are two different questions, and on
    one line they answered each other: a description long enough to wrap ran its "edit" link
-   into "used as". The controls take a line of their own under a hairline, which also gives
-   the sentence above the full width to wrap in. */
+   into "used as". They keep the line and take a rule between them instead -- the controls
+   in a column of their own, sized to themselves, the sentence wrapping in what is left.
+   Under a rule across the row they were correct and mostly empty: three short selects had
+   a whole line to sit at the left of. */
 .mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:wrap; align-items:center;
-  gap:9px; flex:1 1 100%; padding-top:6px; border-top:1px solid #262b34; }
+  gap:9px; flex:0 0 auto; align-self:stretch; padding-left:9px;
+  border-left:1px solid #262b34; }
 /* The tag names the group, so it sits beside the first row of it -- the same rule the
    dialogue group already follows, for the same reason. */
 .mmd-f-group:has(> .mmd-f-fileopts) { align-items:flex-start; }
