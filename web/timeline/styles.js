@@ -593,8 +593,8 @@ const CSS = `
    Under a rule across the row they were correct and mostly empty: three short selects had
    a whole line to sit at the left of. */
 .mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:nowrap; align-items:center;
-  white-space:nowrap; gap:9px; flex:0 0 auto; align-self:stretch; padding-right:9px;
-  border-right:1px solid #262b34; }
+  white-space:nowrap; gap:9px; flex:0 0 auto; align-self:stretch; padding-right:18px;
+  margin-right:9px; border-right:1px solid #262b34; }
 /* The tag names the group, so it sits beside the first row of it -- the same rule the
    dialogue group already follows, for the same reason. */
 .mmd-f-group:has(> .mmd-f-fileopts) { align-items:flex-start; }
