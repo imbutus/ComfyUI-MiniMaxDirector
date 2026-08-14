@@ -271,16 +271,6 @@ export class TimelineEditor {
       // A card for the file this block carries, made from here rather than by walking
       // over to the tab and finding the same filename in a select. The host owns the
       // document, so it does the writing; the tab opens either way.
-      // A chip writes into the box it sits in, and it sits in the box it writes into: the
-      // shot's text on TIMELINE, the clip-wide one on GLOBAL. A style or a place is named
-      // once for the whole piece, and typing `<Subject 1>` there by hand is the same silent
-      // mistake it is in a shot.
-      const chip = event.target.closest(".mmd-f-subj");
-      if (chip) {
-        this.writeToken(String(chip.dataset.token || ""),
-          chip.closest(".mmd-prompt")?.querySelector("textarea"));
-        return;
-      }
       if (event.target.closest(".mmd-f-addcard")) {
         const item = this.selection
           && items(this.read(), this.selection.track)[this.selection.index];
@@ -290,6 +280,17 @@ export class TimelineEditor {
         this.onAddCard?.(item?.media?.filename || "");
       }
     });
+
+    // On the root, not on the segment panel: a strip of these sits under every prompt box,
+    // and the one under GLOBAL PROMPT is on a different tab entirely. A chip writes into
+    // the box it sits in, and it sits in the box it writes into.
+    this.root.addEventListener("click", (event) => {
+      const chip = event.target.closest(".mmd-f-subj");
+      if (!chip) return;
+      this.writeToken(String(chip.dataset.token || ""),
+        chip.closest(".mmd-prompt")?.querySelector("textarea"));
+    });
+
     this.global = this.root.querySelector(".mmd-global");
     this.music = this.root.querySelector(".mmd-music");
 
