@@ -333,9 +333,19 @@ no weights, in about 0.2 seconds.
    `input`.** `"2."` is not a number yet, and a half-typed `144` is `1` for one keystroke:
    clamped live, the clamp lands on the intermediate value and is written back over what
    is being typed, so an existing number cannot be cleared and replaced. `start`, `end`
-   and `length` bind `change` (which fires on blur and on Enter) plus a keydown that
-   blurs on Enter, then repaint all three boxes from the document -- the same shape the
-   settings row already used. Ignore values until they parse.
+   `editor.numberField(element, apply, shown)` is the one place that rule lives, and every
+   number box in the editor goes through it -- `duration`, `width`, `height`, the
+   selection panel's `same length`, and a block's `start` / `end` / `length`. It binds
+   `change` (which fires on blur and on Enter) plus a keydown that blurs on Enter, ignores
+   a value until it parses, and repaints the box from `shown()` afterwards, because what
+   is set is not always what was asked for. A new number field uses it; a second dialect
+   is how these two behaviours drifted apart in the first place. Enter behaves the same
+   in *every* field: a delegated keydown on each root (`editor`, `cast`) blurs any input
+   or textarea, prompt boxes included, since `timeline.flat()` means a typed newline can
+   never reach the model -- and a `change` delegate on the same roots rewrites the field
+   with `model.flat()`, the JS twin, so the box shows what will compile. Setting `.value`
+   in script fires no event, so it dispatches `input` for the listener that owns the
+   field. `tests/js/lattice.test.mjs` checks the twin.
 9. **Every fixed vocabulary exists in two languages too.** `CAMERA_MOTION`, `RETENTIONS`,
    `AUDIO_RETENTIONS`, `ROLES`, `TRANSITIONS`, `AMPLITUDES`, `SPEEDS` are written in
    `timeline.py` and mirrored in `web/timeline/model.js`. A value the editor offers and

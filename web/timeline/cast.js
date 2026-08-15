@@ -18,7 +18,7 @@
 
 import { install } from "./styles.js";
 import * as media from "./media.js";
-import { RETENTIONS, audioOf, filesOf, items, speakerNumbers } from "./model.js";
+import { RETENTIONS, audioOf, filesOf, flat, items, speakerNumbers } from "./model.js";
 import { BUILD } from "../build.js";
 import { ICON } from "./icons.js";
 
@@ -146,6 +146,31 @@ export class CastEditor {
       const next = this.read();
       next.speech = this.speech.checked;
       this.commit(next);
+    });
+
+    // Enter finishes a field and leaves it, the same as on the timeline tab. A card's
+    // boxes are one sentence each -- the compiler flattens them anyway -- so there is
+    // nothing for a newline to do here but hold the caret in a box you are done with.
+    this.root.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const field = event.target;
+      const typing = field instanceof HTMLTextAreaElement
+        || (field instanceof HTMLInputElement
+            && !["checkbox", "radio", "button", "submit"].includes(field.type));
+      if (!typing) return;
+      event.preventDefault();
+      field.blur();
+    });
+
+    // And flattened on the way out, so a pasted paragraph reads on the card the way it
+    // will read in `subject_definitions` -- one line, which is what that block is.
+    this.root.addEventListener("change", (event) => {
+      const field = event.target;
+      if (!(field instanceof HTMLInputElement) || field.type !== "text") return;
+      const tidy = flat(field.value);
+      if (tidy === field.value) return;
+      field.value = tidy;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
     });
     this.root.querySelector(".mmd-cast-add")
       .addEventListener("click", () => this.addSubject());

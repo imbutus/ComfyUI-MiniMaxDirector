@@ -132,9 +132,15 @@ not on screen — and the TIMELINE tab shows:
   reading beside it, and one line underneath reading the whole span the same way:
   `Start: 0 f | End: 96 f | Length: 96 f = 4.00s`. Frames come first everywhere in the
   editor, including the playhead clock, because frames are what the document stores and
-  what H3 is given; seconds are the translation. All three take effect when you press
-  Enter or leave the box, not as you type — so you can clear one and retype it without
-  the half-finished number being read, refused and written back at you.
+  what H3 is given; seconds are the translation. Every number box in the editor —
+  these three, `duration`, `width`, `height` and `same length` — takes effect when you
+  press Enter or leave it, not as you type, so one can be cleared and retyped without the
+  half-finished number being read, refused and written back at you. What lands in the box
+  afterwards is what was actually set: a length stopped by its neighbour, a duration
+  snapped up onto the lattice. Enter finishes any field and leaves it, prompt boxes
+  included, and leaving a box flattens what is in it: paste a paragraph and it collapses
+  to one line the moment you step out, because one line is what the compiled prompt
+  carries. Nothing is lost but the line breaks.
 - **SHOT** — MAIN blocks only. `enter with` is how the cut into this shot is written —
   `cut` unless you ask for `dissolve`, `fade` or `wipe`; it is not offered on the first
   shot, which is entered from nowhere. `on-screen text` is any words actually visible in

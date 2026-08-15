@@ -17,7 +17,7 @@ import {
   AMPLITUDES, CAMERAS, ROLES, SPEEDS, TRANSITIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
-  remove, reshape, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
+  remove, reshape, flat, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
   audioOf, filesOf,
 } from "./model.js";
 import { numbering } from "./cast.js";
@@ -341,6 +341,40 @@ export class TimelineEditor {
       else if (el.dataset.del) this.deleteSelected();
       else if (el.dataset.reset) this.clear();
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
+    });
+
+    // Enter finishes a field and leaves it, everywhere -- the same bargain the number
+    // boxes make, so no box behaves differently from the one beside it.
+    //
+    // A prompt box loses nothing by it: the compiler flattens every typed value to one
+    // line, because the compiled format uses line breaks as structure, so a newline typed
+    // into a prompt was never going to reach the model. Enter has nothing to insert.
+    // Values themselves are already written as they are typed; this is about the caret.
+    this.root.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const field = event.target;
+      const typing = field instanceof HTMLTextAreaElement
+        || (field instanceof HTMLInputElement
+            && !["checkbox", "radio", "button", "submit"].includes(field.type));
+      if (!typing) return;
+      event.preventDefault();
+      field.blur();
+    });
+
+    // And what the box shows is what compiles. A pasted paragraph keeps its line breaks
+    // while you are working in it, and is flattened the moment you leave -- the same
+    // collapse `timeline.flat()` performs, done where it can be seen rather than silently
+    // at the end. `change` covers both ways out of a field: Enter, and clicking away.
+    this.root.addEventListener("change", (event) => {
+      const field = event.target;
+      if (!(field instanceof HTMLTextAreaElement)
+        && !(field instanceof HTMLInputElement && field.type === "text")) return;
+      const tidy = flat(field.value);
+      if (tidy === field.value) return;
+      field.value = tidy;
+      // The listener that owns this field is the one that writes it to the document, and
+      // it listens for `input`. Setting `.value` in script fires nothing by itself.
+      field.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
     // Delete / Backspace remove the selected segment.
@@ -1833,13 +1867,10 @@ export class TimelineEditor {
 
     const frames = (input) => Math.max(0, Math.round(Number(input.value)));
 
-    const bind = (selector, apply) => {
-      const node = this.settings.querySelector(selector);
-      node.onchange = () => { const next = this.read(); apply(next, node); this.commit(next); };
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") { event.preventDefault(); node.blur(); }
-      });
-    };
+    const bind = (selector, apply, shown) => this.numberField(
+      this.settings.querySelector(selector),
+      (node) => { const next = this.read(); apply(next, node); this.commit(next); },
+      shown);
 
     // Typed lengths land on the lattice too: 144 is not a length H3 can render, and a box
     // reading 144 beside a clip that generates 158 is the same lie the timeline used to
@@ -1847,6 +1878,11 @@ export class TimelineEditor {
     bind(".s-duration", (next, node) => {
       const asked = frames(node);
       next.duration = asked ? snapUp(asked) : 0;
+    }, () => {
+      // What was asked for is not always what is set: 144 snaps up to 158, and 0 means
+      // "follow the content", which reads as the span the blocks already cover.
+      const now = this.read();
+      return now.duration || span(now);
     });
 
     const setWidget = (name, raw) => {
@@ -1855,9 +1891,46 @@ export class TimelineEditor {
       w.value = raw;
       w.callback?.(raw);
     };
-    this.settings.querySelector(".s-width").onchange = (e) => setWidget("width", Math.max(32, +e.target.value));
-    this.settings.querySelector(".s-height").onchange = (e) => setWidget("height", Math.max(32, +e.target.value));
+    const dimension = (selector, name) => this.numberField(
+      this.settings.querySelector(selector),
+      (node) => setWidget(name, Math.max(32, Math.round(Number(node.value)))),
+      () => this.widgets[name]?.value);
+    dimension(".s-width", "width");
+    dimension(".s-height", "height");
     this.settings.querySelector(".s-ref").onchange = (e) => setWidget("ref_image_size", e.target.value);
+  }
+
+  /**
+   * The house rule for every number box in the editor: it behaves like a text box.
+   *
+   * Nothing is read while you type. The value is taken when the box is left or Enter is
+   * pressed -- `change` fires on both -- and the box is then repainted with whatever was
+   * actually set, which is not always what was asked for: a length is clamped by its
+   * neighbours, a duration snaps up onto the lattice, a width is rounded to 32.
+   *
+   * Read on every keystroke, these fields could not be re-typed at all. Clearing `97` to
+   * type `144` was read the instant it said `1`, refused for landing before the block's
+   * start, and written straight back over the caret. The same trap swallows `"2."`, which
+   * is not a number yet -- hence the blank guard rather than `Number(el.value) || 0`.
+   *
+   * `apply` receives the element and does whatever this particular box means. `shown`
+   * returns what should be in the box afterwards; a box whose value cannot be stated that
+   * simply (start, end and length are three readings of two numbers) repaints itself
+   * inside `apply` and needs no `shown`.
+   */
+  numberField(element, apply, shown) {
+    if (!element) return element;
+    element.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); element.blur(); }
+    });
+    element.addEventListener("change", () => {
+      const raw = String(element.value).trim();
+      const value = raw === "" ? null : Number(raw);
+      if (value !== null && Number.isFinite(value)) apply(element, value);
+      const after = shown?.();
+      if (after !== undefined && after !== null) element.value = after;
+    });
+    return element;
   }
 
   /** Cast cards drawn from this block's file whose feature moves onto somebody else. */
@@ -2159,10 +2232,11 @@ export class TimelineEditor {
       if (target.media) target.media = { ...target.media, retention: value };
     });
 
-    // Length is typed, so it commits on change rather than per keystroke: a half-typed
-    // "1" would resize every selected block to one frame on the way to 120.
-    this.segFields.querySelector(".mmd-b-length")?.addEventListener("change", (event) => {
-      const wanted = Math.round(Number(event.target.value));
+    // The house rule again, and the reason it exists is loudest here: read per keystroke,
+    // a half-typed `1` on the way to `120` would resize every selected block to one frame.
+    // The box goes blank afterwards -- it is an instruction, not a reading of anything.
+    this.numberField(this.segFields.querySelector(".mmd-b-length"), (node, value) => {
+      const wanted = Math.round(value);
       if (!Number.isFinite(wanted) || wanted < 1) return;
       const next = this.read();
       for (const { track, index } of this.selected) {
@@ -2173,10 +2247,9 @@ export class TimelineEditor {
         target.length = Math.max(1, Math.min(wanted, room));
         stretchFor(next, target);
       }
-      event.target.value = "";
       this.panelShape = null;
       this.commit(next);
-    });
+    }, () => "");
 
     this.segFields.querySelector(".mmd-b-close")
       ?.addEventListener("click", () => this.closeGaps());
@@ -2607,11 +2680,6 @@ export class TimelineEditor {
         patchLive({ length: n });
       };
 
-      // A number input reports "" for anything half-typed -- "2." is not a number yet.
-      // Treating that as zero clamped the block to one frame and then wrote the result
-      // back over the field, so "2.5" came out as "0.045".
-      const typed = (el) => (el.value.trim() === "" ? null : Number(el.value));
-
       // The three boxes are read back from the document, not from each other: a refused
       // number and an accepted one have to leave the same three readings on screen.
       const repaint = () => {
@@ -2622,21 +2690,11 @@ export class TimelineEditor {
         endEl.value = here.start + here.length;
       };
 
-      // Committed when the box is left or Enter is pressed -- the way a text field
-      // behaves -- and not on every keystroke. Clamping each keystroke made a value
-      // impossible to replace: clearing `97` to type `144` was read the instant it said
-      // `9`, refused for landing before the start, and written back over what was being
-      // typed. Nothing is written while you type; the clamp still has the last word.
-      const commits = (el, apply) => {
-        el.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") { event.preventDefault(); el.blur(); }
-        });
-        el.addEventListener("change", () => {
-          const value = typed(el);
-          if (value !== null && Number.isFinite(value)) apply(value);
-          repaint();
-        });
-      };
+      // The house rule, from `numberField`: taken on Enter or on leaving the box, never
+      // while typing. All three are repainted together afterwards, because they are three
+      // readings of the same two numbers and a clamp moves more than the box you edited.
+      const commits = (el, apply) => this.numberField(
+        el, (node, value) => apply(value), () => { repaint(); });
 
       commits(lenEl, setLength);
 

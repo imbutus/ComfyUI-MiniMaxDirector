@@ -8,7 +8,7 @@
  *   node tests/js/lattice.test.mjs
  */
 
-import { snapUp, PHASE, STRIDE, FPS, length } from "../../web/timeline/model.js";
+import { snapUp, flat, PHASE, STRIDE, FPS, length } from "../../web/timeline/model.js";
 
 let failures = 0;
 const check = (name, got, want) => {
@@ -86,6 +86,16 @@ const withSound = {
 check("a video's soundtrack is Audio 1", audioOf(withSound)[0].token, "<Audio 1>");
 check("a standalone cue continues the count", audioOf(withSound)[1].token, "<Audio 2>");
 check("and it is the file the cast binds by", audioOf(withSound)[1].media.filename, "bell.wav");
+
+// --- one line, in both languages ------------------------------------------
+//
+// `flat` is the editor's half of the rule `timeline.flat()` enforces at compile time: the
+// box shows one line because one line is all the compiled prompt can carry.
+check("a newline collapses", flat("the raccoon:\r\ngrey fur"), "the raccoon: grey fur");
+check("a blank line collapses too", flat("one\n\ntwo"), "one two");
+check("tabs and runs of spaces are one space", flat("one \t  two"), "one two");
+check("the ends are trimmed", flat("  padded  "), "padded");
+check("nothing survives as nothing", flat(null), "");
 
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log("model vocabulary: all checks passed");

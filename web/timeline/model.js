@@ -86,6 +86,16 @@ export const AUDIO_RETENTIONS = [
 export const retentionsFor = (kind) =>
   (kind === "audio" ? AUDIO_RETENTIONS : RETENTIONS);
 
+/** One line, always: every run of whitespace becomes a single space.
+ *
+ * The twin of `timeline.flat()` in Python, and it exists in both languages for the same
+ * reason the vocabularies do -- the compiler flattens what it is given, and a box that
+ * shows four lines while the prompt carries one is the editor telling a small lie. The
+ * editor applies it when a field is left; the compiler applies it again, because a
+ * document can also arrive from somewhere the editor never touched.
+ */
+export const flat = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
+
 /** Round a frame count up to a length MiniMax H3 accepts (`length % 17 === 5`).
  *
  * The double modulo is not redundant. JavaScript's `%` keeps the sign of the left
