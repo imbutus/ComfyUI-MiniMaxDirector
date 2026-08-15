@@ -166,7 +166,9 @@ not on screen — and the TIMELINE tab shows:
   amber while a row on this block still has no words, because the compiler ignores a
   wordless row and a second one is a second nothing. The
   red bin at the end of a row removes it — the same delete button the subject cards use.
-  The last lit face cannot be unticked, and says why on hover: an empty speaker list is
+  Clicking a face hands the line to that person alone; hold **Cmd/Ctrl** and click to add
+  a second, and the row says so beside the faces. The last lit face cannot be unticked,
+  and says why on hover: an empty speaker list is
   compiled as `(S1)`, so a line with nobody ticked would be given to speaker 1 rather than
   to nobody. A line nobody says is a line removed. Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
   below.
@@ -229,7 +231,8 @@ nobody has been named to receive it. A face swap is a thing you can see on the t
 rather than something buried in a card.
 
 Two faces lit on **one** row is the guide's `(S1,S2)`: the same words spoken by both at
-the same instant. Two rows is a conversation — they speak in turn. Speech with no agreed
+the same instant — Cmd/Ctrl-click the second one, since a plain click is how you hand the
+line to one person instead. Two rows is a conversation — they speak in turn. Speech with no agreed
 words, an argument or a crowd, is neither: describe it in the segment prompt and put the
 sound in an AUDIO cue.
 

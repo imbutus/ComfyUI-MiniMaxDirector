@@ -877,7 +877,8 @@ export class TimelineEditor {
     // would hand the words to speaker 1 rather than to nobody. The chip says so instead.
     const SOLE = "A line needs somebody to say it, so the last face cannot be unticked -- "
       + "an empty one is compiled as (S1), not as silence. To have nobody say these words, "
-      + "remove the line itself with the bin at the end of the row.";
+      + "remove the line itself with the bin at the end of the row. (Cmd or Ctrl-click is "
+      + "what unticks a face at all: a plain click hands the line to the one you clicked.)";
     const sole = (number) => chosen.length === 1 && chosen[0] === number;
     const quote = (words) => String(words).replace(/"/g, "&quot;");
 
@@ -2515,8 +2516,10 @@ export class TimelineEditor {
                 compiles to the same nothing</span>
             </span>
           </label>
-          <div class="mmd-f-chips" title="Who says this line. Click a face; click two and they say it together, which is the guide's (S1,S2) form.">${
-            this.chips(timeline, line.ids)}</div>
+          <div class="mmd-f-chips" title="Who says this line. A click hands the line to that face alone; hold Cmd or Ctrl to add a second, which is the guide's (S1,S2) form -- the two of them saying it together.">${
+            this.chips(timeline, line.ids)}</div>${
+            (this.castOf?.()?.cards || []).length > 1
+              ? `<span class="mmd-f-chips-why">⌘/Ctrl-click for two voices</span>` : ""}
           <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
             <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
           </label>
@@ -2789,9 +2792,14 @@ export class TimelineEditor {
         const at = rowOf(chip);
         const who = Number(chip.dataset.speaker);
         const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[at]?.ids);
-        const next = current.includes(who)
-          ? current.filter((number) => number !== who)
-          : [...current, who].sort((a, b) => a - b);
+        // A plain click hands the line to one person, the way the timeline's own blocks
+        // answer a click. A chorus is the rarer thing and asks for the modifier the rest
+        // of the editor uses for "and this one as well", which then toggles.
+        const next = (e.metaKey || e.ctrlKey)
+          ? (current.includes(who)
+            ? current.filter((number) => number !== who)
+            : [...current, who].sort((a, b) => a - b))
+          : [who];
         if (!next.length) return;
         patchLine({ ids: speakerIds(next) }, false, at);
         this.panelShape = null;

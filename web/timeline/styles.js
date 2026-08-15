@@ -307,6 +307,11 @@ const CSS = `
 /* Scoped through .mmd-seg-fields on purpose: the panel's own button rule is the red
    "detach media" style, and it is one step more specific than a bare class. */
 .mmd-f-chips { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+/* The modifier is the only part of the row that cannot be discovered by clicking: a plain
+   click already does the common thing, so nothing on screen would ever hint at a chorus.
+   Said once, quietly, and only where there is a second face to add. */
+.mmd-seg-fields .mmd-f-chips-why { color:#5b6675; font-size:11px; white-space:nowrap;
+  align-self:center; }
 .mmd-seg-fields .mmd-f-chip { display:flex; align-items:center; gap:6px;
   background:#1c1f26; border:1px solid #333a45; border-radius:99px;
   padding:2px 10px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
