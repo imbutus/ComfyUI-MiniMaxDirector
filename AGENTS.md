@@ -329,9 +329,13 @@ no weights, in about 0.2 seconds.
    Rebuilding on every render tears out the focused input, ComfyUI hands focus back to
    the canvas, and the next Delete is no longer aimed at a field -- so it deletes a
    block instead of a character. The failure looks nothing like its cause.
-8. **A number input reads as `""` while half-typed.** `"2."` is not a number yet.
-   Treating that as `0` clamps to one frame and writes the result back over what is
-   being typed. Ignore values until they parse.
+8. **A number input reads as `""` while half-typed, and commits on `change`, never on
+   `input`.** `"2."` is not a number yet, and a half-typed `144` is `1` for one keystroke:
+   clamped live, the clamp lands on the intermediate value and is written back over what
+   is being typed, so an existing number cannot be cleared and replaced. `start`, `end`
+   and `length` bind `change` (which fires on blur and on Enter) plus a keydown that
+   blurs on Enter, then repaint all three boxes from the document -- the same shape the
+   settings row already used. Ignore values until they parse.
 9. **Every fixed vocabulary exists in two languages too.** `CAMERA_MOTION`, `RETENTIONS`,
    `AUDIO_RETENTIONS`, `ROLES`, `TRANSITIONS`, `AMPLITUDES`, `SPEEDS` are written in
    `timeline.py` and mirrored in `web/timeline/model.js`. A value the editor offers and

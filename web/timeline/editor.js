@@ -635,11 +635,10 @@ export class TimelineEditor {
         const index = numbers.get(card.uid || card.id) || 0;
         if (!index) return "";
         const token = `<Subject ${index}>`;
-        const file = fileOf(card);
-        const src = file ? media.url(file.media) : null;
-        const face = !src || file.media.kind === "video"
-          ? `<span class="mmd-face mmd-face-none">?</span>`
-          : `<span class="mmd-face" style="background-image:url('${src}')"></span>`;
+        // The same face the card and the dialogue chips draw, videos included: a subject
+        // taken out of a clip is still a face you should recognise, and a hollow `?`
+        // beside a name said only that this strip had been written twice.
+        const face = this.face(fileOf(card));
         const name = String(card.name || "").trim();
         return `<button type="button" class="mmd-f-subj" data-token="${text(token)}"
           title="Write this subject into the shot's text, at the caret."
@@ -2613,10 +2612,33 @@ export class TimelineEditor {
       // back over the field, so "2.5" came out as "0.045".
       const typed = (el) => (el.value.trim() === "" ? null : Number(el.value));
 
-      lenEl.addEventListener("input", () => {
-        const value = typed(lenEl);
-        if (value !== null && Number.isFinite(value)) setLength(value);
-      });
+      // The three boxes are read back from the document, not from each other: a refused
+      // number and an accepted one have to leave the same three readings on screen.
+      const repaint = () => {
+        const here = items(this.read(), track)[index] || item;
+        mirror(here.start, here.length);
+        startEl.value = here.start;
+        lenEl.value = here.length;
+        endEl.value = here.start + here.length;
+      };
+
+      // Committed when the box is left or Enter is pressed -- the way a text field
+      // behaves -- and not on every keystroke. Clamping each keystroke made a value
+      // impossible to replace: clearing `97` to type `144` was read the instant it said
+      // `9`, refused for landing before the start, and written back over what was being
+      // typed. Nothing is written while you type; the clamp still has the last word.
+      const commits = (el, apply) => {
+        el.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") { event.preventDefault(); el.blur(); }
+        });
+        el.addEventListener("change", () => {
+          const value = typed(el);
+          if (value !== null && Number.isFinite(value)) apply(value);
+          repaint();
+        });
+      };
+
+      commits(lenEl, setLength);
 
       // Typing an end moves the end. Reading it as "keep the length, slide the block" is
       // the other possible answer and the wrong one: the right grip does exactly this,
@@ -2627,10 +2649,7 @@ export class TimelineEditor {
         setLength(Math.round(frames) - here.start);
       };
 
-      endEl.addEventListener("input", () => {
-        const value = typed(endEl);
-        if (value !== null && Number.isFinite(value)) setEnd(value);
-      });
+      commits(endEl, setEnd);
 
       // Frames typed, seconds shown -- the same bargain the length fields make.
       const setStart = (frames) => {
@@ -2646,10 +2665,7 @@ export class TimelineEditor {
         patchLive({ start });
       };
 
-      startEl.addEventListener("input", () => {
-        const value = typed(startEl);
-        if (value !== null && Number.isFinite(value)) setStart(value);
-      });
+      commits(startEl, setStart);
       // Delegated, because how many rows there are is the document's business and not
       // this listener's: one handler covers the row that exists now and the one added
       // next. `data-line` on the row is which line the control belongs to.

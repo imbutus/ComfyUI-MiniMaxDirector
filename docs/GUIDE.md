@@ -132,7 +132,9 @@ not on screen — and the TIMELINE tab shows:
   reading beside it, and one line underneath reading the whole span the same way:
   `Start: 0 f | End: 96 f | Length: 96 f = 4.00s`. Frames come first everywhere in the
   editor, including the playhead clock, because frames are what the document stores and
-  what H3 is given; seconds are the translation.
+  what H3 is given; seconds are the translation. All three take effect when you press
+  Enter or leave the box, not as you type — so you can clear one and retype it without
+  the half-finished number being read, refused and written back at you.
 - **SHOT** — MAIN blocks only. `enter with` is how the cut into this shot is written —
   `cut` unless you ask for `dissolve`, `fade` or `wipe`; it is not offered on the first
   shot, which is entered from nowhere. `on-screen text` is any words actually visible in
