@@ -2516,10 +2516,12 @@ export class TimelineEditor {
                 compiles to the same nothing</span>
             </span>
           </label>
-          <div class="mmd-f-chips" title="Who says this line. A click hands the line to that face alone; hold Cmd or Ctrl to add a second, which is the guide's (S1,S2) form -- the two of them saying it together.">${
-            this.chips(timeline, line.ids)}</div>${
-            (this.castOf?.()?.cards || []).length > 1
-              ? `<span class="mmd-f-chips-why">⌘/Ctrl-click for two voices</span>` : ""}
+          <span class="mmd-f-chipcol">
+            <div class="mmd-f-chips" title="Who says this line. A click hands the line to that face alone; hold Cmd or Ctrl to add another, and another: the guide's (S1,S2) form, as many voices as say the words at once.">${
+              this.chips(timeline, line.ids)}</div>${
+              (this.castOf?.()?.cards || []).length > 1
+                ? `<span class="mmd-f-chips-why">⌘/Ctrl-click to add a voice</span>` : ""}
+          </span>
           <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
             <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
           </label>

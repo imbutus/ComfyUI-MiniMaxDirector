@@ -309,9 +309,10 @@ const CSS = `
 .mmd-f-chips { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 /* The modifier is the only part of the row that cannot be discovered by clicking: a plain
    click already does the common thing, so nothing on screen would ever hint at a chorus.
-   Said once, quietly, and only where there is a second face to add. */
-.mmd-seg-fields .mmd-f-chips-why { color:#5b6675; font-size:11px; white-space:nowrap;
-  align-self:center; }
+   Said once, quietly, and only where there is another face to add. */
+.mmd-f-chipcol { display:flex; flex-direction:column; gap:3px; align-items:flex-start;
+  min-width:0; }
+.mmd-seg-fields .mmd-f-chips-why { color:#5b6675; font-size:11px; white-space:nowrap; }
 .mmd-seg-fields .mmd-f-chip { display:flex; align-items:center; gap:6px;
   background:#1c1f26; border:1px solid #333a45; border-radius:99px;
   padding:2px 10px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
@@ -636,10 +637,22 @@ const CSS = `
 /* The tag names the group, so it sits beside the first row of it, not halfway down. */
 .mmd-f-group:has(> .mmd-f-lines) { align-items:flex-start; }
 .mmd-f-group:has(> .mmd-f-lines) > .mmd-f-tag { padding-top:6px; }
-.mmd-f-line-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+/* Top-aligned always, never centred. Two things under this row grow it -- the message
+   under an empty line box, and the modifier hint under the faces -- and a row that
+   centres puts every control somewhere new the moment either appears: the faces jumped
+   half a line as soon as the words were typed. Aligned to the top, a control sits where
+   it sat, and what grows hangs below its own box. */
+.mmd-f-line-row { display:flex; align-items:flex-start; gap:9px; flex-wrap:wrap; }
+/* Which means each field centres its own name against its own control instead, so a
+   label is level with the box it belongs to and not with the tallest thing on the row. */
+.mmd-f-line-row > label { align-items:center; }
 /* The two switches on a row are options about the line, not fields of it, so they take
    the size of the labels around them rather than the browser's own. */
-.mmd-f-line-row .mmd-switch { flex:0 0 auto; color:#6b7280; font-size:11px; gap:5px; }
+/* As tall as the boxes beside it, so a 12px tick does not sit at the very top of a row
+   whose height comes from the faces. Its own height, not the row's -- which is what
+   keeps it still when a message appears underneath something else. */
+.mmd-f-line-row .mmd-switch { flex:0 0 auto; color:#6b7280; font-size:11px; gap:5px;
+  min-height:23px; align-items:center; }
 .mmd-f-line-row .mmd-switch input { width:12px; height:12px; }
 /* A row with no words in it is a row about nothing: who speaks, how, and in what language
    all describe a line that does not exist yet. They wash out until it does -- still there,
@@ -695,13 +708,12 @@ const CSS = `
    waiting on a card, which the row already says and links to. Nothing is marked. */
 .mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-addline-why { display:none; }
 .mmd-f-line-row:has(.mmd-f-nobody) .mmd-f-line { border-color:#252b34; }
-/* Everything on the row belongs beside the box, not beside the box and its message: the
-   row stops centring while the message is up. Only the line's own label follows it to the
-   top -- "how" and "language" keep their text centred against their own inputs, which is
-   what the row looks like the rest of the time. */
-.mmd-f-line-row.mmd-f-quiet,
-.mmd-f-line-row.mmd-f-quiet > label.mmd-f-wide { align-items:flex-start; }
-.mmd-f-line-row.mmd-f-quiet > label.mmd-f-wide > .mmd-key { padding-top:4px; }
+/* The line's own label is the exception: its control is a column -- the box with its
+   message under it -- so centring the word against the whole column would drop it below
+   the box it names. It follows the box to the top, with the offset that puts the word on
+   the same line as the text inside. */
+.mmd-f-line-row > label.mmd-f-wide { align-items:flex-start; }
+.mmd-f-line-row > label.mmd-f-wide > .mmd-key { padding-top:4px; }
 .mmd-seg-fields .mmd-f-delline { align-self:flex-start; padding:3px 7px; }
 /* A field's name is one word however many spaces are in it. Left to wrap, "on-screen
    text" broke in two and pushed its own row taller than every other row in the panel.

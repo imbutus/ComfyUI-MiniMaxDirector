@@ -123,8 +123,9 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - Unknown keys survive a round trip through the editor.
 - A shot's `lines` is a list, one entry per spoken line: `text` sent verbatim, `ids` the
   guide's `(S1)` or `(S1,S2)`, `delivery` the verb, `language` the tag. Two speakers on
-  one line is a chorus -- Cmd/Ctrl-click adds one, a plain click replaces the list, the
-  same modifier the canvas uses for its own selection; two lines is a conversation. A wordless line is kept, not dropped
+  one line is a chorus, and there may be any number -- Cmd/Ctrl-click adds one, a plain
+  click replaces the list, the same modifier the canvas uses for its own selection; two
+  lines is a conversation. A wordless line is kept, not dropped
   at the door, so `lint` can say the half-filled row exists.
 - `offscreen` on a line is a voiceover, and writes **both** halves of the guide's fixed
   form: the exact phrase `says in an off-screen voiceover`, and the clause required after
