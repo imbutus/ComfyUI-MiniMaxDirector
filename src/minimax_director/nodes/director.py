@@ -78,6 +78,21 @@ def _present(entries) -> bool:
     return any(entry is not None for entry in entries)
 
 
+def _skewed(image, width: int, height: int) -> bool:
+    """Whether fitting this picture to the clip would change its proportions.
+
+    The tolerance is 2% of the clip's ratio: a picture rounded onto the 32-pixel grid is
+    a fraction off and nobody can see it, so nothing is cropped and nothing is said.
+    """
+    if image is None or not width or not height:
+        return False
+    tall, wide = int(image.shape[1]), int(image.shape[2])
+    if not tall or not wide:
+        return False
+    theirs, ours = wide / tall, width / height
+    return abs(theirs - ours) > 0.02 * ours
+
+
 def _fit(image, width: int, height: int):
     """A keyframe brought to the clip's shape without distorting it.
 
@@ -88,7 +103,14 @@ def _fit(image, width: int, height: int):
     size, which turns core's resize into a no-op. The crop is `center`, the same
     aspect-preserving cover-crop core itself uses for `last_frame`: a face stays a face,
     and what goes is the edge of the picture rather than its proportions.
+
+    Only a picture that would actually be skewed is touched. When the shapes agree there
+    is nothing to protect the image from, so it is passed on exactly as it was loaded and
+    core scales it -- one resize instead of two, and no needless resampling.
     """
+    if not _skewed(image, width, height):
+        return image
+
     import comfy.utils
 
     samples = image[..., :3].movedim(-1, 1)
@@ -103,15 +125,10 @@ def _cropped(image, width: int, height: int, role: str) -> Issue | None:
     it is still a surprise: the author framed that photograph, and part of it is not in
     the clip. The message names both shapes and the two ways to keep the whole frame.
     """
-    if image is None:
+    if not _skewed(image, width, height):
         return None
     tall, wide = int(image.shape[1]), int(image.shape[2])
-    if not tall or not wide or not width or not height:
-        return None
     theirs, ours = wide / tall, width / height
-    # A frame's worth of rounding on a 32-pixel grid is not worth a warning.
-    if abs(theirs - ours) <= 0.02 * ours:
-        return None
     return Issue(
         "warning",
         f"the {role} is {wide}x{tall} but the clip is {width}x{height}, so it is "

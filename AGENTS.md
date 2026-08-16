@@ -407,8 +407,9 @@ no weights, in about 0.2 seconds.
     it cover-crops from the centre (`common_upscale(..., "lanczos", "center")`, the same
     treatment core gives `last_frame`) so core's resize has nothing left to do.
     `director._cropped` reports what that took off, naming both shapes, which edge went and
-    the two ways to keep the whole picture. Its tolerance is 2% of the clip's ratio, so
-    rounding onto the 32-pixel grid stays quiet. Reference images are untouched by this --
+    the two ways to keep the whole picture. Both ask `_skewed` first, whose tolerance is 2%
+    of the clip's ratio: a picture already of the clip's shape is passed through as loaded
+    -- one resize instead of two -- and nothing is said. Reference images are untouched by this --
     their sizing is `ref_image_size`, and both of its options keep the ratio.
 
 ## Calling into ComfyUI

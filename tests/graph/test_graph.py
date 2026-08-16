@@ -219,3 +219,13 @@ def test_the_keyframe_reaches_the_model_at_the_clip_s_size():
 
     fitted = _fit(torch.zeros(1, 1024, 1024, 3), 1280, 832)
     assert tuple(fitted.shape) == (1, 832, 1280, 3)
+
+
+def test_a_keyframe_the_clip_s_shape_is_passed_through_untouched():
+    harness.boot()
+    import torch
+
+    from minimax_director.nodes.director import _fit
+
+    loaded = torch.zeros(1, 832, 1280, 3)
+    assert _fit(loaded, 1280, 832) is loaded  # no crop, no resample, no second resize
