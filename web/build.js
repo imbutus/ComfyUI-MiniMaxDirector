@@ -16,4 +16,4 @@ export const BUILD = "2026-08-15·06:04";
  * pack am I running?", which is the one you quote in a bug report. Kept in step with
  * `pyproject.toml` by a test, because two versions that can disagree eventually do.
  */
-export const VERSION = "0.7.0";
+export const VERSION = "0.8.0";
