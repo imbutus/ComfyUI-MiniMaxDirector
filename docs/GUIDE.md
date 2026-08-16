@@ -214,6 +214,17 @@ is sent as the keyframe rather than as a reference beside one, so a transformati
 two stills is two blocks — the opening image used as `first frame`, the closing one as
 `last frame`. There is nothing to wire; the node has no sockets for them.
 
+`keyframe` is the third of that group and the one with no input behind it. MiniMax's own
+guide counts it as a frame anchor — `keyframe completion` is for *"an image [that] serves
+as the target video's first frame, keyframe, last frame, edited keyframe, or another
+concrete frame anchor"* — but that is a sentence in the prompt, and the ComfyUI node has
+two arguments, `first_frame` and `last_frame`. So a picture that should be a frame in the
+*middle* cannot be handed over as one: that block's image travels with the references,
+and what `keyframe` changes is the text. The task type becomes
+`keyframe completion` and `retention_analysis` writes `<Picture 1> ([Shot 2] keyframe)`
+where a reference would read `(appears in [Shot 2])`. An end is a guarantee, because it is
+an input; the middle is a request in the prompt, which the model follows loosely.
+
 **A keyframe is fitted to the clip, not the other way round.** ComfyUI's core node scales
 `first_frame` straight to `width` × `height` with cropping disabled, so a square photograph
 in a 1280 × 832 clip comes out stretched. A block used as `first frame` or `last frame`

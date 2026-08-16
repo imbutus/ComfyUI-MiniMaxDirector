@@ -78,6 +78,11 @@ sockets for them, or for references. Because the reference node has no `first_fr
 timeline holding an anchor *and* a reference is impossible to honour; the node reports an
 error rather than dropping the keyframe quietly.
 
+`keyframe` is deliberately outside `ANCHOR_ROLES`. There is no third input to load it
+into, so a block used as one stays in the reference list; only its `ROLE_TASKS` entry
+(`keyframe completion`) and its `_appears_in` suffix (`([Shot n] keyframe)`) change.
+Naming it an anchor would promise placement the model has no way to honour.
+
 ## The timeline document
 
 One JSON object in one widget. It is the only state; the editor is a view over it.
