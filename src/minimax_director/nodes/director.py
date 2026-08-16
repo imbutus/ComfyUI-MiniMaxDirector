@@ -78,6 +78,50 @@ def _present(entries) -> bool:
     return any(entry is not None for entry in entries)
 
 
+def _fit(image, width: int, height: int):
+    """A keyframe brought to the clip's shape without distorting it.
+
+    `MiniMaxH3ImageToVideo` fits `first_frame` with `crop="disabled"`
+    (`comfy_extras/nodes_minimax_h3.py`), a plain scale to `width` x `height`: a square
+    photograph in a wide clip comes out squashed, and nothing says so before the render.
+    Since the keyframe is handed over by this node, it can arrive already at the clip's
+    size, which turns core's resize into a no-op. The crop is `center`, the same
+    aspect-preserving cover-crop core itself uses for `last_frame`: a face stays a face,
+    and what goes is the edge of the picture rather than its proportions.
+    """
+    import comfy.utils
+
+    samples = image[..., :3].movedim(-1, 1)
+    samples = comfy.utils.common_upscale(samples, width, height, "lanczos", "center")
+    return samples.movedim(1, -1)
+
+
+def _cropped(image, width: int, height: int, role: str) -> Issue | None:
+    """What the fit above had to take off, said out loud.
+
+    Losing the edges of a picture is a smaller surprise than losing its proportions, but
+    it is still a surprise: the author framed that photograph, and part of it is not in
+    the clip. The message names both shapes and the two ways to keep the whole frame.
+    """
+    if image is None:
+        return None
+    tall, wide = int(image.shape[1]), int(image.shape[2])
+    if not tall or not wide or not width or not height:
+        return None
+    theirs, ours = wide / tall, width / height
+    # A frame's worth of rounding on a 32-pixel grid is not worth a warning.
+    if abs(theirs - ours) <= 0.02 * ours:
+        return None
+    return Issue(
+        "warning",
+        f"the {role} is {wide}x{tall} but the clip is {width}x{height}, so it is "
+        f"cover-cropped to fit and its {'sides' if theirs > ours else 'top and bottom'} "
+        f"are outside the frame. Give the clip the picture's shape to keep all of it, or "
+        f"attach the file as a reference instead -- that path scales without cropping and "
+        f"lets the model compose the rest of the frame.",
+    )
+
+
 def _report(issues) -> str:
     return "\n".join(str(issue) for issue in issues)
 
@@ -170,6 +214,18 @@ class MiniMaxDirector(io.ComfyNode):
                 "references: MiniMax H3 has no reference-plus-keyframe path. Use one or "
                 "the other.",
             ))
+
+        # Both keyframes arrive at the clip's shape, cover-cropped rather than stretched:
+        # core would scale `first_frame` with no crop at all, and a square photograph in a
+        # wide clip would be squashed on the way in.
+        for image, role in ((first_frame, "first frame"), (last_frame, "last frame")):
+            cropped = _cropped(image, width, height, role)
+            if cropped is not None:
+                issues.insert(0, cropped)
+        if first_frame is not None:
+            first_frame = _fit(first_frame, width, height)
+        if last_frame is not None:
+            last_frame = _fit(last_frame, width, height)
 
         report = _report(issues)
 

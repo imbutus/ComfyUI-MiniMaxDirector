@@ -214,6 +214,17 @@ is sent as the keyframe rather than as a reference beside one, so a transformati
 two stills is two blocks — the opening image used as `first frame`, the closing one as
 `last frame`. There is nothing to wire; the node has no sockets for them.
 
+**A keyframe is fitted to the clip, not the other way round.** ComfyUI's core node would
+scale `first_frame` straight to `width` × `height` with cropping disabled — a square
+photograph in a 1280 × 832 clip comes out stretched, and nothing says so until the render
+is watched. The director hands the picture over already at the clip's size, cover-cropped
+from the centre, so proportions always survive and what is lost is the edge of the frame.
+The report says which edge went, and names the two ways to keep the whole picture: give
+the clip the picture's own shape, or attach the file as a `reference` — that path scales
+aspect-preserving and lets the model compose the rest of the frame around it. Nothing here
+can pad a keyframe and have the model invent the missing sides; that is outpainting, and
+it belongs before H3 sees the file.
+
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the
 finished soundtrack), `partially_copy`, `reference` (only the timbre or texture is

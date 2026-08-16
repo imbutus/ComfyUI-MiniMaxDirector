@@ -167,3 +167,55 @@ def test_the_prompt_names_the_attached_image(media_run):
 def test_no_loader_node_is_needed(media_run):
     wired = [c for c in media_run["calls"] if c["node"].startswith("MiniMaxH3")]
     assert len(wired) == 1  # one H3 call, fed entirely from the timeline
+
+
+# --- a keyframe whose shape is not the clip's --------------------------------
+
+
+class _Picture:
+    """Just the shape: `_cropped` reads nothing else off an image."""
+
+    def __init__(self, tall: int, wide: int):
+        self.shape = (1, tall, wide, 3)
+
+
+def cropped(*args):
+    harness.boot()
+    from minimax_director.nodes.director import _cropped
+
+    return _cropped(*args)
+
+
+def test_a_square_first_frame_in_a_wide_clip_is_reported():
+    issue = cropped(_Picture(1024, 1024), 1280, 832, "first frame")
+    assert issue is not None
+    assert "1024x1024" in issue.message and "1280x832" in issue.message
+    assert "cover-cropped" in issue.message
+    assert "top and bottom" in issue.message  # a square in a wide clip loses height
+    assert "reference" in issue.message  # the way out is named
+
+
+def test_a_tall_picture_in_a_wide_clip_loses_its_top_and_bottom():
+    assert "top and bottom" in cropped(_Picture(1600, 900), 1280, 832, "first frame").message
+
+
+def test_a_wider_picture_than_the_clip_loses_its_sides():
+    assert "sides" in cropped(_Picture(600, 1600), 1280, 832, "first frame").message
+
+
+def test_a_keyframe_of_the_clip_s_own_shape_says_nothing():
+    assert cropped(_Picture(832, 1280), 1280, 832, "first frame") is None
+
+
+def test_no_keyframe_is_not_a_finding():
+    assert cropped(None, 1280, 832, "first frame") is None
+
+
+def test_the_keyframe_reaches_the_model_at_the_clip_s_size():
+    harness.boot()
+    import torch
+
+    from minimax_director.nodes.director import _fit
+
+    fitted = _fit(torch.zeros(1, 1024, 1024, 3), 1280, 832)
+    assert tuple(fitted.shape) == (1, 832, 1280, 3)

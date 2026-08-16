@@ -401,6 +401,16 @@ no weights, in about 0.2 seconds.
     so the rest of the compiler never has to defend itself. Text arriving any other way
     (a new field, a new record key) needs the same treatment at the door.
 
+18. **A keyframe leaves this node already at the clip's size.** `MiniMaxH3ImageToVideo`
+    fits `first_frame` with `crop="disabled"` -- a plain scale to `width` x `height`, which
+    squashes any picture whose shape is not the clip's. `director._fit` gets there first:
+    it cover-crops from the centre (`common_upscale(..., "lanczos", "center")`, the same
+    treatment core gives `last_frame`) so core's resize has nothing left to do.
+    `director._cropped` reports what that took off, naming both shapes, which edge went and
+    the two ways to keep the whole picture. Its tolerance is 2% of the clip's ratio, so
+    rounding onto the 32-pixel grid stays quiet. Reference images are untouched by this --
+    their sizing is `ref_image_size`, and both of its options keep the ratio.
+
 ## Calling into ComfyUI
 
 `core.call(name, **kwargs)` resolves the class from `NODE_CLASS_MAPPINGS`, reads its
