@@ -424,6 +424,14 @@ no weights, in about 0.2 seconds.
     into tokens that ride through every sampling step, so `match` (the clip's own pixel
     area) is fast and coarse where `max` (2048 px short edge) is slow and keeps identity.
 
+19. **`width` and `height` change only when the author changes them.** They used to follow
+    the first reference picture whenever `ref_image_size` was `match`, inside `attach` --
+    a model setting driving two unrelated widgets, and a picture attached later or used as
+    a keyframe never got it. The convenience is now a button on the block,
+    `.mmd-f-shape` ("take its shape"), drawn for `kind === "image"` and calling
+    `media.fitGeneration` on the file's own dimensions. Anything that would move the clip's
+    size on its own belongs here as a control, not as a side effect of another field.
+
 ## Calling into ComfyUI
 
 `core.call(name, **kwargs)` resolves the class from `NODE_CLASS_MAPPINGS`, reads its

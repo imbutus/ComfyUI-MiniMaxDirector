@@ -249,14 +249,18 @@ sized by its own canvas rule and a keyframe by `fit`. It goes dead — dimmed an
 on any clip that carries no reference picture: only frame anchors, only a video, only
 sound, or nothing at all.
 
-What it trades is detail against time. A reference picture is never pasted into the video:
-it becomes tokens the model reads beside the prompt, and those tokens are re-read at every
-sampling step. More pixels, finer detail, more time. `match` shrinks the picture to about
-the clip's own pixel count — enough when it supplies a scene, a style or a mood; `max`
-allows 2048 px on the short side, which is what keeps a face the same face, and can be
-several times slower. Neither ever enlarges a picture or changes its proportions: a 2810 ×
-1685 photograph in a 1280 × 832 clip becomes 1344 × 800 under `match` and stays 2816 × 1696
-under `max`.
+What it trades is detail against time. A reference picture becomes tokens the model reads
+beside the prompt, and those tokens are re-read at every sampling step — more pixels, finer
+detail, more time. `match` shrinks it to about the clip's pixel count: fast, enough for a
+scene, a style, a mood. `max` allows 2048 px on the short side: slower, and what keeps a
+face the same face. Neither enlarges a picture or changes its proportions.
+
+**`resize` does not touch `width` and `height`.** Until build `2026-08-17·02:05` the clip
+silently took the shape of the first reference picture whenever `resize` said `match`,
+which made a model setting move two unrelated fields. Now a picture block carries **take
+its shape**, beside `detach media`: press it and `width`/`height` are set from that file,
+scaled to a size H3 renders. It works for a keyframe too — which is exactly what the crop
+warning asks for, and what the old behaviour never did.
 
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the

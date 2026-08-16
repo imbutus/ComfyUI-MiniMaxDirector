@@ -1077,8 +1077,6 @@ export class TimelineEditor {
     if (measured !== null) record.seconds = Math.round(measured * 10) / 10;
 
     const timeline = this.read();
-    const firstImage = kind === "image"
-      && !items(timeline, track).some((entry) => entry.media?.kind === "image");
 
     // A selected block on the right track with nothing attached takes the file; anything
     // else gets a block of its own. The rule used to be "always a new segment, never a
@@ -1124,14 +1122,10 @@ export class TimelineEditor {
         + "H3 takes reference clips of 2-15s.");
     }
 
-    // The first reference image sets the generation size, but only under "match" --
-    // that mode scales references to the generation's pixel area, so a mismatched
-    // aspect ratio is squandered on letterboxing. Under "max" the reference keeps its
-    // own resolution and the generation size is an independent decision.
-    if (firstImage && this.widgets.ref_image_size?.value === "match") {
-      const size = await media.dimensions(record);
-      if (size) this.adoptSize(media.fitGeneration(size));
-    }
+    // The clip's shape is not changed here. It used to follow the first reference picture
+    // whenever `resize` said `match`, which tied a model setting to a field it has nothing
+    // to do with and moved `width`/`height` behind the author's back. **take its shape**
+    // on the block does the same thing on request, for any picture including a keyframe.
   }
 
   /** Point the node's width/height widgets at a size, and show it. */
@@ -2449,6 +2443,8 @@ export class TimelineEditor {
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       // `fit` is drawn only for a frame anchor, so the role is part of the markup's shape.
       + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
+      // **take its shape** is drawn for a picture only, so the kind is part of it too.
+      + `:${item.media?.kind || "-"}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
@@ -2511,6 +2507,8 @@ export class TimelineEditor {
         <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
           <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
         </label>`}
+        ${item.media.kind !== "image" ? "" : `
+        <button class="mmd-f-shape" title="Give the clip this picture's proportions: width and height are set from the file, scaled to a size H3 renders. Nothing else changes it -- a frame anchor keeps all of itself only when the two shapes agree.">take its shape</button>`}
         <button class="mmd-f-unlink">detach media</button>
       </div>
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
@@ -2657,6 +2655,8 @@ export class TimelineEditor {
       + `:${item.media?.subject?.trim() ? 1 : 0}`
       // `fit` is drawn only for a frame anchor, so the role is part of the markup's shape.
       + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
+      // **take its shape** is drawn for a picture only, so the kind is part of it too.
+      + `:${item.media?.kind || "-"}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
@@ -2882,6 +2882,15 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
       this.segFields.querySelector(".mmd-f-fit")
         ?.addEventListener("change", (e) => patchMedia({ fit: e.target.value }));
+      // The clip follows a picture only when asked. `fitGeneration` keeps the ratio and
+      // lands on multiples of 32 within H3's pixel budget, so the answer is a size the
+      // model actually renders rather than the file's own pixel count.
+      this.segFields.querySelector(".mmd-f-shape")
+        ?.addEventListener("click", async () => {
+          const record = items(this.read(), track)[index]?.media;
+          const size = record && await media.dimensions(record);
+          if (size) this.adoptSize(media.fitGeneration(size));
+        });
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
