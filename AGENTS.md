@@ -418,8 +418,11 @@ no weights, in about 0.2 seconds.
     `_skewed` first, whose tolerance is 2% of the clip's ratio: a picture already of the
     clip's shape is passed through as loaded -- one resize instead of two -- and nothing is
     said. Reference images are untouched by all of this: their sizing is `ref_image_size`,
-    both of whose options keep the ratio, which is why that control goes dead when the
-    timeline holds no reference image.
+    both of whose options keep the ratio and only ever shrink, which is why that control
+    goes dead when the timeline holds no reference image — a reference *video* is sized by
+    `adapt_canvas` and never reads it. What it trades is token count: a reference is encoded
+    into tokens that ride through every sampling step, so `match` (the clip's own pixel
+    area) is fast and coarse where `max` (2048 px short edge) is slow and keeps identity.
 
 ## Calling into ComfyUI
 

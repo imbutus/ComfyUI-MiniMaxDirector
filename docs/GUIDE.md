@@ -243,9 +243,20 @@ scaled aspect-preserving and lets the model compose the rest of the frame around
 Nothing here can pad a keyframe and have the model invent the missing sides; that is
 outpainting, and it belongs before H3 sees the file.
 
-The settings row's **`resize`** is the reference-side twin of this and governs nothing
-else, so it goes dead — dimmed and dashed — on a clip whose only pictures are frame
-anchors, or which carries no file at all.
+The settings row's **`resize`** is the reference-side twin of this, and it sizes reference
+*pictures* only: core reads it in its `ref_images` loop alone, so a reference video is
+sized by its own canvas rule and a keyframe by `fit`. It goes dead — dimmed and dashed —
+on any clip that carries no reference picture: only frame anchors, only a video, only
+sound, or nothing at all.
+
+What it trades is detail against time. A reference picture is never pasted into the video:
+it becomes tokens the model reads beside the prompt, and those tokens are re-read at every
+sampling step. More pixels, finer detail, more time. `match` shrinks the picture to about
+the clip's own pixel count — enough when it supplies a scene, a style or a mood; `max`
+allows 2048 px on the short side, which is what keeps a face the same face, and can be
+several times slower. Neither ever enlarges a picture or changes its proportions: a 2810 ×
+1685 photograph in a 1280 × 832 clip becomes 1344 × 800 under `match` and stays 2816 × 1696
+under `max`.
 
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the

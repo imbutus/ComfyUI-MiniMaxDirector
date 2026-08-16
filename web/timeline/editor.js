@@ -1858,13 +1858,14 @@ export class TimelineEditor {
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
 
-    // `resize` governs reference images and nothing else: a clip whose only picture is a
-    // frame anchor, or which carries no file at all, is not affected by either option. It
-    // goes dead in the house form rather than disappearing -- the row's shape is how the
-    // settings read, and a control that comes and goes is a control you look for.
+    // `resize` governs reference *images* and nothing else. Core reads `ref_image_size`
+    // inside its `ref_images` loop alone; a reference video is sized by `adapt_canvas` and
+    // a keyframe by its own `fit`, so neither is affected by either option. It goes dead in
+    // the house form rather than disappearing -- the row's shape is how the settings read,
+    // and a control that comes and goes is a control you look for.
     const governs = [...(timeline.shots || []), ...(timeline.cues || [])].some((item) => {
       const media = item?.media;
-      return media && media.kind !== "audio"
+      return media && media.kind === "image"
         && !ANCHOR_ROLES.includes(String(media.role || "reference"));
     });
     const label = this.settings.querySelector(".s-ref-label");
