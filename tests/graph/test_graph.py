@@ -179,15 +179,15 @@ class _Picture:
         self.shape = (1, tall, wide, 3)
 
 
-def cropped(*args):
+def refitted(image, width, height, role, how="crop"):
     harness.boot()
-    from minimax_director.nodes.director import _cropped
+    from minimax_director.nodes.director import _refitted
 
-    return _cropped(*args)
+    return _refitted(image, width, height, role, how)
 
 
 def test_a_square_first_frame_in_a_wide_clip_is_reported():
-    issue = cropped(_Picture(1024, 1024), 1280, 832, "first frame")
+    issue = refitted(_Picture(1024, 1024), 1280, 832, "first frame")
     assert issue is not None
     assert "1024x1024" in issue.message and "1280x832" in issue.message
     assert "cover-cropped" in issue.message
@@ -196,19 +196,19 @@ def test_a_square_first_frame_in_a_wide_clip_is_reported():
 
 
 def test_a_tall_picture_in_a_wide_clip_loses_its_top_and_bottom():
-    assert "top and bottom" in cropped(_Picture(1600, 900), 1280, 832, "first frame").message
+    assert "top and bottom" in refitted(_Picture(1600, 900), 1280, 832, "first frame").message
 
 
 def test_a_wider_picture_than_the_clip_loses_its_sides():
-    assert "sides" in cropped(_Picture(600, 1600), 1280, 832, "first frame").message
+    assert "sides" in refitted(_Picture(600, 1600), 1280, 832, "first frame").message
 
 
 def test_a_keyframe_of_the_clip_s_own_shape_says_nothing():
-    assert cropped(_Picture(832, 1280), 1280, 832, "first frame") is None
+    assert refitted(_Picture(832, 1280), 1280, 832, "first frame") is None
 
 
 def test_no_keyframe_is_not_a_finding():
-    assert cropped(None, 1280, 832, "first frame") is None
+    assert refitted(None, 1280, 832, "first frame") is None
 
 
 def test_the_keyframe_reaches_the_model_at_the_clip_s_size():
@@ -229,3 +229,18 @@ def test_a_keyframe_the_clip_s_shape_is_passed_through_untouched():
 
     loaded = torch.zeros(1, 832, 1280, 3)
     assert _fit(loaded, 1280, 832) is loaded  # no crop, no resample, no second resize
+
+
+def test_stretch_says_the_proportions_change_instead():
+    issue = refitted(_Picture(1024, 1024), 1280, 832, "first frame", "stretch")
+    assert "stretched to fit" in issue.message and "proportions change" in issue.message
+
+
+def test_stretch_hands_the_picture_over_untouched():
+    harness.boot()
+    import torch
+
+    from minimax_director.nodes.director import _fit
+
+    loaded = torch.zeros(1, 1024, 1024, 3)
+    assert _fit(loaded, 1280, 832, "stretch") is loaded  # core squashes it, as asked

@@ -14,7 +14,7 @@ import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  AMPLITUDES, CAMERAS, ROLES, SPEEDS, TRANSITIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds,
+  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SPEEDS, TRANSITIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
   remove, reshape, flat, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
@@ -62,6 +62,22 @@ const cameraOptions = (current) => {
 const roleOptions = (current) => {
   const value = ROLES.includes(current) ? current : ROLES[0];
   return ROLES
+    .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
+/**
+ * How a keyframe is fitted to the clip, as `<option>`s. Offered only on the two roles the
+ * model has an input for: everything else is a reference, and a reference is scaled
+ * aspect-preserving whatever this says.
+ *
+ * `crop` is the default because it is the only one that keeps a face a face. The document
+ * may be silent -- every clip written before this control existed is -- and silence reads
+ * as `crop`, which is what the node does with it.
+ */
+const fitOptions = (current) => {
+  const value = FITS.includes(current) ? current : FITS[0];
+  return FITS
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
     .join("");
 };
@@ -1842,6 +1858,25 @@ export class TimelineEditor {
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
 
+    // `resize` governs reference images and nothing else: a clip whose only picture is a
+    // frame anchor, or which carries no file at all, is not affected by either option. It
+    // goes dead in the house form rather than disappearing -- the row's shape is how the
+    // settings read, and a control that comes and goes is a control you look for.
+    const governs = [...(timeline.shots || []), ...(timeline.cues || [])].some((item) => {
+      const media = item?.media;
+      return media && media.kind !== "audio"
+        && !ANCHOR_ROLES.includes(String(media.role || "reference"));
+    });
+    const label = this.settings.querySelector(".s-ref-label");
+    const picker = this.settings.querySelector(".s-ref");
+    if (label && picker) {
+      label.classList.toggle("mmd-dead", !governs);
+      picker.disabled = !governs;
+      picker.title = governs ? ""
+        : "Nothing on the timeline is sized by this: it fits reference images, and this "
+          + "clip has none. A first or last frame is fitted by its own `fit` control.";
+    }
+
     // The lattice appears here and nowhere else. A typed duration is left alone; this
     // says what will actually be generated, which is where the 17-frame grid bites.
     const asked = timeline.duration || span(timeline);
@@ -1861,7 +1896,7 @@ export class TimelineEditor {
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label title="Output width, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
       <label title="Output height, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
-      <label title="How reference images are fitted. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time."><span class="mmd-key">resize</span>
+      <label class="s-ref-label" title="How reference images are fitted. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time."><span class="mmd-key">resize</span>
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <span class="mmd-renders"></span>`;
@@ -2411,6 +2446,8 @@ export class TimelineEditor {
     const changed = this.panelShape !== `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${first ? 1 : 0}:${still}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
+      // `fit` is drawn only for a frame anchor, so the role is part of the markup's shape.
+      + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
@@ -2469,6 +2506,10 @@ export class TimelineEditor {
           <select class="mmd-f-retention">${
             retentionOptions(item.media.retention, item.media.kind)}</select>
         </label>
+        ${!ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
+        <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
+          <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
+        </label>`}
         <button class="mmd-f-unlink">detach media</button>
       </div>
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
@@ -2613,6 +2654,8 @@ export class TimelineEditor {
     const shape = `${track}:${index}:${item.media ? 1 : 0}:${this.speaks() ? 1 : 0}`
       + `:${first ? 1 : 0}:${still}`
       + `:${item.media?.subject?.trim() ? 1 : 0}`
+      // `fit` is drawn only for a frame anchor, so the role is part of the markup's shape.
+      + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
       // How many rows, and which of them are a chorus: both change the markup, and a
       // shape that missed it left the new row unbuilt until the selection moved away.
       + `:${(item.lines?.length || 1)}`
@@ -2836,6 +2879,8 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
+      this.segFields.querySelector(".mmd-f-fit")
+        ?.addEventListener("change", (e) => patchMedia({ fit: e.target.value }));
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
@@ -2860,6 +2905,8 @@ export class TimelineEditor {
     put(".mmd-f-speed", item.speed || "");
     put(".mmd-f-transition", item.transition || "cut");
     put(".mmd-f-screen", item.screen_text || "");
+    // Silence means `crop`, the same reading the node gives a document that predates this.
+    put(".mmd-f-fit", item.media?.fit || FITS[0]);
 
     // Undo and a switch of selection both land here; the rows themselves are built once.
     const rows = [...this.segFields.querySelectorAll(".mmd-f-line-row")];

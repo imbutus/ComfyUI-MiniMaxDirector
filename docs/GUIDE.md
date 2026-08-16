@@ -214,16 +214,27 @@ is sent as the keyframe rather than as a reference beside one, so a transformati
 two stills is two blocks — the opening image used as `first frame`, the closing one as
 `last frame`. There is nothing to wire; the node has no sockets for them.
 
-**A keyframe is fitted to the clip, not the other way round.** ComfyUI's core node would
-scale `first_frame` straight to `width` × `height` with cropping disabled — a square
-photograph in a 1280 × 832 clip comes out stretched, and nothing says so until the render
-is watched. The director hands the picture over already at the clip's size, cover-cropped
-from the centre, so proportions always survive and what is lost is the edge of the frame.
-The report says which edge went, and names the two ways to keep the whole picture: give
-the clip the picture's own shape, or attach the file as a `reference` — that path scales
-aspect-preserving and lets the model compose the rest of the frame around it. Nothing here
-can pad a keyframe and have the model invent the missing sides; that is outpainting, and
-it belongs before H3 sees the file.
+**A keyframe is fitted to the clip, not the other way round.** ComfyUI's core node scales
+`first_frame` straight to `width` × `height` with cropping disabled, so a square photograph
+in a 1280 × 832 clip comes out stretched. A block used as `first frame` or `last frame`
+therefore carries a **`fit`** picker of its own, beside `keep file`:
+
+| `fit` | What happens to a picture whose shape is not the clip's |
+|---|---|
+| `crop` | the default: scaled and cover-cropped from the centre, so proportions survive and an edge is lost |
+| `stretch` | handed over untouched, which is core's own behaviour: every pixel kept, proportions squashed |
+
+A picture already of the clip's shape is untouched either way, and says nothing. When the
+shapes do disagree the report names both sizes and which edge went, or that the
+proportions changed — whichever was asked for — and points at the two ways to have
+neither: give the clip the picture's shape, or attach the file as a `reference`, which is
+scaled aspect-preserving and lets the model compose the rest of the frame around it.
+Nothing here can pad a keyframe and have the model invent the missing sides; that is
+outpainting, and it belongs before H3 sees the file.
+
+The settings row's **`resize`** is the reference-side twin of this and governs nothing
+else, so it goes dead — dimmed and dashed — on a clip whose only pictures are frame
+anchors, or which carries no file at all.
 
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the

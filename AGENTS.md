@@ -401,16 +401,20 @@ no weights, in about 0.2 seconds.
     so the rest of the compiler never has to defend itself. Text arriving any other way
     (a new field, a new record key) needs the same treatment at the door.
 
-18. **A keyframe leaves this node already at the clip's size.** `MiniMaxH3ImageToVideo`
-    fits `first_frame` with `crop="disabled"` -- a plain scale to `width` x `height`, which
-    squashes any picture whose shape is not the clip's. `director._fit` gets there first:
-    it cover-crops from the centre (`common_upscale(..., "lanczos", "center")`, the same
-    treatment core gives `last_frame`) so core's resize has nothing left to do.
-    `director._cropped` reports what that took off, naming both shapes, which edge went and
-    the two ways to keep the whole picture. Both ask `_skewed` first, whose tolerance is 2%
-    of the clip's ratio: a picture already of the clip's shape is passed through as loaded
-    -- one resize instead of two -- and nothing is said. Reference images are untouched by this --
-    their sizing is `ref_image_size`, and both of its options keep the ratio.
+18. **A keyframe leaves this node already at the clip's size, unless asked otherwise.**
+    `MiniMaxH3ImageToVideo` fits `first_frame` with `crop="disabled"` -- a plain scale to
+    `width` x `height`, which squashes any picture whose shape is not the clip's. The block
+    carries a `fit` of its own (`FITS` in `timeline.py`, mirrored in `model.js`, offered on
+    `ANCHOR_ROLES` only): `crop`, the default and what a silent document means, has
+    `director._fit` cover-crop from the centre (`common_upscale(..., "lanczos", "center")`,
+    core's own treatment of `last_frame`) so core's resize has nothing left to do;
+    `stretch` hands the picture over untouched and lets core squash it on purpose.
+    `director._refitted` reports the cost in the words of whichever was chosen. Both ask
+    `_skewed` first, whose tolerance is 2% of the clip's ratio: a picture already of the
+    clip's shape is passed through as loaded -- one resize instead of two -- and nothing is
+    said. Reference images are untouched by all of this: their sizing is `ref_image_size`,
+    both of whose options keep the ratio, which is why that control goes dead when the
+    timeline holds no reference image.
 
 ## Calling into ComfyUI
 

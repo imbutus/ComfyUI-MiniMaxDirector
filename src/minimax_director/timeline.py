@@ -43,6 +43,14 @@ ANCHOR_ROLES = ("first frame", "last frame")
 clip, so its picture goes to the keyframe input instead of into the reference list. A
 `keyframe` in the middle has no input to go to and stays a reference."""
 
+FITS = ("crop", "stretch")
+"""How a keyframe is brought to the clip's shape when the two disagree.
+
+`crop` is the default and the honest one: the picture keeps its proportions and loses its
+edges, the same cover-crop ComfyUI's core node gives `last_frame`. `stretch` is what that
+node does to `first_frame` left alone -- the whole picture, squashed to fit. Authored per
+block, because two keyframes in one clip can want different answers."""
+
 FRAME_ROLES = ("first frame", "keyframe", "last frame")
 """Roles that make a picture a concrete frame of the target video.
 

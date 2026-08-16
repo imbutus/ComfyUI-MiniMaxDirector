@@ -69,6 +69,16 @@ export const ROLES = [
   "continue from", "edit",
 ];
 
+/** The two roles the model has an input for: a block used as one of these *is* that frame
+ *  of the clip, which is why it alone is fitted to the clip's shape. Kept in step with
+ *  `ANCHOR_ROLES` in `timeline.py`. */
+export const ANCHOR_ROLES = ["first frame", "last frame"];
+
+/** How a keyframe is brought to the clip's shape when the two disagree. `crop` keeps the
+ *  picture's proportions and loses its edges; `stretch` is what ComfyUI's core node does
+ *  on its own -- the whole picture, squashed. Kept in step with `FITS` in `timeline.py`. */
+export const FITS = ["crop", "stretch"];
+
 export const RETENTIONS = [
   "fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference",
 ];

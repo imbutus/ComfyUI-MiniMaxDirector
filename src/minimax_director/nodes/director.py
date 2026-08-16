@@ -93,7 +93,7 @@ def _skewed(image, width: int, height: int) -> bool:
     return abs(theirs - ours) > 0.02 * ours
 
 
-def _fit(image, width: int, height: int):
+def _fit(image, width: int, height: int, how: str = "crop"):
     """A keyframe brought to the clip's shape without distorting it.
 
     `MiniMaxH3ImageToVideo` fits `first_frame` with `crop="disabled"`
@@ -106,9 +106,11 @@ def _fit(image, width: int, height: int):
 
     Only a picture that would actually be skewed is touched. When the shapes agree there
     is nothing to protect the image from, so it is passed on exactly as it was loaded and
-    core scales it -- one resize instead of two, and no needless resampling.
+    core scales it -- one resize instead of two, and no needless resampling. `stretch` is
+    the author saying they want core's own behaviour, so the picture is left alone there
+    too and arrives squashed on purpose.
     """
-    if not _skewed(image, width, height):
+    if how == "stretch" or not _skewed(image, width, height):
         return image
 
     import comfy.utils
@@ -118,24 +120,28 @@ def _fit(image, width: int, height: int):
     return samples.movedim(1, -1)
 
 
-def _cropped(image, width: int, height: int, role: str) -> Issue | None:
-    """What the fit above had to take off, said out loud.
+def _refitted(image, width: int, height: int, role: str, how: str) -> Issue | None:
+    """What fitting this keyframe costs, said before the render rather than after.
 
-    Losing the edges of a picture is a smaller surprise than losing its proportions, but
-    it is still a surprise: the author framed that photograph, and part of it is not in
-    the clip. The message names both shapes and the two ways to keep the whole frame.
+    Only a keyframe whose shape is not the clip's is worth a word, and what the word says
+    depends on what was asked for: `crop` keeps the picture's proportions and loses an
+    edge, `stretch` keeps every pixel and loses the proportions. Both name the two ways to
+    have neither happen.
     """
     if not _skewed(image, width, height):
         return None
     tall, wide = int(image.shape[1]), int(image.shape[2])
     theirs, ours = wide / tall, width / height
+    cost = (f"cover-cropped to fit and its "
+            f"{'sides' if theirs > ours else 'top and bottom'} are outside the frame"
+            if how != "stretch" else
+            "stretched to fit, so its proportions change")
     return Issue(
         "warning",
-        f"the {role} is {wide}x{tall} but the clip is {width}x{height}, so it is "
-        f"cover-cropped to fit and its {'sides' if theirs > ours else 'top and bottom'} "
-        f"are outside the frame. Give the clip the picture's shape to keep all of it, or "
-        f"attach the file as a reference instead -- that path scales without cropping and "
-        f"lets the model compose the rest of the frame.",
+        f"the {role} is {wide}x{tall} but the clip is {width}x{height}, so it is {cost}. "
+        f"Give the clip the picture's shape to keep all of it, or attach the file as a "
+        f"reference instead -- that path scales without cropping and lets the model "
+        f"compose the rest of the frame.",
     )
 
 
@@ -196,14 +202,17 @@ class MiniMaxDirector(io.ComfyNode):
         # each role takes it; a `keyframe` in the middle has nowhere to go and stays a
         # reference, as it always was.
         first_frame = last_frame = None
+        fits = {"first frame": "crop", "last frame": "crop"}
         pictures = []
         for item in attachments.of_kind(document, "image"):
             role = str(item.record.get("role", "")).strip()
             image = _load(item.record)[0]
             if role == "first frame" and first_frame is None:
                 first_frame = image
+                fits[role] = str(item.record.get("fit", "") or "crop")
             elif role == "last frame" and last_frame is None:
                 last_frame = image
+                fits[role] = str(item.record.get("fit", "") or "crop")
             else:
                 pictures.append(image)
         videos, soundtracks = [], []
@@ -236,13 +245,13 @@ class MiniMaxDirector(io.ComfyNode):
         # core would scale `first_frame` with no crop at all, and a square photograph in a
         # wide clip would be squashed on the way in.
         for image, role in ((first_frame, "first frame"), (last_frame, "last frame")):
-            cropped = _cropped(image, width, height, role)
-            if cropped is not None:
-                issues.insert(0, cropped)
+            refitted = _refitted(image, width, height, role, fits[role])
+            if refitted is not None:
+                issues.insert(0, refitted)
         if first_frame is not None:
-            first_frame = _fit(first_frame, width, height)
+            first_frame = _fit(first_frame, width, height, fits["first frame"])
         if last_frame is not None:
-            last_frame = _fit(last_frame, width, height)
+            last_frame = _fit(last_frame, width, height, fits["last frame"])
 
         report = _report(issues)
 

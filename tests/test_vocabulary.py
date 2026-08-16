@@ -15,7 +15,8 @@ from pathlib import Path
 import pytest
 
 from minimax_director.timeline import (
-    AUDIO_RETENTIONS, AMPLITUDES, CAMERA_MOTION, RETENTIONS, ROLES, SPEEDS, TRANSITIONS,
+    ANCHOR_ROLES, AUDIO_RETENTIONS, AMPLITUDES, CAMERA_MOTION, FITS, RETENTIONS, ROLES,
+    SPEEDS, TRANSITIONS,
 )
 
 MODEL = (Path(__file__).parents[1] / "web" / "timeline" / "model.js").read_text()
@@ -51,6 +52,8 @@ def test_amplitude_and_speed_agree():
     ("AUDIO_RETENTIONS", AUDIO_RETENTIONS),
     ("ROLES", ROLES),
     ("TRANSITIONS", tuple(TRANSITIONS)),
+    ("ANCHOR_ROLES", ANCHOR_ROLES),
+    ("FITS", FITS),
 ])
 def test_the_fixed_vocabularies_agree(name, expected):
     assert listed(name) == list(expected)

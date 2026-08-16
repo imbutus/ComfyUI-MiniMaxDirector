@@ -690,6 +690,14 @@ const CSS = `
    it is about, and left of the input is under the word "line", which is not the same
    place. Every row carries one; only the empty rows show it, which is also the only state
    in which the button is dead. */
+/* A settings control that governs nothing right now: the same dead form the segment panel
+   uses -- dimmed, dashed, not clickable -- with the reason on the title, which a disabled
+   select still shows because the label around it is not disabled. It keeps its place in
+   the row: the settings are read by position, and a control that vanishes is one you go
+   looking for. */
+.mmd-settings label.mmd-dead { opacity:.45; }
+.mmd-settings label.mmd-dead select {
+  background:transparent; border-style:dashed; cursor:not-allowed; }
 .mmd-seg-fields .mmd-f-addline-row {
   display:flex; align-items:center; gap:8px; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline[disabled] {
