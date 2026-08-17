@@ -586,11 +586,11 @@ the shipped workflow. They exist rather than a generic preview node for one reas
 preview fills from a *run*, and a warning that arrives after the render arrives after the
 cost.
 
-**MiniMax Director — Compile** does the compile step with no model attached. Use it to
-review or hand-edit a prompt before spending GPU time.
-
-**MiniMax Director — Length** snaps a duration in seconds to a legal frame count. Useful
-for feeding other nodes that need to agree about clip length.
+That is the whole pack: three nodes, all three in the shipped workflow. Earlier releases
+also carried a **Compile** node (the compile step with no model attached) and a **Length**
+node (seconds to a legal frame count). Both were for wiring a graph by hand. The timeline
+already outputs `length` and `seconds`, and the editor already compiles and lints on every
+edit pause, so each was a second way to reach a number that was on screen already.
 
 ---
 

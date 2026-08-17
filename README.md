@@ -91,8 +91,11 @@ arrange is the clip that is generated, with no frames on the end that no shot de
 | `MiniMax Director` | Timeline editor; outputs `positive`, `latent`, the compiled `prompt`, the `length`, and a lint `report`. |
 | `MiniMax Director — Prompt` | Shows the compiled prompt as the timeline is edited, without running anything. Wire the director's `prompt` output to it. |
 | `MiniMax Director — Report` | Shows the linter's findings as the timeline is edited. Wire the director's `report` output to it. |
-| `MiniMax Director — Compile` | The same compile step with no model attached, for reviewing or hand-editing a prompt first. |
-| `MiniMax Director — Length` | Snaps a duration in seconds to a valid frame count. |
+
+Three nodes, and the shipped workflow uses all three. There is no separate compile node
+and no seconds-to-frames node: the timeline hands out `length` and `seconds` itself, and
+the editor compiles and lints on every edit pause, so both would only be a second route
+to a number already on screen.
 
 The director calls the core `MiniMaxH3ImageToVideo` / `MiniMaxH3ReferenceToVideo` nodes
 rather than reimplementing them, resolving both by introspection so an upstream signature

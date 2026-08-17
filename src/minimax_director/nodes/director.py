@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from comfy_api.latest import ComfyExtension, io, ui
 
-from .. import attachments, core, lattice, references
+from .. import attachments, core, references
 from ..cast import EMPTY as CAST_EMPTY
 from ..cast import merge_json as cast_merge
 from ..compile import compile_timeline
@@ -286,41 +286,6 @@ class MiniMaxDirector(io.ComfyNode):
         return io.NodeOutput(positive, latent, compiled.prompt, compiled.length, report)
 
 
-class MiniMaxDirectorCompile(io.ComfyNode):
-    """Compile a timeline to text without touching the model.
-
-    The same code path the director takes, so a prompt can be reviewed or hand-edited
-    before it costs a generation.
-    """
-
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxDirectorCompile",
-            display_name="MiniMax Director — Compile",
-            category=CATEGORY,
-            description=cls.__doc__,
-            inputs=[
-                io.String.Input("timeline", multiline=True, default=DEFAULT_TIMELINE),
-                io.String.Input("cast", multiline=True, default=CAST_EMPTY, optional=True),
-            ],
-            outputs=[
-                io.String.Output(display_name="prompt"),
-                io.Int.Output(display_name="length"),
-                io.Float.Output(display_name="seconds"),
-                io.String.Output(display_name="report"),
-            ],
-        )
-
-    @classmethod
-    def execute(cls, timeline, cast=None) -> io.NodeOutput:
-        document = Timeline.from_json(cast_merge(timeline, cast))
-        compiled = compile_timeline(document)
-        return io.NodeOutput(
-            compiled.prompt, compiled.length, compiled.duration, _report(lint(document))
-        )
-
-
 class MiniMaxDirectorPrompt(io.ComfyNode):
     """Show the compiled prompt, updating as the timeline is edited.
 
@@ -377,37 +342,15 @@ class MiniMaxDirectorReport(io.ComfyNode):
         return io.NodeOutput(ui=ui.PreviewText(source or ""))
 
 
-class MiniMaxDirectorLength(io.ComfyNode):
-    """Snap a duration in seconds to a length H3 accepts."""
-
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxDirectorLength",
-            display_name="MiniMax Director — Length",
-            category=CATEGORY,
-            description=cls.__doc__,
-            inputs=[
-                io.Float.Input("seconds", default=5.0, min=0.2, max=120.0, step=0.1)
-            ],
-            outputs=[
-                io.Int.Output(display_name="length"),
-                io.Float.Output(display_name="seconds"),
-            ],
-        )
-
-    @classmethod
-    def execute(cls, seconds) -> io.NodeOutput:
-        length = lattice.from_seconds(seconds)
-        return io.NodeOutput(length, lattice.to_seconds(length))
-
-
+# The pack ships the timeline node and the two panels that read back from it, and
+# nothing else. A `Compile` node (a run with no model) and a `Length` node (seconds to a
+# legal frame count) both existed for wiring a graph by hand; the timeline already hands
+# out `length` and `seconds`, and the editor already compiles and lints on every edit
+# pause, so both only offered a second way to reach an answer that was already on screen.
 NODES = [
     MiniMaxDirector,
-    MiniMaxDirectorCompile,
     MiniMaxDirectorPrompt,
     MiniMaxDirectorReport,
-    MiniMaxDirectorLength,
 ]
 
 

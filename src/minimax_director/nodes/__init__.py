@@ -8,13 +8,7 @@ put these classes into the registry itself.
 
 from __future__ import annotations
 
-from .director import (
-    NODES,
-    MiniMaxDirector,
-    MiniMaxDirectorCompile,
-    MiniMaxDirectorExtension,
-    MiniMaxDirectorLength,
-)
+from .director import NODES, MiniMaxDirector, MiniMaxDirectorExtension
 
 NODE_CLASS_MAPPINGS: dict[str, type] = {node.__name__: node for node in NODES}
 
@@ -22,7 +16,5 @@ __all__ = [
     "NODES",
     "NODE_CLASS_MAPPINGS",
     "MiniMaxDirector",
-    "MiniMaxDirectorCompile",
     "MiniMaxDirectorExtension",
-    "MiniMaxDirectorLength",
 ]
