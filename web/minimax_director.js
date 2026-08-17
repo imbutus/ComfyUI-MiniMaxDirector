@@ -258,6 +258,8 @@ function attach(node) {
       editor.paintTabCount(parseCast(cast.value).cards.length);
       fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
     };
+    // A source belongs to the timeline; this tab is only where it is described.
+    inside.onDropSource = (filename) => editor.dropSource(filename);
     inside.onResize = () => fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
     editor.castPanel?.appendChild(inside.root);
     // Switching tabs changes how tall the node has to be, and nothing else measures it.

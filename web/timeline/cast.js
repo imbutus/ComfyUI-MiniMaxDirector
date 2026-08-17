@@ -125,6 +125,7 @@ export class CastEditor {
         </div>
         <textarea class="mmd-cast-grip" readonly tabindex="-1" title="Drag to resize the list"></textarea>
         <div class="mmd-cast-body">
+          <div class="mmd-cast-sources mmd-hide"></div>
           <div class="mmd-cast"></div>
           <div class="mmd-cast-foot">
             <button class="mmd-cast-add" title="A card for one subject -- a person, but equally a costume, a prop, a place or a style. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same subject. Several cards may point at the same file: that is how one photograph names several things.">Add</button>
@@ -138,9 +139,17 @@ export class CastEditor {
       </div>`;
 
     this.list = this.root.querySelector(".mmd-cast");
+    this.sources = this.root.querySelector(".mmd-cast-sources");
     this.speech = this.root.querySelector(".mmd-speech");
     this.box = this.root.querySelector(".mmd-cast-box");
     this.grip();
+
+    // The timeline owns its files, so removing one is the director's business; this panel
+    // only says which file the author pointed at.
+    this.sources.addEventListener("click", (event) => {
+      const drop = event.target.closest("[data-drop-source]");
+      if (drop) this.onDropSource?.(drop.dataset.dropSource);
+    });
 
     this.speech.addEventListener("change", () => {
       const next = this.read();
@@ -210,6 +219,8 @@ export class CastEditor {
 
   /** Called by the host after every write, so the director recompiles its preview. */
   onChange = null;
+  /** Called with a filename when a source is dropped: the timeline is the one that holds it. */
+  onDropSource = null;
   /** Called after every render, so the node can shrink to the cast it now holds. */
   onResize = null;
 
@@ -315,6 +326,40 @@ export class CastEditor {
     this.commit({ ...EMPTY, cards: [] });
   }
 
+  /**
+   * The clip's own files, listed above the cards.
+   *
+   * A source has no block, so nothing on the timeline shows that it is there -- and a
+   * reference the author has forgotten about is one the model is still being handed. The
+   * row names each one, with the token the prompt will use, and removes it.
+   */
+  paintSources(timeline, files, heard) {
+    const records = (timeline?.sources || []).filter(Boolean);
+    this.sources.classList.toggle("mmd-hide", !records.length);
+    if (!records.length) {
+      this.sources.innerHTML = "";
+      return;
+    }
+    const tokens = new Map();
+    for (const entry of [...files, ...heard]) {
+      if (entry.block === null || entry.media?.kind === "audio") {
+        tokens.set(entry.media, entry.token);
+      }
+    }
+    const value = (text) => String(text || "").replace(/"/g, "&quot;");
+    this.sources.innerHTML = `
+      <span class="mmd-cast-sources-head" title="Files the whole clip carries, on no block. They are numbered with the files on the timeline and pointed at from any prompt by their chip.">SOURCES</span>
+      ${records.map((media) => {
+        const name = String(media.filename || "").trim();
+        const token = tokens.get(media) || "";
+        return `<span class="mmd-cast-source">
+          ${this.face({}, { media })}
+          <span>${token.replace("<", "&lt;")}${name ? ` ${value(name)}` : ""}</span>
+          <button data-drop-source="${value(name)}" title="Take this file off the clip">&times;</button>
+        </span>`;
+      }).join("")}`;
+  }
+
   /** A person's face: the file they were drawn from, at thumbnail size. */
   face(card, file) {
     const src = file ? media.url(file.media) : null;
@@ -375,6 +420,7 @@ export class CastEditor {
 
     this.speech.checked = state.speech !== false;
     this.box.classList.toggle("mmd-off", state.speech === false);
+    this.paintSources(timeline, files, heard);
 
     // Rebuilt only when the list itself changed, or a caret would be taken out of the box
     // being typed into on every keystroke.
@@ -387,7 +433,9 @@ export class CastEditor {
       // The `onto` suggestions are the other cards and the shots, so a rename or a
       // reworded shot has to reach the list rather than waiting for the next rebuild.
       + `|${state.cards.map((card) => card.name).join("/")}`
-      + `|${(timeline?.shots || []).map((shot) => (shot.prompt || "").slice(0, 24)).join("/")}`;
+      + `|${(timeline?.shots || []).map((shot) => (shot.prompt || "").slice(0, 24)).join("/")}`
+      // A source is not on any block, so nothing else in this key notices it arriving.
+      + `|${(timeline?.sources || []).map((media) => media?.filename || "").join("/")}`;
 
     if (this.shape !== shape) {
       this.shape = shape;

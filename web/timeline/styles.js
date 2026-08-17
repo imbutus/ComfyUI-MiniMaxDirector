@@ -97,6 +97,19 @@ const CSS = `
 .mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
 .mmd-cast-foot { display:flex; align-items:center; gap:12px; }
 .mmd-cast-foot .mmd-grow { flex:1; }
+/* The clip's own files, above the cards: they are the only files with nothing on the
+   timeline to show they exist, so this row is where they are visible at all. */
+.mmd-cast-sources { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #22262f; }
+.mmd-cast-sources.mmd-hide { display:none; }
+.mmd-cast-sources-head { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-cast-source { display:inline-flex; align-items:center; gap:6px; background:#171a21;
+  border:1px dashed #333a45; border-radius:6px; padding:2px 4px 2px 2px; color:#8b93a1;
+  font-size:11px; }
+.mmd-cast-source .mmd-face { width:22px; height:22px; border-radius:4px; border:0; }
+.mmd-cast-source button { background:none; border:0; padding:0 4px; cursor:pointer;
+  color:#6b7280; font:inherit; font-size:13px; line-height:1; }
+.mmd-cast-source button:hover { color:#e2564b; }
 /* Living under the sockets. The editor starts at the node's title now, so its first two
    rows share the band with the input and output labels the canvas draws beneath it: they
    keep clear of both columns, and the padding passes clicks through to the sockets. */

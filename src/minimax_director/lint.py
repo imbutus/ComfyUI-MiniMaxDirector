@@ -36,6 +36,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_coverage(timeline),
         *_check_content(timeline),
         *_check_subjects(timeline),
+        *_check_sources(timeline),
         *_check_dialogue(timeline),
         *_check_clip_lengths(timeline),
         *_check_description_length(timeline),
@@ -206,6 +207,37 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
             "warning",
             f"{item.token} ({name}) has no description, so nothing tells the model what "
             f"to keep from it. Describe it on a subject card pointed at this file.",
+        )
+
+
+def _check_sources(timeline: Timeline) -> Iterator[Issue]:
+    """A source file nothing in the prompt points at.
+
+    A file on a block is written into that block's own line by the compiler. A source has
+    no block to speak for it, so the only ways it reaches the prose are a card that draws
+    a subject out of it and the author naming its token. With neither it is a reference
+    the prompt never mentions, and H3 only uses a reference the prose points at.
+    """
+    if not timeline.sources:
+        return
+    named: set[str] = set()
+    for text in timeline.prose():
+        for kind, index in TOKEN.findall(text or ""):
+            named.add(f"<{kind.capitalize()} {index}>")
+
+    defines = {subject.source for subject in attachments.subjects(timeline)}
+    for item in attachments.collect(timeline):
+        if item.origin is not None or item.token in named or item.token in defines:
+            continue
+        # A reference video's soundtrack has no origin either, and it is spoken for by the
+        # video it belongs to rather than by anything the author writes.
+        if item.record.get("kind") == "video":
+            continue
+        name = str(item.record.get("filename", "")) or item.kind
+        yield Issue(
+            "warning",
+            f"{item.token} ({name}) is a source file, so no block names it: point at it "
+            f"from a prompt with its chip, or describe it on a subject card.",
         )
 
 

@@ -624,6 +624,15 @@ class Timeline:
     shots: list[Shot] = field(default_factory=list)
     cues: list[Cue] = field(default_factory=list)
     moves: list[Move] = field(default_factory=list)
+    sources: list[dict[str, Any]] = field(default_factory=list)
+    """Files that belong to the clip rather than to a moment in it.
+
+    A file on a block says "this is what this stretch of the video is about", and the
+    compiler writes `(appears in [Shot n])` beside it. Some files are not about a moment:
+    a face to be carried onto whoever is on screen, a look to hold throughout. Those were
+    forced onto a block anyway, which cut the clip in two and made the model change what it
+    was doing at the seam. A source is the same media record, numbered with the rest and
+    describable on a card, with no shot list of its own."""
     references: list[Reference] = field(default_factory=list)
     speakers: list[Speaker] = field(default_factory=list)
     """Everyone who talks, described once. See `Speaker`."""
@@ -750,6 +759,10 @@ class Timeline:
                 )
                 for item in data.get("references", [])
             ],
+            sources=[
+                record for record in (_media(item) for item in data.get("sources", []))
+                if record
+            ],
             speakers=_speakers(data),
             speech=_speech(data),
             duration=int(data.get("duration", 0)),
@@ -826,6 +839,7 @@ class Timeline:
                 {"kind": ref.kind, "index": ref.index, "label": ref.label}
                 for ref in self.references
             ],
+            **({"sources": list(self.sources)} if self.sources else {}),
         }
 
     def to_json(self, indent: int | None = None) -> str:

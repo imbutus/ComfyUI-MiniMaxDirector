@@ -75,9 +75,21 @@ Three write a description; three attach a file.
 | **Add Image** | MAIN | a shot with a reference image on it |
 | **Add Audio** | AUDIO | a cue with a real audio file |
 | **Add Video** | MAIN | a shot with a reference video |
+| **Add Source** | — | a file the whole clip carries, on no block |
 
 Every Add appends a new block after the last one on that track. Adding never overwrites
 a block you already have.
+
+**A source is a file with no moment.** A block says "this stretch of the video is about
+this file", and the compiler writes `(appears in [Shot n])` beside it — which is what you
+want for a picture the shot is of, and wrong for a face to be carried onto whoever is on
+screen, or a look to hold throughout. Put that on a block and the clip is cut in two at a
+seam nobody asked for, with the model changing what it does on either side of it. A source
+is the same file, numbered with the rest (`<Picture 2>`), describable on a card, and
+pointed at from any prompt by its chip — with no shot list of its own. The clip's sources
+are listed at the top of **WHO & WHAT**, which is where a file is described anyway; the `×`
+there takes one off. A source nothing points at — no card, no mention — is a warning,
+because it is the one kind of file no block speaks for.
 
 **An attached audio or video takes the span it actually runs for.** The file is measured
 before its block is placed, so an eight-second recording gets eight seconds of clip rather

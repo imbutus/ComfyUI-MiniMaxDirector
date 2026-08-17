@@ -44,7 +44,11 @@ def parse(payload: str | dict | None) -> dict[str, Any]:
 
 
 def _files(timeline: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Media records on the timeline, by filename, first attachment winning."""
+    """Media records the cast can point at, by filename, first one winning.
+
+    Blocks first, then the clip's own source files -- a card describes a file, and where
+    that file sits is the timeline's business, not the card's.
+    """
     found: dict[str, dict[str, Any]] = {}
     for track in ("shots", "cues"):
         for item in timeline.get(track) or []:
@@ -54,6 +58,12 @@ def _files(timeline: dict[str, Any]) -> dict[str, dict[str, Any]]:
             name = str(media.get("filename", "")).strip()
             if name and name not in found:
                 found[name] = media
+    for media in timeline.get("sources") or []:
+        if not isinstance(media, dict):
+            continue
+        name = str(media.get("filename", "")).strip()
+        if name and name not in found:
+            found[name] = media
     return found
 
 

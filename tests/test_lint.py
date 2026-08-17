@@ -152,3 +152,26 @@ def test_padding_is_reported_on_its_own():
     )
     assert "padded by 13 frames" in messages(timeline)
     assert "past the last shot" not in messages(timeline)
+
+
+def test_a_source_nothing_points_at_is_reported():
+    """A source has no block to name it, so the prose or a card has to.
+
+    H3 only uses a reference the prompt points at, and a file with neither a mention nor
+    a card is one the model is handed and told nothing about.
+    """
+    timeline = Timeline.from_dict({
+        "global_prompt": "A quiet room.",
+        "shots": [{"start": 0, "length": 30, "prompt": "He waits."}],
+        "sources": [{"kind": "image", "filename": "face.jpg"}],
+    })
+    assert "<Picture 1> (face.jpg) is a source file" in messages(timeline)
+
+
+def test_a_source_the_prose_names_is_not_reported():
+    timeline = Timeline.from_dict({
+        "global_prompt": "Everything in the manner of <Picture 1>.",
+        "shots": [{"start": 0, "length": 30, "prompt": "He waits."}],
+        "sources": [{"kind": "image", "filename": "face.jpg"}],
+    })
+    assert "is a source file" not in messages(timeline)

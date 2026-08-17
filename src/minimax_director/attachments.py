@@ -62,6 +62,16 @@ def collect(timeline: Timeline) -> list[Attachment]:
         pictures += 1
         found.append(Attachment("picture", pictures, shot.media, ("shots", shot.start)))
 
+    # Sources come after the blocks and before the videos, so a picture on the timeline
+    # keeps the number it had when a source is added beside it. They have no origin: the
+    # file belongs to the clip rather than to a moment in it, which is exactly what
+    # `_appears_in` reads when it decides whether to write a shot list.
+    for record in timeline.sources:
+        if record.get("kind") != "image":
+            continue
+        pictures += 1
+        found.append(Attachment("picture", pictures, record, None))
+
     for shot in shots:
         if _kind(shot) != "video":
             continue
@@ -77,6 +87,15 @@ def collect(timeline: Timeline) -> list[Attachment]:
             continue
         audio_count += 1
         found.append(Attachment("audio", audio_count, cue.media, ("cues", cue.start)))
+
+    # A source recording is the clip's, not a moment's -- a voice to follow throughout,
+    # for instance -- and takes its number after the cues for the same reason a source
+    # picture takes its number after the blocks.
+    for record in timeline.sources:
+        if record.get("kind") != "audio":
+            continue
+        audio_count += 1
+        found.append(Attachment("audio", audio_count, record, None))
 
     return found
 

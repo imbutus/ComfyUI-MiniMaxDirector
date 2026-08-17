@@ -105,11 +105,20 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   "moves": [ { "start": 0, "length": 41, "camera": "pan_right", "prompt": "…",
                "amplitude": "large", "speed": "fast" } ],
   "cues":  [ { "start": 0, "length": 41, "prompt": "…", "media": { "kind": "audio", … } } ],
+  "sources": [ { "kind": "image", "filename": "face.jpg", "retention": "weak_reference" } ],
   "references": []
 }
 ```
 
 - **Frames are authoritative.** Seconds are derived at compile time only.
+- `sources` are media records that belong to the clip rather than to a block. They are
+  collected by `attachments.collect` after the blocks of their kind, with `origin=None`,
+  which is what `_appears_in` reads when it decides whether to write `(appears in [Shot
+  n])` — so a source has a number and a retention line and no shot list. A file whose job
+  is to be carried onto whoever is on screen has no moment, and putting it on a block cut
+  the clip at a seam the model then acted on. `tokens_by_segment` skips them: there is no
+  block whose line could carry the token, so the author names it with a chip or a card
+  draws a subject out of it, and `_check_sources` warns when neither happened.
 - `duration` 0 means "as long as the content needs". The rendered length is
   `snap_up(duration or span)`. A new timeline starts at **124** rather than 0, so the
   clip is a fixed thing you arrange segments inside from the first click.

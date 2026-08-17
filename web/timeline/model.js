@@ -144,6 +144,10 @@ export function emptyTimeline() {
     shots: [],
     moves: [],
     cues: [],
+    // Files that belong to the clip rather than to a moment in it: a face carried onto
+    // whoever is on screen, a look held throughout. They are numbered with the rest and
+    // described on a card, and no block is cut in half to hold them.
+    sources: [],
     references: [],
   };
 }
@@ -410,6 +414,13 @@ export const filesOf = (timeline) => {
     pictures += 1;
     found.push({ token: `<Picture ${pictures}>`, media: shot.media, block: index });
   }
+  // Then the clip's own files, which belong to no block. Same order as
+  // `attachments.collect`, so a token here is the token in the prompt.
+  for (const media of timeline?.sources || []) {
+    if (media?.kind !== "image") continue;
+    pictures += 1;
+    found.push({ token: `<Picture ${pictures}>`, media, block: null });
+  }
   for (const { shot, index } of shots) {
     if (shot.media?.kind !== "video") continue;
     videos += 1;
@@ -435,6 +446,10 @@ export const audioOf = (timeline) => {
   for (const cue of byStart(items(timeline, "cues"))) {
     if (cue.media?.kind !== "audio") continue;
     found.push({ token: `<Audio ${found.length + 1}>`, media: cue.media, kind: "audio" });
+  }
+  for (const media of timeline?.sources || []) {
+    if (media?.kind !== "audio") continue;
+    found.push({ token: `<Audio ${found.length + 1}>`, media, kind: "audio" });
   }
   return found;
 };

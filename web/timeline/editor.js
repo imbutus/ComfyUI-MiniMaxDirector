@@ -185,6 +185,7 @@ export class TimelineEditor {
         <button data-media="image">${ICON.image} Add Image</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
+        <button data-source="image" title="A file for the whole clip, on no block: a face to carry onto whoever is on screen, a look to hold throughout. It is numbered with the rest, described on a card, and cuts nothing in two. Listed under WHO &amp; WHAT.">${ICON.image} Add Source</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <button data-reset="1" title="Empty the timeline: every block, the global prompt and the music. Cmd/Ctrl+Z puts it back.">${ICON.reset} Clear</button>
         <span class="mmd-grow"></span>
@@ -354,6 +355,7 @@ export class TimelineEditor {
       if (!el) return;
       if (el.dataset.add) this.append(el.dataset.add);
       else if (el.dataset.media) this.attach(el.dataset.media);
+      else if (el.dataset.source) this.attachSource(el.dataset.source);
       else if (el.dataset.del) this.deleteSelected();
       else if (el.dataset.reset) this.clear();
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
@@ -1154,6 +1156,47 @@ export class TimelineEditor {
     // picture whenever `resize` said `match`, which tied a model setting to fields it has
     // nothing to do with and moved them behind the author's back. **set width & height**
     // on the block does the same thing on request, for any picture including a keyframe.
+  }
+
+  /**
+   * Upload a file and give it to the clip rather than to a block.
+   *
+   * A block says "this stretch of the video is about this file", and the compiler writes
+   * `(appears in [Shot n])` beside it. A face to be carried onto whoever is on screen is
+   * not about a stretch: put it on a block and the clip is cut in two at a seam nobody
+   * asked for, with the model changing what it does on either side of it. A source is the
+   * same file, numbered with the rest, and pointed at from any prompt by its chip.
+   */
+  async attachSource(kind) {
+    const file = await media.pick(kind);
+    if (!file) return;
+
+    let record;
+    try {
+      record = await media.upload(kind, file);
+    } catch (error) {
+      console.error("[MiniMaxDirector]", error);
+      return;
+    }
+
+    const timeline = this.read();
+    if (!Array.isArray(timeline.sources)) timeline.sources = [];
+    // The same defaults a block's file takes, minus `role`: a source is a reference and
+    // has no frame of the video to be, which is what the roles are about.
+    timeline.sources.push({ retention: retentionsFor(record.kind)[0], ...record });
+    this.selection = null;
+    this.commit(timeline);
+    this.showTab("cast");
+  }
+
+  /** Take a source file off the clip, by filename. Cards pointing at it are left alone. */
+  dropSource(filename) {
+    const timeline = this.read();
+    const kept = (timeline.sources || []).filter(
+      (media) => String(media?.filename || "") !== String(filename || ""));
+    if (kept.length === (timeline.sources || []).length) return;
+    timeline.sources = kept;
+    this.commit(timeline);
   }
 
   /** Point the node's width/height widgets at a size, and show it. */

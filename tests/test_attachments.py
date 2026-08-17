@@ -103,3 +103,27 @@ def test_tokens_map_back_to_their_segments():
     assert tokens_by_segment(timeline) == {
         ("shots", 0): ["<Picture 1>"], ("shots", 48): ["<Picture 2>"],
     }
+
+
+def test_a_source_file_is_numbered_with_the_blocks_and_has_no_shot():
+    """A file the whole clip carries: numbered like any other, with no `appears in`.
+
+    Forcing such a file onto a block cut the clip in two at a seam nobody asked for --
+    the model changes what it is doing on either side of one -- and the shot list said the
+    face arrived halfway through, which is exactly what came back.
+    """
+    timeline = Timeline.from_dict({
+        "duration": 96,
+        "shots": [{"start": 0, "length": 96, "prompt": "He waits.",
+                   "media": {"kind": "image", "filename": "him.png"}}],
+        "sources": [{"kind": "image", "filename": "face.jpg",
+                     "description": "the face in face.jpg"}],
+    })
+    found = collect(timeline)
+    assert [(item.token, item.origin) for item in found] == [
+        ("<Picture 1>", ("shots", 0)),
+        ("<Picture 2>", None),
+    ]
+    prompt = compile_timeline(timeline).prompt
+    assert "<Picture 2> (appears in" not in prompt
+    assert "<Picture 2>: " in prompt or "<Picture 2> is" in prompt
