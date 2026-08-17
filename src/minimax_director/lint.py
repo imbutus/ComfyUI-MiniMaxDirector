@@ -313,7 +313,13 @@ def _check_references(timeline: Timeline) -> Iterator[Issue]:
         for kind, index in TOKEN.findall(text or ""):
             mentioned.add((kind.lower(), int(index)))
 
-    wired = {(ref.kind, ref.index) for ref in timeline.references}
+    # A file on a block names itself. The compiler appends that block's token to its line
+    # wherever the author has not typed it, so the model is pointed at the file either
+    # way. Counting it as both connected and named is what keeps an ordinary timeline
+    # quiet: the director registers every attached file as a reference before linting, so
+    # without this every run reported a token nobody had typed.
+    attached = {(item.kind, item.index) for item in attachments.collect(timeline)}
+    wired = {(ref.kind, ref.index) for ref in timeline.references} | attached
 
     for kind, index in sorted(mentioned - wired):
         yield Issue(
@@ -322,7 +328,7 @@ def _check_references(timeline: Timeline) -> Iterator[Issue]:
             f"connected to that slot.",
         )
 
-    for kind, index in sorted(wired - mentioned):
+    for kind, index in sorted(wired - mentioned - attached):
         yield Issue(
             "warning",
             f"<{kind.capitalize()} {index}> is connected but never mentioned; the "

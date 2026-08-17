@@ -34,6 +34,39 @@ def test_a_matched_pair_reports_nothing_about_references():
     assert "<Picture 1>" not in messages(timeline)
 
 
+def test_a_file_on_a_block_is_never_reported_as_unmentioned():
+    """The director registers every attached file as a reference before it lints.
+
+    The compiler appends the block's token to its own line, so the model is pointed at the
+    file whether or not the author typed the token. Reporting it as ignored was a warning
+    every run produced and no author could act on.
+    """
+    timeline = Timeline.from_dict(
+        {
+            "global_prompt": "A quiet room.",
+            "shots": [
+                {"start": 0, "length": 30, "prompt": "He waits.",
+                 "media": {"kind": "image", "filename": "face.png"}},
+            ],
+        }
+    ).with_references([Reference("picture", 1)])
+    assert "never mentioned" not in messages(timeline)
+
+
+def test_a_token_for_a_file_on_a_block_is_not_an_error():
+    """The editor lints with nothing wired, so the block itself has to answer for it."""
+    timeline = Timeline.from_dict(
+        {
+            "global_prompt": "Hold on <Picture 1>.",
+            "shots": [
+                {"start": 0, "length": 30, "prompt": "He waits.",
+                 "media": {"kind": "image", "filename": "face.png"}},
+            ],
+        }
+    )
+    assert "nothing is connected" not in messages(timeline)
+
+
 def test_tokens_are_matched_case_insensitively():
     timeline = Timeline(
         global_prompt="Reuse <picture 1>.",
