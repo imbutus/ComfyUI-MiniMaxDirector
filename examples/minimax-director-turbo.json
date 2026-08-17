@@ -66,7 +66,7 @@
       "type": "MiniMaxH3TurboLoRA",
       "pos": [
         480,
-        170
+        162
       ],
       "size": [
         400,
@@ -107,7 +107,7 @@
       "type": "CLIPLoader",
       "pos": [
         480,
-        162
+        284
       ],
       "size": [
         400,
@@ -141,7 +141,7 @@
       "type": "VAELoader",
       "pos": [
         480,
-        308
+        430
       ],
       "size": [
         400,
@@ -174,7 +174,7 @@
       "type": "VAELoader",
       "pos": [
         480,
-        406
+        528
       ],
       "size": [
         400,
@@ -282,7 +282,7 @@
       "type": "RandomNoise",
       "pos": [
         480,
-        520
+        642
       ],
       "size": [
         300,
@@ -315,7 +315,7 @@
       "type": "MiniMaxH3TurboSampler",
       "pos": [
         480,
-        642
+        764
       ],
       "size": [
         300,
@@ -345,7 +345,7 @@
       "type": "BasicScheduler",
       "pos": [
         480,
-        740
+        862
       ],
       "size": [
         300,
@@ -670,7 +670,7 @@
       "type": "MiniMaxDirectorReport",
       "pos": [
         2340,
-        866
+        896
       ],
       "size": [
         520,
