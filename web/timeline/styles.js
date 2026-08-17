@@ -97,19 +97,70 @@ const CSS = `
 .mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
 .mmd-cast-foot { display:flex; align-items:center; gap:12px; }
 .mmd-cast-foot .mmd-grow { flex:1; }
-/* The clip's own files, above the cards: they are the only files with nothing on the
-   timeline to show they exist, so this row is where they are visible at all. */
-.mmd-cast-sources { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
-  padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #22262f; }
-.mmd-cast-sources.mmd-hide { display:none; }
-.mmd-cast-sources-head { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
-.mmd-cast-source { display:inline-flex; align-items:center; gap:6px; background:#171a21;
-  border:1px dashed #333a45; border-radius:6px; padding:2px 4px 2px 2px; color:#8b93a1;
-  font-size:11px; }
-.mmd-cast-source .mmd-face { width:22px; height:22px; border-radius:4px; border:0; }
-.mmd-cast-source button { background:none; border:0; padding:0 4px; cursor:pointer;
+/* The button sits under the transport rather than up on the bar: it opens a list that
+   appears directly beneath it, and a control at the far end of the node from the thing it
+   opens is a control nobody finds. It stays lit while the list is open, because it is also
+   the only thing that closes it again. */
+.mmd-files-bar { display:flex; }
+.mmd-files-btn { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
+  border-radius:6px; padding:5px 10px; font:inherit; font-size:11px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; }
+.mmd-files-btn:hover { background:#39404e; }
+/* The arrow says which way the list opens, and turns over when it is open -- the button is
+   also the one thing that closes it again. */
+.mmd-files-btn .mmd-caret { display:inline-flex; color:#8b93a1;
+  transition:transform .12s ease; }
+.mmd-files-btn.mmd-on .mmd-caret { transform:rotate(180deg); color:#e5e7eb; }
+.mmd-files-btn.mmd-on { border-color:#4a83a8; background:#39404e; }
+/* FILES: every file the clip carries, under the timeline rather than on a tab of its own.
+   A tab would hide the tracks, and the tracks are what a file is dragged onto. */
+/* Boxed like the segment panel below it: border, background and padding of its own. As a
+   bare row under the tracks it read as loose furniture belonging to whatever was nearest --
+   the list is its own thing, and it says so the way everything else on this node does. */
+.mmd-files { flex:0 0 auto; display:flex; flex-direction:column; gap:6px;
+  border:1px solid #2c313c; border-radius:6px; padding:6px 8px; background:#15181e; }
+.mmd-files.mmd-hide { display:none; }
+.mmd-files > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-files > label .mmd-hint { letter-spacing:0; color:#6b7280; }
+.mmd-files-head { display:flex; align-items:center; gap:8px; }
+.mmd-files-head .mmd-grow { flex:1; }
+.mmd-files-head button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
+  border-radius:6px; padding:4px 9px; font:inherit; font-size:11px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px; }
+.mmd-files-head button:hover { background:#39404e; border-color:#5a6474; }
+.mmd-files-list { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.mmd-files-none { color:#6b7280; font-size:11px; }
+.mmd-files-none b { color:#8b93a1; font-weight:600; }
+/* The same padding the file chips under a prompt carry: 9px after the name, 2px before
+   the thumbnail. They sit one above the other on this panel, and 4px against 9px read as
+   a chip that had been cut off. */
+.mmd-file { display:inline-flex; align-items:center; gap:6px; background:#171a21;
+  border:1px solid #333a45; border-radius:6px; padding:2px 9px 2px 2px; color:#8b93a1;
+  font-size:11px; max-width:280px; }
+/* Dashed is the pack's mark for "carried but not placed" -- the same border the file
+   chips under a prompt use, for the same reason. */
+.mmd-file { cursor:grab; }
+.mmd-file:hover { border-color:#4a83a8; color:#c8cfda; }
+.mmd-file-loose { border-style:dashed; }
+.mmd-file-lifting { opacity:.45; }
+.mmd-file-placed { opacity:.75; }
+.mmd-file-token { color:#c8cfda; white-space:nowrap; }
+.mmd-file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mmd-file-thumb { width:22px; height:22px; border-radius:4px; flex:0 0 auto;
+  background:#0d1014 center/cover no-repeat; display:flex; align-items:center;
+  justify-content:center; object-fit:cover; }
+.mmd-file-none { color:#6b7280; }
+.mmd-file button { background:none; border:0; padding:0 4px; cursor:pointer;
   color:#6b7280; font:inherit; font-size:13px; line-height:1; }
-.mmd-cast-source button:hover { color:#e2564b; }
+.mmd-file button:hover { color:#e2564b; }
+/* The track a dragged file may be dropped on says so; the ones that cannot take it stay
+   as they are, which is the whole answer to "why did nothing happen". */
+.mmd-track-taking { outline:1px dashed #4a83a8; outline-offset:-1px; background:#141a20; }
+/* The block the drop would make, at the width it would have. Drawn from the same placement
+   rule the drop itself runs, so releasing the button lands exactly here. */
+.mmd-drop { position:absolute; z-index:3; pointer-events:none; border-radius:5px;
+  border:1px dashed #6ea8c4; background:rgba(110,168,196,.20); }
+.mmd-drop.mmd-hide { display:none; }
 /* Living under the sockets. The editor starts at the node's title now, so its first two
    rows share the band with the input and output labels the canvas draws beneath it: they
    keep clear of both columns, and the padding passes clicks through to the sockets. */

@@ -19,4 +19,6 @@ export const ICON = {
   trash: svg('<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.2a1 1 0 001 .8h3.8a1 1 0 001-.8l.6-8.2M7 7v4M9 7v4"/>'),
   sound: svg('<path d="M1.5 8h2l2-4.5 2 9 2-7 1.5 2.5h2"/>'),
   reset: svg('<path d="M13.5 8a5.5 5.5 0 11-1.9-4.2M13.5 2.2v3.1h-3.1"/>'),
+  caret: svg('<path d="M4 6.2l4 4.2 4-4.2"/>'),
+  files: svg('<path d="M1.8 12.6V4.2a1 1 0 011-1h3l1.2 1.6h5.2a1 1 0 011 1v6.8a1 1 0 01-1 1H2.8a1 1 0 01-1-1z"/>'),
 };

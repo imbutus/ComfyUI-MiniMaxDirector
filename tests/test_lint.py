@@ -175,3 +175,20 @@ def test_a_source_the_prose_names_is_not_reported():
         "sources": [{"kind": "image", "filename": "face.jpg"}],
     })
     assert "is a source file" not in messages(timeline)
+
+
+def test_a_source_clip_nothing_points_at_is_reported_but_its_soundtrack_is_not():
+    """The clip answers for both halves of itself.
+
+    A video's soundtrack is spoken for by the video it belongs to, so warning about it
+    separately is one file reported twice under two tokens -- and only one of them is
+    something the author can act on.
+    """
+    timeline = Timeline.from_dict({
+        "global_prompt": "A quiet room.",
+        "shots": [{"start": 0, "length": 30, "prompt": "He waits."}],
+        "sources": [{"kind": "video", "filename": "walk.mp4"}],
+    })
+    reported = messages(timeline)
+    assert "<Video 1> (walk.mp4) is a source file" in reported
+    assert "<Audio 1> (walk.mp4) is a source file" not in reported

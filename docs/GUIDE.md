@@ -75,21 +75,58 @@ Three write a description; three attach a file.
 | **Add Image** | MAIN | a shot with a reference image on it |
 | **Add Audio** | AUDIO | a cue with a real audio file |
 | **Add Video** | MAIN | a shot with a reference video |
-| **Add Source** | — | a file the whole clip carries, on no block |
 
 Every Add appends a new block after the last one on that track. Adding never overwrites
 a block you already have.
 
-**A source is a file with no moment.** A block says "this stretch of the video is about
-this file", and the compiler writes `(appears in [Shot n])` beside it — which is what you
-want for a picture the shot is of, and wrong for a face to be carried onto whoever is on
-screen, or a look to hold throughout. Put that on a block and the clip is cut in two at a
-seam nobody asked for, with the model changing what it does on either side of it. A source
-is the same file, numbered with the rest (`<Picture 2>`), describable on a card, and
-pointed at from any prompt by its chip — with no shot list of its own. The clip's sources
-are listed at the top of **WHO & WHAT**, which is where a file is described anyway; the `×`
-there takes one off. A source nothing points at — no card, no mention — is a warning,
-because it is the one kind of file no block speaks for.
+### Files
+
+**Files**, under the transport row beneath the tracks, opens a list in the same place — not
+a tab, because the tracks are what a file is dragged onto. It holds every file in the
+document: the ones on blocks, shown with the token they compile to, and the ones on no
+block at all, shown dashed. One row per file, carrying every token it compiles to — a
+reference video is handed to the model twice, as `<Video n>` and as its own `<Audio n>`,
+and both are on its row. `×` takes an unplaced file off the clip.
+
+The two ways in mean different things, and that is deliberate:
+
+- **Add Image / Add Audio / Add Video** on the bar place the file on the timeline, because
+  a file usually *is* a shot.
+- **+ file** inside Files adds a file the clip carries with no moment of its own. Any of the
+  three kinds — which one it is comes from the file. Drag it out of the list onto a track
+  later and it becomes an ordinary block, at the frame you dropped it: a recording or a clip
+  taking the span it actually runs for, a picture two seconds.
+
+Every chip in the list is draggable, placed or not. While you drag, the track that can take
+the file lights up and a dashed outline shows the block you would get — where it starts and
+how wide it is — drawn by the same rule the drop runs, so releasing lands exactly there.
+The drop is **magnetic to the left**: the block lands against the end of whatever you
+dropped it after, or at frame 0 on an empty stretch, rather than wherever the pointer was.
+Aiming a file at a gap by hand is how a clip ends up with four frames nothing describes.
+Dragging an unplaced file **moves** it onto the track; dragging one that is already on a block **copies** it, which is how the same
+photograph is used in two shots without going back to disk for it. The copy carries no
+subjects: the cast writes those onto the first block holding that file, and defining the
+same person twice is not what a second shot of them means.
+
+**Deleting a block keeps its file.** The block was a statement about a stretch of the clip;
+the file was chosen, uploaded and described, and losing it because its block was in the
+wrong place meant finding it on disk again. It goes back to the Files list, on no block —
+as does **detach media** on a block's FILE row. The `×` in Files is the one control that
+means "take this file off the clip". A file still carried by another block is not kept
+twice: one picture, one `<Picture n>`.
+
+**A file with no moment is not a file with no number.** A block says "this stretch of the
+video is about this file", and the compiler writes `(appears in [Shot n])` beside it — which
+is what you want for a picture the shot is of, and wrong for a face to be carried onto
+whoever is on screen, or a look to hold throughout. Put that on a block and the clip is cut
+in two at a seam nobody asked for, with the model changing what it does on either side of
+it. Unplaced, it is the same file, numbered with the rest (`<Picture 2>`), describable on a
+card, and pointed at from any prompt by its chip — with no shot list of its own. One that
+nothing points at — no card, no mention — is a warning, because it is the one kind of file
+no block speaks for.
+
+A clip carried this way still brings its own soundtrack, numbered `<Audio n>` with the
+blocks' clips and ahead of any cue — the order the model is handed them in.
 
 **An attached audio or video takes the span it actually runs for.** The file is measured
 before its block is placed, so an eight-second recording gets eight seconds of clip rather

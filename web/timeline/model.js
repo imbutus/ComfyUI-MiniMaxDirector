@@ -426,6 +426,11 @@ export const filesOf = (timeline) => {
     videos += 1;
     found.push({ token: `<Video ${videos}>`, media: shot.media, block: index });
   }
+  for (const media of timeline?.sources || []) {
+    if (media?.kind !== "video") continue;
+    videos += 1;
+    found.push({ token: `<Video ${videos}>`, media, block: null });
+  }
   return found;
 };
 
@@ -442,6 +447,12 @@ export const audioOf = (timeline) => {
   for (const shot of byStart(items(timeline, "shots"))) {
     if (shot.media?.kind !== "video") continue;
     found.push({ token: `<Audio ${found.length + 1}>`, media: shot.media, kind: "video" });
+  }
+  // A source clip's soundtrack is numbered with the blocks' clips, before the cues: it is
+  // wired into the same `ref_videos` list. Mirrors `attachments.collect`.
+  for (const media of timeline?.sources || []) {
+    if (media?.kind !== "video") continue;
+    found.push({ token: `<Audio ${found.length + 1}>`, media, kind: "video" });
   }
   for (const cue of byStart(items(timeline, "cues"))) {
     if (cue.media?.kind !== "audio") continue;

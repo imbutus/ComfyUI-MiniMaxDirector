@@ -82,6 +82,18 @@ def collect(timeline: Timeline) -> list[Attachment]:
         video_count += 1
         found.append(Attachment("video", video_count, shot.media, ("shots", shot.start)))
 
+    # A source clip is wired into the same `ref_videos` list, after the blocks' -- so its
+    # soundtrack takes its `<Audio n>` here, before the standalone cues, exactly as a
+    # block video's does. The core node pairs each soundtrack with the video it was loaded
+    # beside, so this order is not a preference: it is what the model will be handed.
+    for record in timeline.sources:
+        if record.get("kind") != "video":
+            continue
+        audio_count += 1
+        found.append(Attachment("audio", audio_count, record, None))
+        video_count += 1
+        found.append(Attachment("video", video_count, record, None))
+
     for cue in timeline.ordered_cues():
         if _kind(cue) != "audio":
             continue

@@ -164,6 +164,12 @@ export class TimelineEditor {
      *  the end of is the one thing a timeline is for. */
     this.zoom = 1;
     this.playhead = 0;
+    /** Index in `sources` of the file being dragged out of the Files list, or null, and
+     *  the track it may be dropped on. */
+    this.dragFile = null;
+    this.dragTrack = null;
+    /** Frame the drop preview is currently drawn at, so it is redrawn only when it moves. */
+    this.ghostFrame = null;
 
     // Undo state. Snapshots are JSON strings of the whole document -- small, trivially
     // comparable, and immune to any aliasing bug a structural copy could introduce.
@@ -185,7 +191,6 @@ export class TimelineEditor {
         <button data-media="image">${ICON.image} Add Image</button>
         <button data-media="audio">${ICON.audio} Add Audio</button>
         <button data-media="video">${ICON.video} Add Video</button>
-        <button data-source="image" title="A file for the whole clip, on no block: a face to carry onto whoever is on screen, a look to hold throughout. It is numbered with the rest, described on a card, and cuts nothing in two. Listed under WHO &amp; WHAT.">${ICON.image} Add Source</button>
         <button class="mmd-danger" data-del="1">${ICON.trash} Delete</button>
         <button data-reset="1" title="Empty the timeline: every block, the global prompt and the music. Cmd/Ctrl+Z puts it back.">${ICON.reset} Clear</button>
         <span class="mmd-grow"></span>
@@ -211,6 +216,7 @@ export class TimelineEditor {
             ${TRACKS.map((t) => `<div class="mmd-track" data-track="${t.key}"></div>`).join("")}
             <div class="mmd-end"></div>
             <div class="mmd-playhead"><div class="mmd-head-grip"></div></div>
+            <div class="mmd-drop mmd-hide"></div>
           </div>
         </div>
       </div>
@@ -225,6 +231,21 @@ export class TimelineEditor {
           <button data-zoom="fit">fit</button>
           <button data-zoom="in">+</button>
         </div>
+      </div>
+
+      <div class="mmd-files-bar">
+        <button data-files="1" class="mmd-files-btn" title="Every file the clip carries, in one list: the ones on the timeline and the ones on no block at all. Add a file here to have it without placing it, or drag one from the list onto a track to place it.">${ICON.files} Files <span class="mmd-caret">${ICON.caret}</span></button>
+      </div>
+
+      <div class="mmd-files mmd-hide">
+        <label>FILES <span class="mmd-hint">everything the clip carries, placed or not</span></label>
+        <div class="mmd-files-head">
+          <button data-addfile="1" title="Add a picture, a recording or a clip the whole video carries without giving it a stretch of time: a face to carry onto whoever is on screen, a voice to follow throughout, a look to hold. Drag it out of this list onto a track later if it should be a block.">${ICON.files} + file</button>
+          <span class="mmd-hint">drag one onto a track to place it</span>
+          <span class="mmd-grow"></span>
+
+        </div>
+        <div class="mmd-files-list"></div>
       </div>
 
       <div class="mmd-prompt">
@@ -269,12 +290,16 @@ export class TimelineEditor {
     this.canvas = this.root.querySelector(".mmd-canvas");
     this.ruler = this.root.querySelector(".mmd-ruler");
     this.head = this.root.querySelector(".mmd-playhead");
+    this.ghost = this.root.querySelector(".mmd-drop");
     this.end = this.root.querySelector(".mmd-end");
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
     this.scrub = this.root.querySelector(".mmd-scrub");
     this.segPrompt = this.root.querySelector(".mmd-seg-prompt");
     this.segFields = this.root.querySelector(".mmd-seg-fields");
+    this.filesPanel = this.root.querySelector(".mmd-files");
+    this.filesList = this.root.querySelector(".mmd-files-list");
+    this.bindFiles();
     // Delegated once, on an element that outlives every rebuild: the link to the WHO & WHAT
     // tab appears in two unrelated groups of this panel -- the dialogue row when nobody
     // has been written yet, and the file row, which is the only place a file is
@@ -355,7 +380,8 @@ export class TimelineEditor {
       if (!el) return;
       if (el.dataset.add) this.append(el.dataset.add);
       else if (el.dataset.media) this.attach(el.dataset.media);
-      else if (el.dataset.source) this.attachSource(el.dataset.source);
+      else if (el.dataset.files) this.showFiles(this.filesPanel.classList.contains("mmd-hide"));
+      else if (el.dataset.addfile) this.addFile();
       else if (el.dataset.del) this.deleteSelected();
       else if (el.dataset.reset) this.clear();
       else if (el.dataset.zoom) this.setZoom(el.dataset.zoom);
@@ -1161,15 +1187,25 @@ export class TimelineEditor {
   /**
    * Upload a file and give it to the clip rather than to a block.
    *
-   * A block says "this stretch of the video is about this file", and the compiler writes
-   * `(appears in [Shot n])` beside it. A face to be carried onto whoever is on screen is
-   * not about a stretch: put it on a block and the clip is cut in two at a seam nobody
-   * asked for, with the model changing what it does on either side of it. A source is the
-   * same file, numbered with the rest, and pointed at from any prompt by its chip.
+   * The two entry points differ on purpose. **Add Image** on the bar means "this stretch
+   * of the video is about this file", and the compiler writes `(appears in [Shot n])`
+   * beside it. A face to be carried onto whoever is on screen is not about a stretch: put
+   * it on a block and the clip is cut in two at a seam nobody asked for. The **+** in
+   * Files means that second thing -- the same file, numbered with the rest, pointed at
+   * from any prompt by its chip, occupying no time until it is dragged onto a track.
+   *
+   * Any of the three kinds, taken from the file itself. Which kind it is is written on the
+   * file, so asking first was a question with the answer already in the author's hand.
    */
-  async attachSource(kind) {
-    const file = await media.pick(kind);
+  async addFile() {
+    const file = await media.pick("any");
     if (!file) return;
+
+    const kind = media.kindOf(file);
+    if (!kind) {
+      console.warn(`[MiniMaxDirector] ${file.name}: not a picture, a recording or a clip.`);
+      return;
+    }
 
     let record;
     try {
@@ -1179,14 +1215,21 @@ export class TimelineEditor {
       return;
     }
 
+    // Measured here rather than at the drop: the length a recording takes on the track is
+    // the length of the recording, and reading it needs a round trip the drop cannot wait
+    // for without placing the block at the wrong size first and correcting it after.
+    if (kind !== "image") {
+      const measured = await media.seconds(record);
+      if (measured !== null) record.seconds = Math.round(measured * 10) / 10;
+    }
+
     const timeline = this.read();
     if (!Array.isArray(timeline.sources)) timeline.sources = [];
-    // The same defaults a block's file takes, minus `role`: a source is a reference and
-    // has no frame of the video to be, which is what the roles are about.
+    // The same defaults a block's file takes, minus `role`: a file on no block is a
+    // reference and has no frame of the video to be, which is what the roles are about.
     timeline.sources.push({ retention: retentionsFor(record.kind)[0], ...record });
-    this.selection = null;
     this.commit(timeline);
-    this.showTab("cast");
+    this.showFiles(true);
   }
 
   /** Take a source file off the clip, by filename. Cards pointing at it are left alone. */
@@ -1196,6 +1239,263 @@ export class TimelineEditor {
       (media) => String(media?.filename || "") !== String(filename || ""));
     if (kept.length === (timeline.sources || []).length) return;
     timeline.sources = kept;
+    this.commit(timeline);
+  }
+
+  /** Open or close the Files list. The timeline stays visible either way, because the
+   *  point of the list is dragging out of it onto a track. */
+  showFiles(open) {
+    this.filesPanel.classList.toggle("mmd-hide", !open);
+    this.root.querySelector("[data-files]")?.classList.toggle("mmd-on", open);
+    if (open) {
+      // The timeline tab is the one the list belongs under; opened from anywhere else it
+      // would appear below a panel that has no tracks to drag onto.
+      if (this.tab !== "timeline") this.showTab("timeline");
+      this.paintFiles(this.read());
+    }
+    // The node is as tall as its contents, and nothing else measures a row appearing.
+    this.onTab?.(this.tab || "timeline");
+  }
+
+  /**
+   * Every file in the document, placed or not.
+   *
+   * A file on a block is already visible where it acts, so it is listed as a reminder and
+   * nothing more -- clicking it selects that block. A file on no block has nowhere else to
+   * appear, so this row is the only place it can be seen, dragged onto a track, or removed.
+   */
+  paintFiles(timeline) {
+    if (this.filesPanel.classList.contains("mmd-hide")) return;
+
+    const sources = timeline?.sources || [];
+    const placed = [];
+    const loose = [];
+    // One row per file, carrying every token it compiles to. A reference video is handed
+    // to the model twice -- once as a picture sequence, once as its own soundtrack -- and
+    // the prompt addresses those as <Video n> and <Audio n>. Listing it under one of them
+    // and not the other said the file was two different things depending where you looked.
+    const rows = new Map();
+    for (const entry of [...filesOf(timeline || {}), ...audioOf(timeline || {})]) {
+      const found = rows.get(entry.media);
+      if (found) {
+        found.tokens.push(entry.token);
+        continue;
+      }
+      // Placed or not is asked of the document, not of the entry: a cue's record carries
+      // no block number either, and reading it as loose put every cue in the wrong half.
+      const at = sources.indexOf(entry.media);
+      const row = { record: entry.media, tokens: [entry.token], at: at >= 0 ? at : null };
+      rows.set(entry.media, row);
+      (at >= 0 ? loose : placed).push(row);
+    }
+    const value = (t) => String(t || "").replace(/"/g, "&quot;");
+
+    // Every chip is draggable, placed or not. A photograph used in two shots is an
+    // ordinary thing to want, and the list refusing to give it up a second time only sent
+    // the author back to Add Image to pick the same file off disk again.
+    this.fileEntries = [...loose, ...placed];
+    const chip = ({ record, tokens, at }, index) => {
+      const name = String(record?.filename || "").trim();
+      return `<span class="mmd-file ${at === null ? "mmd-file-placed" : "mmd-file-loose"}"
+        draggable="true" data-file="${index}"
+        title="${at === null
+          ? "On the timeline. Drag it onto a track to use it in a second block as well."
+          : "On no block, so it costs no time. Drag it onto a track to make it a segment."}">
+        ${this.thumb(record)}
+        <span class="mmd-file-token">${tokens.join(" ").replaceAll("<", "&lt;")}</span>
+        <span class="mmd-file-name">${value(name)}</span>
+        ${at === null ? "" : `<button data-dropfile="${value(name)}" title="Take this file off the clip">&times;</button>`}
+      </span>`;
+    };
+
+    this.filesList.innerHTML = this.fileEntries.length
+      ? this.fileEntries.map(chip).join("")
+      : `<span class="mmd-files-none">No files yet. <b>+ file</b> adds one the clip carries
+         without placing it; <b>Add Image</b> above places one on the timeline.</span>`;
+  }
+
+  /** A file at thumbnail size, the same way the cast draws a face. */
+  thumb(record) {
+    const src = record ? media.url(record) : null;
+    if (!src) return `<span class="mmd-file-thumb mmd-file-none">?</span>`;
+    if (record.kind === "video") {
+      return `<video class="mmd-file-thumb" src="${src}#t=0.6" muted preload="metadata"></video>`;
+    }
+    if (record.kind === "audio") return `<span class="mmd-file-thumb">${ICON.audio}</span>`;
+    return `<span class="mmd-file-thumb" style="background-image:url('${src}')"></span>`;
+  }
+
+  /**
+   * The Files list: remove, select, and the drag that places a file on a track.
+   *
+   * Bound once on elements that outlive every repaint. HTML5 drag rather than pointer
+   * capture, because the drop target is the canvas -- which already owns pointerdown for
+   * selection, marquee and scrubbing, and a second meaning for the same gesture there is
+   * how a click on a block starts moving a file instead.
+   */
+  bindFiles() {
+    this.filesList.addEventListener("click", (event) => {
+      const drop = event.target.closest("[data-dropfile]");
+      if (drop) return this.dropSource(drop.dataset.dropfile);
+    });
+
+    this.filesList.addEventListener("dragstart", (event) => {
+      const chip = event.target.closest("[data-file]");
+      if (!chip) return;
+      event.dataTransfer.effectAllowed = "move";
+      // A payload is set because Firefox starts no drag without one; the index is what is
+      // read at the drop, from the editor rather than from the transfer.
+      event.dataTransfer.setData("text/plain", chip.querySelector(".mmd-file-name")?.textContent || "");
+      // Held by its bottom-left corner: the block lands where the chip's left edge is, so a
+      // chip centred on the pointer pointed at a frame the drop never used -- and hanging
+      // it above the pointer leaves the track it is being aimed at visible.
+      event.dataTransfer.setDragImage(chip, 0, chip.offsetHeight);
+      this.dragFile = Number(chip.dataset.file);
+      // Which track can take it is settled once, here: `dragover` fires on every pointer
+      // move, and asking the document again on each one is work per pixel travelled.
+      this.dragTrack = TRACK_FOR_MEDIA[this.fileEntries?.[this.dragFile]?.record?.kind];
+      chip.classList.add("mmd-file-lifting");
+    });
+
+    this.filesList.addEventListener("dragend", (event) => {
+      event.target.closest("[data-file]")?.classList.remove("mmd-file-lifting");
+      this.dragFile = null;
+      this.dragTrack = null;
+      this.ghostFrame = null;
+      this.hideGhost();
+      for (const lane of this.canvas.querySelectorAll(".mmd-track-taking")) {
+        lane.classList.remove("mmd-track-taking");
+      }
+    });
+
+    this.canvas.addEventListener("dragover", (event) => {
+      if (this.dragFile === null || this.dragFile === undefined) return;
+      const track = event.target.closest(".mmd-track");
+      if (!track || track.dataset.track !== this.dragTrack) return;
+      // Only a track that can hold this kind takes the drop, so a recording cannot be
+      // dropped onto MAIN and silently land somewhere else. The event is stopped as well
+      // as defaulted: the graph canvas underneath takes a dropped file as "open this",
+      // and a picture dragged out of the list is not a workflow to load.
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      track.classList.add("mmd-track-taking");
+      // Redrawn only when the pointer has moved to another frame. `dragover` fires far
+      // faster than the timeline has frames, and every one of those events would otherwise
+      // copy the document to compute a block that has not changed.
+      const [x] = this.toLocal(event.clientX, event.clientY);
+      const frame = Math.max(0, Math.round(x / this.scale()));
+      if (frame === this.ghostFrame) return;
+      this.ghostFrame = frame;
+      this.showGhost(frame);
+    });
+
+    this.canvas.addEventListener("dragleave", (event) => {
+      // Only when the pointer has left the tracks altogether: `dragleave` also fires on
+      // every block it crosses on the way, and taking the preview down there made it
+      // flicker across exactly the timeline it is describing.
+      if (event.target.closest(".mmd-track") && event.relatedTarget?.closest?.(".mmd-canvas")) return;
+      event.target.closest(".mmd-track")?.classList.remove("mmd-track-taking");
+      this.ghostFrame = null;
+      this.hideGhost();
+    });
+
+    this.canvas.addEventListener("drop", (event) => {
+      const track = event.target.closest(".mmd-track");
+      track?.classList.remove("mmd-track-taking");
+      if (this.dragFile === null || this.dragFile === undefined) return;
+      if (!track || track.dataset.track !== this.dragTrack) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const [x] = this.toLocal(event.clientX, event.clientY);
+      this.hideGhost();
+      this.ghostFrame = null;
+      this.placeFile(this.dragFile, Math.max(0, Math.round(x / this.scale())));
+      this.dragFile = null;
+      this.dragTrack = null;
+    });
+  }
+
+  /**
+   * Move a file out of the clip's own list and onto a track, at the frame it was dropped.
+   *
+   * The block is built exactly the way **Add Image** builds one, so a file placed by drag
+   * and a file placed by the button are the same block afterwards -- the same defaults,
+   * the same length rule, the same renumbering. Only the way in differs.
+   */
+  /**
+   * The block a drop would make, written into `timeline`.
+   *
+   * One function so the preview cannot drift from the result: the ghost runs this against
+   * a throwaway copy of the document and draws what comes back, and the drop runs the same
+   * thing against the real one. A preview computed by a rule of its own is a preview that
+   * lies the first time either rule changes.
+   */
+  planDrop(timeline, record, frame) {
+    const track = TRACK_FOR_MEDIA[record.kind];
+    // Magnetic to the left, the way a cutting timeline is: the block lands against the end
+    // of whatever it was dropped after -- or at frame 0 on an empty stretch -- rather than
+    // wherever the pointer happened to be. Aiming a file at a gap by hand is how you get a
+    // gap of four frames that nothing describes, which the linter then reports.
+    const ends = items(timeline, track)
+      .filter((item) => item.start <= frame)
+      .map((item) => item.start + item.length);
+    const target = add(timeline, track, 1 / FPS, ends.length ? Math.max(...ends) : 0);
+    const item = items(timeline, track)[target];
+    item.media = { role: ROLES[0], ...record };
+
+    // A recording keeps its own running time; a picture takes the two seconds a new block
+    // takes anywhere. Both are capped by the neighbour they would otherwise overlap.
+    const room = bounds(timeline, track, target)[1] - item.start;
+    const wanted = record.seconds ? Math.round(record.seconds * FPS) : 2 * FPS;
+    item.length = Math.max(1, Math.min(wanted, room));
+    stretchFor(timeline, item);
+    return { track, index: target, item };
+  }
+
+  /** Where the block would land, drawn on the track while the pointer is over it. */
+  showGhost(frame) {
+    const record = this.fileEntries?.[this.dragFile]?.record;
+    const lane = this.canvas.querySelector(`[data-track="${this.dragTrack}"]`);
+    if (!record || !lane) return this.hideGhost();
+
+    const copy = JSON.parse(JSON.stringify(this.read()));
+    const { item } = this.planDrop(copy, record, frame);
+    const scale = this.scale();
+    this.ghost.classList.remove("mmd-hide");
+    this.ghost.style.top = `${lane.offsetTop}px`;
+    this.ghost.style.height = `${lane.offsetHeight}px`;
+    this.ghost.style.left = `${item.start * scale}px`;
+    this.ghost.style.width = `${Math.max(2, item.length * scale)}px`;
+  }
+
+  hideGhost() {
+    this.ghost.classList.add("mmd-hide");
+  }
+
+  placeFile(index, frame) {
+    const entry = this.fileEntries?.[index];
+    if (!entry?.record?.kind) return;
+    const timeline = this.read();
+
+    // Two different moves through one door. A file the clip carries *moves* onto the
+    // track: it was one reference and stays one. A file already on a block is *copied*,
+    // because the block it is on is not the one being made -- that is the same document a
+    // second Add Image would have produced, without going back to disk for the same file.
+    let record;
+    if (entry.at === null) {
+      // The subjects go with the card, and the cast writes them onto the first record
+      // carrying that filename. Copying them here would define the same person twice.
+      const { subjects, subject, ...rest } = entry.record;
+      record = rest;
+    } else {
+      record = (timeline.sources || [])[entry.at];
+      if (!record) return;
+      timeline.sources.splice(entry.at, 1);
+    }
+
+    const { track, index: target } = this.planDrop(timeline, record, frame);
+    this.selection = { track, index: target };
     this.commit(timeline);
   }
 
@@ -1210,13 +1510,44 @@ export class TimelineEditor {
     this.render();
   }
 
+  /**
+   * Keep an uploaded file in the document after the block carrying it goes away.
+   *
+   * Deleting a block is a statement about a stretch of the clip, not about a file: the
+   * file was chosen, uploaded and described, and losing it because its block was in the
+   * wrong place meant picking it off disk again. It goes back to the Files list, on no
+   * block, which is where a file with no moment belongs. The `x` there is the one control
+   * that means "take this file off the clip".
+   *
+   * Nothing is kept twice: another block or another source still holding the same filename
+   * is the same reference, and a second record would be a second `<Picture n>` for one
+   * picture.
+   */
+  keepFile(timeline, record) {
+    const name = String(record?.filename || "").trim();
+    if (!name) return;
+    const held = (list) => (list || []).some(
+      (item) => String(item?.media?.filename || "").trim() === name);
+    if (held(timeline.shots) || held(timeline.cues) || held(timeline.moves)) return;
+    if (!Array.isArray(timeline.sources)) timeline.sources = [];
+    if (timeline.sources.some((media) => String(media?.filename || "").trim() === name)) return;
+    // `role` says which frame of the video the file is; off a block it is no frame at all.
+    const { role, fit, ...rest } = record;
+    timeline.sources.push(rest);
+  }
+
   deleteSelected() {
     if (!this.selected.length) return;
     const timeline = this.read();
     // Highest index first, so earlier removals cannot shift the ones still to come.
+    const dropped = [];
     for (const { track, index } of [...this.selected].sort((a, b) => b.index - a.index)) {
+      const record = items(timeline, track)[index]?.media;
+      if (record) dropped.push(record);
       remove(timeline, track, index);
     }
+    // After the removals, so a file still on a block that survived is not kept twice.
+    for (const record of dropped) this.keepFile(timeline, record);
     this.selected = [];
     this.commit(timeline);
   }
@@ -1850,6 +2181,7 @@ export class TimelineEditor {
     this.renderPlayhead(extent);
     this.renderPanel(timeline);
     this.renderSettings(timeline);
+    this.paintFiles(timeline);
   }
 
   renderRuler(total, scale) {
@@ -2965,7 +3297,10 @@ export class TimelineEditor {
       this.segFields.querySelector(".mmd-f-unlink")
         ?.addEventListener("click", () => {
           const next = this.read();
+          const record = items(next, track)[index].media;
           delete items(next, track)[index].media;
+          // Detached, not discarded: the block gives the file up, the clip still has it.
+          this.keepFile(next, record);
           this.panelShape = null;
           this.commit(next);
         });

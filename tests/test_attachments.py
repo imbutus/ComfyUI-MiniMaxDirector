@@ -127,3 +127,28 @@ def test_a_source_file_is_numbered_with_the_blocks_and_has_no_shot():
     prompt = compile_timeline(timeline).prompt
     assert "<Picture 2> (appears in" not in prompt
     assert "<Picture 2>: " in prompt or "<Picture 2> is" in prompt
+
+
+def test_a_source_clip_is_numbered_with_the_blocks_clips_and_its_soundtrack_before_the_cues():
+    """The order is the core node's, not a preference.
+
+    `MiniMaxH3ReferenceToVideo` reads every reference video from one list and labels each
+    soundtrack immediately before the video it was loaded beside. A source clip is wired
+    into that same list after the blocks', so its `<Audio n>` falls there too -- ahead of
+    a standalone cue, which the node emits last.
+    """
+    timeline = Timeline.from_dict({
+        "duration": 96,
+        "shots": [{"start": 0, "length": 48, "prompt": "The street.",
+                   "media": {"kind": "video", "filename": "street.mp4"}}],
+        "cues": [{"start": 0, "length": 48, "prompt": "Rain.",
+                  "media": {"kind": "audio", "filename": "rain.mp3"}}],
+        "sources": [{"kind": "video", "filename": "walk.mp4"}],
+    })
+    assert [(item.token, item.record["filename"], item.origin) for item in collect(timeline)] == [
+        ("<Audio 1>", "street.mp4", None),
+        ("<Video 1>", "street.mp4", ("shots", 0)),
+        ("<Audio 2>", "walk.mp4", None),
+        ("<Video 2>", "walk.mp4", None),
+        ("<Audio 3>", "rain.mp3", ("cues", 0)),
+    ]

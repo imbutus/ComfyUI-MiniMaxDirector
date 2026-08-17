@@ -230,8 +230,9 @@ def _check_sources(timeline: Timeline) -> Iterator[Issue]:
         if item.origin is not None or item.token in named or item.token in defines:
             continue
         # A reference video's soundtrack has no origin either, and it is spoken for by the
-        # video it belongs to rather than by anything the author writes.
-        if item.record.get("kind") == "video":
+        # video it belongs to rather than by anything the author writes. The video itself
+        # still answers for both, source or not, so only the soundtrack is skipped here.
+        if item.kind == "audio" and item.record.get("kind") == "video":
             continue
         name = str(item.record.get("filename", "")) or item.kind
         yield Issue(

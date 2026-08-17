@@ -19,7 +19,20 @@ const ACCEPT = {
   image: "image/*",
   video: "video/*",
   audio: "audio/*",
+  // The Files list takes any of the three: a file is a file, and which one it is is
+  // something the file already says. Asking the author to pick the kind first was a
+  // question with the answer written on the thing they were about to choose.
+  any: "image/*,audio/*,video/*",
 };
+
+/** Which of the three kinds a chosen file is, or null when the browser will not say. */
+export function kindOf(file) {
+  const type = String(file?.type || "");
+  for (const kind of ["image", "audio", "video"]) {
+    if (type.startsWith(`${kind}/`)) return kind;
+  }
+  return null;
+}
 
 /** Browser file picker, resolved to the chosen File or null. */
 export function pick(kind) {

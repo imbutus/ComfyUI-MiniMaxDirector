@@ -114,11 +114,16 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - `sources` are media records that belong to the clip rather than to a block. They are
   collected by `attachments.collect` after the blocks of their kind, with `origin=None`,
   which is what `_appears_in` reads when it decides whether to write `(appears in [Shot
-  n])` — so a source has a number and a retention line and no shot list. A file whose job
-  is to be carried onto whoever is on screen has no moment, and putting it on a block cut
+  n])` — so a source has a number and a retention line and no shot list. A source video is
+  wired into the same `ref_videos` list as the blocks', after them, so its soundtrack takes
+  its `<Audio n>` there too — before the cues, which the core node emits last. A file whose
+  job is to be carried onto whoever is on screen has no moment, and putting it on a block cut
   the clip at a seam the model then acted on. `tokens_by_segment` skips them: there is no
   block whose line could carry the token, so the author names it with a chip or a card
-  draws a subject out of it, and `_check_sources` warns when neither happened.
+  draws a subject out of it, and `_check_sources` warns when neither happened. The editor
+  writes them from the **Files** list (`+ file`, any of the three kinds), and dragging one
+  out of that list onto a track moves the record from `sources` into a block — the same
+  document either way, so nothing downstream knows which button the author used.
 - `duration` 0 means "as long as the content needs". The rendered length is
   `snap_up(duration or span)`. A new timeline starts at **124** rather than 0, so the
   clip is a fixed thing you arrange segments inside from the first click.
