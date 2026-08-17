@@ -216,7 +216,7 @@ export class TimelineEditor {
             ${TRACKS.map((t) => `<div class="mmd-track" data-track="${t.key}"></div>`).join("")}
             <div class="mmd-end"></div>
             <div class="mmd-playhead"><div class="mmd-head-grip"></div></div>
-            <div class="mmd-drop mmd-hide"></div>
+            <div class="mmd-dropzone mmd-hide"></div>
           </div>
         </div>
       </div>
@@ -290,7 +290,7 @@ export class TimelineEditor {
     this.canvas = this.root.querySelector(".mmd-canvas");
     this.ruler = this.root.querySelector(".mmd-ruler");
     this.head = this.root.querySelector(".mmd-playhead");
-    this.ghost = this.root.querySelector(".mmd-drop");
+    this.ghost = this.root.querySelector(".mmd-dropzone");
     this.end = this.root.querySelector(".mmd-end");
     this.clock = this.root.querySelector(".mmd-clock");
     this.range = this.root.querySelector(".mmd-range");
@@ -831,8 +831,12 @@ export class TimelineEditor {
     const { track, index } = this.selection;
     const lines = items(timeline, track)[index]?.lines || [];
     for (const row of this.segFields.querySelectorAll(".mmd-f-line-row")) {
-      const chips = row.querySelector(".mmd-f-chips");
-      if (chips) chips.innerHTML = this.chips(timeline, lines[Number(row.dataset.line)]?.ids);
+      const deck = row.querySelector(".mmd-f-chipcol");
+      if (deck) {
+        const ids = lines[Number(row.dataset.line)]?.ids;
+        deck.innerHTML = this.speakerDeck(timeline, ids);
+        deck.style.setProperty("--mmd-deck-count", this.deckCount(ids));
+      }
     }
   }
 
@@ -923,7 +927,23 @@ export class TimelineEditor {
     return !!cast && cast.speech !== false;
   }
 
-  chips(timeline, ids) {
+  /**
+   * How many cards the deck holds, which is the width the column has to reserve.
+   *
+   * The deck itself is taken out of the flow so the fan can open over the row without
+   * moving it -- and an absolute element measures nothing, so the column has to be told.
+   * Told in cards rather than pixels: the sizes belong in the stylesheet beside the
+   * overlap they depend on.
+   */
+  deckCount(ids) {
+    const cast = this.castOf?.();
+    if (!cast?.cards?.length) return 0;
+    const chosen = speakerNumbers(ids);
+    return cast.cards.length
+      + chosen.filter((number) => !cast.cards.some((card) => card.id === number)).length;
+  }
+
+  speakerDeck(timeline, ids) {
     const chosen = speakerNumbers(ids);
     const cast = this.castOf?.();
     if (!cast || !cast.cards.length) {
@@ -954,20 +974,35 @@ export class TimelineEditor {
     const sole = (number) => chosen.length === 1 && chosen[0] === number;
     const quote = (words) => String(words).replace(/"/g, "&quot;");
 
-    return cast.cards.map((card) => `
-      <button class="mmd-f-chip${chosen.includes(card.id) ? " mmd-on" : ""}"
+    const face = (card) => this.face(fileOf(card));
+
+    // The deck: every card in the cast, held like cards in a hand -- each one peeking out
+    // from behind the one in front of it, whoever speaks this line at the front. Hovering
+    // fans it out to the right, over the fields after it, and a face is picked by
+    // clicking it. Laid out flat it was the whole cast spread across the row to say that
+    // one of them talks.
+    // The cast keeps its own order, always. Moving whoever was picked to the front
+    // rearranged the hand under the cursor after every click, so the face you reached for
+    // last time is somewhere else this time -- and a row you cannot learn the shape of is
+    // a row you have to read from the start every time. Speaking lifts a card in front of
+    // its neighbours instead, which is what a deck does anyway.
+    const order = cast.cards;
+    const held = order.map((card, at) => `
+      <button type="button" class="mmd-f-deckitem${chosen.includes(card.id) ? " mmd-on" : ""}"
               data-speaker="${card.id}"
-              title="${quote(sole(card.id) ? SOLE
-                : (card.voice || "no voice described yet"))}">
-        ${this.face(fileOf(card))}
-        <span>${nameOf(card)}</span>
+              style="z-index:${(chosen.includes(card.id) ? 100 : 0) + order.length - at}"
+              title="${quote(sole(card.id) ? SOLE : (card.voice || "no voice described yet"))}">
+        ${face(card)}<span class="mmd-f-deckname">${text(nameOf(card))}</span>
       </button>`).join("")
-      + orphans.map((number) => `
-      <button class="mmd-f-chip mmd-on mmd-f-orphan" data-speaker="${number}"
+      + orphans.map((number, at) => `
+      <button type="button" class="mmd-f-deckitem mmd-on mmd-f-orphan" data-speaker="${number}"
+              style="z-index:${orphans.length - at}"
               title="${quote(sole(number) ? SOLE
                 : "This line names a speaker WHO & WHAT no longer has. Click to drop them.")}">
-        <span class="mmd-face mmd-face-none">?</span><span>S${number} — not in WHO &amp; WHAT</span>
+        <span class="mmd-face mmd-face-none">?</span><span class="mmd-f-deckname">S${number} — not in WHO &amp; WHAT</span>
       </button>`).join("");
+
+    return `<div class="mmd-f-deck">${held}</div>`;
   }
 
   /**
@@ -2848,11 +2883,12 @@ export class TimelineEditor {
       + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
       // **set width & height** is drawn for a picture only, so the kind is part of it too.
       + `:${item.media?.kind || "-"}`
-      // How many rows, and which of them are a chorus: both change the markup, and a
-      // shape that missed it left the new row unbuilt until the selection moved away.
+      // How many rows there are changes the markup -- a shape that missed it left the new
+      // row unbuilt until the selection moved away. Who speaks them does not: the deck is
+      // the same markup whether one face is lit or four, and having it here rebuilt the
+      // whole panel on the click that lit the second one -- which pulled the column out
+      // from under the pointer and shut the fan mid-gesture.
       + `:${(item.lines?.length || 1)}`
-      + `:${(item.lines || []).map((said) =>
-            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`
       + `:${claimTag}`;
 
     this.segPrompt.disabled = false;
@@ -2959,12 +2995,9 @@ export class TimelineEditor {
                 compiles to the same nothing</span>
             </span>
           </label>
-          <span class="mmd-f-chipcol">
-            <div class="mmd-f-chips" title="Who says this line. A click hands the line to that face alone; hold Cmd or Ctrl to add another, and another: the guide's (S1,S2) form, as many voices as say the words at once.">${
-              this.chips(timeline, line.ids)}</div>${
-              (this.castOf?.()?.cards || []).length > 1
-                ? `<span class="mmd-f-chips-why">⌘/Ctrl-click to add a voice</span>` : ""}
-          </span>
+          <span class="mmd-f-chipcol" style="--mmd-deck-count:${this.deckCount(line.ids)}"
+                title="Who says this line. The cast is held here like cards in a hand -- hover to fan it out. A click hands the line to that face alone; hold Cmd or Ctrl to add another, and another: the guide's (S1,S2) form, as many voices as say the words at once.">${
+            this.speakerDeck(timeline, line.ids)}</span>
           <label title="How the line is performed. Becomes the verb in the sentence: says, whispers, shouts, answers -- anything you type, used as written.">how
             <input class="mmd-f-delivery" type="text" value="${value("delivery", "says")}">
           </label>
@@ -3060,11 +3093,12 @@ export class TimelineEditor {
       + `:${ANCHOR_ROLES.includes(String(item.media?.role || "")) ? 1 : 0}`
       // **set width & height** is drawn for a picture only, so the kind is part of it too.
       + `:${item.media?.kind || "-"}`
-      // How many rows, and which of them are a chorus: both change the markup, and a
-      // shape that missed it left the new row unbuilt until the selection moved away.
+      // How many rows there are changes the markup -- a shape that missed it left the new
+      // row unbuilt until the selection moved away. Who speaks them does not: the deck is
+      // the same markup whether one face is lit or four, and having it here rebuilt the
+      // whole panel on the click that lit the second one -- which pulled the column out
+      // from under the pointer and shut the fan mid-gesture.
       + `:${(item.lines?.length || 1)}`
-      + `:${(item.lines || []).map((said) =>
-            speakerNumbers(said.ids).length > 1 ? 1 : 0).join("")}`
       + `:${claimTag}`
       // The strip is markup, so a card gained, renumbered or renamed is a new shape.
       + `:${(this.castOf?.()?.cards || []).map((card) => card.uid + card.name).join("|")}`;
@@ -3236,23 +3270,26 @@ export class TimelineEditor {
           return this.commit(next);
         }
 
-        const chip = e.target.closest(".mmd-f-chip");
+        const chip = e.target.closest(".mmd-f-deckitem");
         if (!chip) return;
         const at = rowOf(chip);
         const who = Number(chip.dataset.speaker);
         const current = speakerNumbers(items(this.read(), track)[index]?.lines?.[at]?.ids);
-        // A plain click hands the line to one person, the way the timeline's own blocks
-        // answer a click. A chorus is the rarer thing and asks for the modifier the rest
-        // of the editor uses for "and this one as well", which then toggles.
+        // A plain click hands the line to one face, the way the timeline's own blocks
+        // answer a click. A chorus is the rarer thing and asks for the modifier the rest of
+        // the editor uses for "and this one as well", which then toggles. The last face
+        // cannot be unticked: an empty `ids` compiles as (S1), not as silence.
         const next = (e.metaKey || e.ctrlKey)
           ? (current.includes(who)
             ? current.filter((number) => number !== who)
             : [...current, who].sort((a, b) => a - b))
           : [who];
         if (!next.length) return;
+        // Repainted in place, never rebuilt: the fan is held open by the pointer being
+        // over this column, and a column replaced under the cursor is a fan that shuts the
+        // instant you pick somebody. `paintPicker` writes into the column that is already
+        // there, so the hover survives the click.
         patchLine({ ids: speakerIds(next) }, false, at);
-        this.panelShape = null;
-        this.render();
       });
       // A change of motion can add or remove the two dynamics pickers, so the panel is
       // rebuilt rather than repainted -- `patch` alone would leave the old pair on screen

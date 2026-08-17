@@ -158,9 +158,11 @@ const CSS = `
 .mmd-track-taking { outline:1px dashed #4a83a8; outline-offset:-1px; background:#141a20; }
 /* The block the drop would make, at the width it would have. Drawn from the same placement
    rule the drop itself runs, so releasing the button lands exactly here. */
-.mmd-drop { position:absolute; z-index:3; pointer-events:none; border-radius:5px;
+/* mmd-dropzone, not mmd-drop: the bin on a dialogue line already carries mmd-drop -- it
+   drops a line -- and the shared name gave it absolute position and a dashed blue border. */
+.mmd-dropzone { position:absolute; z-index:3; pointer-events:none; border-radius:5px;
   border:1px dashed #6ea8c4; background:rgba(110,168,196,.20); }
-.mmd-drop.mmd-hide { display:none; }
+.mmd-dropzone.mmd-hide { display:none; }
 /* Living under the sockets. The editor starts at the node's title now, so its first two
    rows share the band with the input and output labels the canvas draws beneath it: they
    keep clear of both columns, and the padding passes clicks through to the sockets. */
@@ -376,23 +378,46 @@ const CSS = `
    old single-select could only reach through a mode and a box of comma-separated numbers. */
 /* Scoped through .mmd-seg-fields on purpose: the panel's own button rule is the red
    "detach media" style, and it is one step more specific than a bare class. */
-.mmd-f-chips { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-/* The modifier is the only part of the row that cannot be discovered by clicking: a plain
-   click already does the common thing, so nothing on screen would ever hint at a chorus.
-   Said once, quietly, and only where there is another face to add. */
-.mmd-f-chipcol { display:flex; flex-direction:column; gap:3px; align-items:flex-start;
-  min-width:0; }
-.mmd-seg-fields .mmd-f-chips-why { color:#5b6675; font-size:11px; white-space:nowrap; }
-.mmd-seg-fields .mmd-f-chip { display:flex; align-items:center; gap:6px;
-  background:#1c1f26; border:1px solid #333a45; border-radius:99px;
-  padding:2px 10px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
-.mmd-seg-fields .mmd-f-chip:hover { background:#232833; border-color:#4b5563;
-  color:#cdd3dd; }
-.mmd-seg-fields .mmd-f-chip .mmd-face { width:22px; height:22px; border-radius:99px;
-  border:0; }
-.mmd-seg-fields .mmd-f-chip.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
+/* The deck: the cast held like cards in a hand, each face peeking out from behind the one
+   in front of it, whoever speaks this line at the front. Flat, the row spent the width of
+   five people to say that one of them talks.
+
+   Hovered, it fans out to the right and over the fields after it -- absolute, so the row
+   does not reflow, and the fields it covers are ones nobody edits while choosing a voice. */
+/* The deck is out of the flow at all times, and the column reserves the width of the
+   collapsed stack instead -- one card, plus a sliver for each one behind it.
+
+   It has to be that way round. Taking the deck out of the flow only on hover emptied the
+   column at the moment the pointer arrived: the column collapsed to nothing, the pointer
+   was no longer over it, the hover ended, the deck came back -- on and off, every frame. */
+.mmd-f-chipcol { position:relative; display:flex; align-items:center; flex:0 0 auto;
+  height:26px; }
+.mmd-f-chipcol:has(.mmd-f-deck) {
+  width:calc(30px + (var(--mmd-deck-count, 1) - 1) * 9px); }
+.mmd-f-deck { position:absolute; left:0; top:50%; transform:translateY(-50%);
+  display:flex; align-items:center; z-index:2;
+  border:1px solid transparent; border-radius:99px; padding:1px; }
+.mmd-f-chipcol:hover .mmd-f-deck { z-index:9; gap:5px; padding:3px;
+  background:#171a21; border-color:#3a4150; box-shadow:0 8px 22px rgba(0,0,0,.55); }
+.mmd-seg-fields .mmd-f-deckitem { position:relative; display:flex; align-items:center;
+  gap:0; background:#1c1f26; border:2px solid #1c1f26; border-radius:99px; padding:0;
+  cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; white-space:nowrap; }
+/* Collapsed, each card sits half on top of the one before it and shows nothing but its
+   face. The ring in the row's own colour is what makes the edge underneath read as a card
+   behind rather than as a smudge. */
+.mmd-f-deckitem + .mmd-f-deckitem { margin-left:-17px; }
+.mmd-f-chipcol:hover .mmd-f-deckitem + .mmd-f-deckitem { margin-left:0; }
+.mmd-f-deckname { max-width:0; overflow:hidden; opacity:0;
+  transition:max-width .12s ease, opacity .12s ease, padding .12s ease; }
+.mmd-f-chipcol:hover .mmd-f-deckname { max-width:130px; opacity:1; padding:0 8px 0 6px; }
+.mmd-seg-fields .mmd-f-deckitem .mmd-face { width:22px; height:22px; border-radius:99px;
+  border:0; flex:0 0 auto; }
+.mmd-seg-fields .mmd-f-deckitem:hover { border-color:#4b5563; color:#cdd3dd; }
+/* Speaking is the front of the deck and stays legible collapsed, where the ring is the
+   only part of a card you can see. */
+.mmd-seg-fields .mmd-f-deckitem.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
   background:#22303a; }
-.mmd-seg-fields .mmd-f-chip.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
+.mmd-seg-fields .mmd-f-deckitem.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
   background:#2a1e1d; }
 .mmd-f-nobody { color:#6b7280; font-size:11px; }
 /* The speaker chip's twin, for the other half of a shot: which subjects the text names.
