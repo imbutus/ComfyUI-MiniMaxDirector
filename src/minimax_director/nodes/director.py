@@ -222,7 +222,16 @@ class MiniMaxDirector(io.ComfyNode):
             frames, sound = _load(item.record)
             videos.append(frames)
             soundtracks.append(sound)
-        audios = [_load(a.record)[0] for a in attachments.of_kind(document, "audio")]
+        # Standalone audio: the recordings on the AUDIO track, and any clip dropped there,
+        # which contributes its soundtrack and none of its frames. A block video's own
+        # soundtrack is not one of these -- it travels with the video, in `ref_video_audios`,
+        # which is why the origin is asked for rather than the record's kind alone.
+        audios = []
+        for item in attachments.collect(document):
+            if item.kind != "audio" or item.origin is None or item.origin[0] != "cues":
+                continue
+            frames, sound = _load(item.record)
+            audios.append(sound if item.record.get("kind") == "video" else frames)
 
         document = document.with_references(
             references.assign(pictures, videos, soundtracks, audios)

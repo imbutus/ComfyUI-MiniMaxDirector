@@ -152,3 +152,24 @@ def test_a_source_clip_is_numbered_with_the_blocks_clips_and_its_soundtrack_befo
         ("<Video 2>", "walk.mp4", None),
         ("<Audio 3>", "rain.mp3", ("cues", 0)),
     ]
+
+
+def test_a_clip_on_the_audio_track_is_a_soundtrack_and_not_a_video():
+    """The same file, two readings, decided by the track it was dropped on.
+
+    On MAIN a clip is its pictures, with its own sound travelling beside them. On AUDIO it
+    is the sound alone: the director hands the core node that clip's decoded soundtrack and
+    none of its frames, so there is no `<Video n>` for the model to reproduce.
+    """
+    timeline = Timeline.from_dict({
+        "duration": 96,
+        "shots": [{"start": 0, "length": 96, "prompt": "He waits."}],
+        "cues": [{"start": 0, "length": 96, "prompt": "The room he is in.",
+                  "media": {"kind": "video", "filename": "room.mp4"}}],
+    })
+    assert [(item.token, item.origin) for item in collect(timeline)] == [
+        ("<Audio 1>", ("cues", 0)),
+    ]
+    prompt = compile_timeline(timeline).prompt
+    assert "<Audio 1>" in prompt
+    assert "<Video 1>" not in prompt

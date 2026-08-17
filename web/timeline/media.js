@@ -129,11 +129,33 @@ export function fitGeneration(size, budget = 1344 * 768) {
  * cheaper and more honest than inventing a thumbnail. Audio gets a waveform, drawn from
  * the decoded samples rather than faked.
  */
-export function decorate(node, media) {
+export function decorate(node, media, { sound = false } = {}) {
   const src = url(media);
   if (!src) return;
 
   node.classList.add("mmd-has-media");
+
+  // A clip on the AUDIO track is there for its soundtrack and nothing else, so that is what
+  // the block shows: the picture dimmed to a hint of where the sound came from, with the
+  // waveform of the file drawn over it exactly as a recording's block is drawn.
+  if (sound && media.kind === "video") {
+    const video = document.createElement("video");
+    video.className = "mmd-media mmd-media-quiet";
+    video.src = src;
+    video.muted = true;
+    video.preload = "metadata";
+    video.addEventListener("loadedmetadata", () => { video.currentTime = 0.04; }, { once: true });
+    node.appendChild(video);
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "mmd-media mmd-wave";
+    node.appendChild(canvas);
+    // The same solid green a recording's wave is drawn in. Drawn semi-transparent, the
+    // frame behind showed through the wave itself and both went muddy; the picture is what
+    // steps back here, not the sound.
+    waveform(canvas, src);
+    return;
+  }
 
   if (media.kind === "image") {
     node.style.backgroundImage = `url("${src}")`;
@@ -207,7 +229,7 @@ function peaksOf(src) {
 }
 
 /** Draw the envelope. Silent on failure -- it is decoration. */
-async function waveform(canvas, src) {
+async function waveform(canvas, src, colour = "#7fbf6a") {
   const peaks = await peaksOf(src);
   if (!peaks || !canvas.isConnected) return;
 
@@ -217,7 +239,7 @@ async function waveform(canvas, src) {
   canvas.height = height;
 
   const paint = canvas.getContext("2d");
-  paint.fillStyle = "#7fbf6a";
+  paint.fillStyle = colour;
   const step = peaks.length / width;
 
   for (let x = 0; x < width; x++) {

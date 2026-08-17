@@ -23,6 +23,16 @@ export const TRACKS = [
 /** Which track a piece of media belongs on. */
 export const TRACK_FOR_MEDIA = { image: "shots", video: "shots", audio: "cues" };
 
+/**
+ * Which tracks a file of each kind may be dropped on.
+ *
+ * A clip is two things at once -- a picture sequence and a soundtrack -- and the prompt
+ * addresses both. On MAIN it is the picture, with its own sound travelling beside it; on
+ * AUDIO it is the sound alone, and the pictures are never handed to the model. The rest
+ * have one place they can go, which is what `TRACK_FOR_MEDIA` says.
+ */
+export const TRACKS_FOR_MEDIA = { image: ["shots"], video: ["shots", "cues"], audio: ["cues"] };
+
 /** Camera vocabulary; must match CAMERA_PROSE in timeline.py. */
 /** The camera vocabulary. No empty entry: a move that contributes no sentence is a block
  *  that does nothing, and `static` already says "the camera holds still" out loud, which
@@ -92,9 +102,15 @@ export const AUDIO_RETENTIONS = [
   "fully_copy", "partially_copy", "reference", "weak_reference",
 ];
 
-/** Which set a file's marker is drawn from. The file's kind decides, never the author. */
-export const retentionsFor = (kind) =>
-  (kind === "audio" ? AUDIO_RETENTIONS : RETENTIONS);
+/**
+ * Which set a file's marker is drawn from. Where it sits decides, never the author.
+ *
+ * A recording is graded in the audio words, and so is a clip on the AUDIO track: there it
+ * is its soundtrack and nothing else, which is what `_markers` in compile.py reads off the
+ * attachment's own kind. The same clip on MAIN is graded in the visual words.
+ */
+export const retentionsFor = (kind, track = null) =>
+  (kind === "audio" || track === "cues" ? AUDIO_RETENTIONS : RETENTIONS);
 
 /** One line, always: every run of whitespace becomes a single space.
  *
@@ -454,8 +470,10 @@ export const audioOf = (timeline) => {
     if (media?.kind !== "video") continue;
     found.push({ token: `<Audio ${found.length + 1}>`, media, kind: "video" });
   }
+  // A cue carries a recording, or a clip that is on the AUDIO track for its sound alone.
+  // Mirrors the cue half of `attachments.collect`.
   for (const cue of byStart(items(timeline, "cues"))) {
-    if (cue.media?.kind !== "audio") continue;
+    if (cue.media?.kind !== "audio" && cue.media?.kind !== "video") continue;
     found.push({ token: `<Audio ${found.length + 1}>`, media: cue.media, kind: "audio" });
   }
   for (const media of timeline?.sources || []) {

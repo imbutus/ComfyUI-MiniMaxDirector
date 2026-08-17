@@ -615,6 +615,9 @@ const CSS = `
 .mmd-seg .mmd-grip.mmd-l { left:0; } .mmd-seg .mmd-grip.mmd-r { right:0; }
 .mmd-seg .mmd-media { position:absolute; inset:0; width:100%; height:100%;
   object-fit:cover; pointer-events:none; }
+/* A clip on the AUDIO track is there for its sound: the picture drops back to a hint of
+   where that sound came from, and the waveform on top is the block's real content. */
+.mmd-seg .mmd-media-quiet { opacity:.38; }
 /* One layout for every block, whatever it carries: the prompt on the top line, the file on
    the bottom line, controls in the bottom right corner. Attaching a file used to move the
    prompt down onto the filename's row, which read as the file name being replaced by the

@@ -116,7 +116,11 @@ One JSON object in one widget. It is the only state; the editor is a view over i
   which is what `_appears_in` reads when it decides whether to write `(appears in [Shot
   n])` — so a source has a number and a retention line and no shot list. A source video is
   wired into the same `ref_videos` list as the blocks', after them, so its soundtrack takes
-  its `<Audio n>` there too — before the cues, which the core node emits last. A file whose
+  its `<Audio n>` there too — before the cues, which the core node emits last. A **video on
+  the cues track** is one `<Audio n>` and no `<Video n>`: `collect` takes cue media of kind
+  `audio` or `video`, and the director loads `_load(record)[1]` — the decoded soundtrack —
+  into `ref_audios`, never its frames. `_markers` already grades it by the attachment's
+  kind, so the audio vocabulary applies without a special case. A file whose
   job is to be carried onto whoever is on screen has no moment, and putting it on a block cut
   the clip at a seam the model then acted on. `tokens_by_segment` skips them: there is no
   block whose line could carry the token, so the author names it with a chip or a card

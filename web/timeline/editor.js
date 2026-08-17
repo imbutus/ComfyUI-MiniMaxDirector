@@ -14,7 +14,8 @@ import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SPEEDS, TRANSITIONS, TRACKS, TRACK_FOR_MEDIA, add, bounds,
+  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SPEEDS, TRANSITIONS, TRACKS,
+  TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
   remove, reshape, flat, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
@@ -92,8 +93,8 @@ const fitOptions = (current) => {
  * document written before the two sets were told apart, where an audio file still holds a
  * visual marker -- the compiler translates it, and this shows what is actually stored.
  */
-const retentionOptions = (current, kind = "image") => {
-  const all = retentionsFor(kind);
+const retentionOptions = (current, kind = "image", track = null) => {
+  const all = retentionsFor(kind, track);
   const value = current || all[0];
   const names = all.includes(value) ? all : [value, ...all];
   return names
@@ -165,9 +166,9 @@ export class TimelineEditor {
     this.zoom = 1;
     this.playhead = 0;
     /** Index in `sources` of the file being dragged out of the Files list, or null, and
-     *  the track it may be dropped on. */
+     *  the tracks it may be dropped on. */
     this.dragFile = null;
-    this.dragTrack = null;
+    this.dragTracks = [];
     /** Frame the drop preview is currently drawn at, so it is redrawn only when it moves. */
     this.ghostFrame = null;
 
@@ -1385,16 +1386,17 @@ export class TimelineEditor {
       // it above the pointer leaves the track it is being aimed at visible.
       event.dataTransfer.setDragImage(chip, 0, chip.offsetHeight);
       this.dragFile = Number(chip.dataset.file);
-      // Which track can take it is settled once, here: `dragover` fires on every pointer
-      // move, and asking the document again on each one is work per pixel travelled.
-      this.dragTrack = TRACK_FOR_MEDIA[this.fileEntries?.[this.dragFile]?.record?.kind];
+      // Which tracks can take it is settled once, here: `dragover` fires on every pointer
+      // move, and asking the document again on each one is work per pixel travelled. A clip
+      // has two answers -- MAIN for its pictures, AUDIO for its sound alone.
+      this.dragTracks = TRACKS_FOR_MEDIA[this.fileEntries?.[this.dragFile]?.record?.kind] || [];
       chip.classList.add("mmd-file-lifting");
     });
 
     this.filesList.addEventListener("dragend", (event) => {
       event.target.closest("[data-file]")?.classList.remove("mmd-file-lifting");
       this.dragFile = null;
-      this.dragTrack = null;
+      this.dragTracks = [];
       this.ghostFrame = null;
       this.hideGhost();
       for (const lane of this.canvas.querySelectorAll(".mmd-track-taking")) {
@@ -1405,7 +1407,7 @@ export class TimelineEditor {
     this.canvas.addEventListener("dragover", (event) => {
       if (this.dragFile === null || this.dragFile === undefined) return;
       const track = event.target.closest(".mmd-track");
-      if (!track || track.dataset.track !== this.dragTrack) return;
+      if (!track || !this.dragTracks.includes(track.dataset.track)) return;
       // Only a track that can hold this kind takes the drop, so a recording cannot be
       // dropped onto MAIN and silently land somewhere else. The event is stopped as well
       // as defaulted: the graph canvas underneath takes a dropped file as "open this",
@@ -1419,9 +1421,10 @@ export class TimelineEditor {
       // copy the document to compute a block that has not changed.
       const [x] = this.toLocal(event.clientX, event.clientY);
       const frame = Math.max(0, Math.round(x / this.scale()));
-      if (frame === this.ghostFrame) return;
+      if (frame === this.ghostFrame && track.dataset.track === this.ghostTrack) return;
       this.ghostFrame = frame;
-      this.showGhost(frame);
+      this.ghostTrack = track.dataset.track;
+      this.showGhost(frame, this.ghostTrack);
     });
 
     this.canvas.addEventListener("dragleave", (event) => {
@@ -1438,15 +1441,16 @@ export class TimelineEditor {
       const track = event.target.closest(".mmd-track");
       track?.classList.remove("mmd-track-taking");
       if (this.dragFile === null || this.dragFile === undefined) return;
-      if (!track || track.dataset.track !== this.dragTrack) return;
+      if (!track || !this.dragTracks.includes(track.dataset.track)) return;
       event.preventDefault();
       event.stopPropagation();
       const [x] = this.toLocal(event.clientX, event.clientY);
       this.hideGhost();
       this.ghostFrame = null;
-      this.placeFile(this.dragFile, Math.max(0, Math.round(x / this.scale())));
+      this.placeFile(this.dragFile, Math.max(0, Math.round(x / this.scale())),
+                     track.dataset.track);
       this.dragFile = null;
-      this.dragTrack = null;
+      this.dragTracks = [];
     });
   }
 
@@ -1465,8 +1469,7 @@ export class TimelineEditor {
    * thing against the real one. A preview computed by a rule of its own is a preview that
    * lies the first time either rule changes.
    */
-  planDrop(timeline, record, frame) {
-    const track = TRACK_FOR_MEDIA[record.kind];
+  planDrop(timeline, record, frame, track = TRACK_FOR_MEDIA[record.kind]) {
     // Magnetic to the left, the way a cutting timeline is: the block lands against the end
     // of whatever it was dropped after -- or at frame 0 on an empty stretch -- rather than
     // wherever the pointer happened to be. Aiming a file at a gap by hand is how you get a
@@ -1476,7 +1479,14 @@ export class TimelineEditor {
       .map((item) => item.start + item.length);
     const target = add(timeline, track, 1 / FPS, ends.length ? Math.max(...ends) : 0);
     const item = items(timeline, track)[target];
-    item.media = { role: ROLES[0], ...record };
+    // `role` is which frame of the video a picture is, so it belongs to MAIN alone, and a
+    // marker is drawn from the set the track decides -- a clip on AUDIO is its soundtrack.
+    // A marker carried over from the other set is dropped rather than shown in a list it
+    // is not in: the clip was graded as pictures and is about to be graded as sound.
+    const markers = retentionsFor(record.kind, track);
+    const kept = markers.includes(String(record.retention || "")) ? record.retention : markers[0];
+    item.media = { ...(track === "shots" ? { role: ROLES[0] } : {}), ...record,
+                   retention: kept };
 
     // A recording keeps its own running time; a picture takes the two seconds a new block
     // takes anywhere. Both are capped by the neighbour they would otherwise overlap.
@@ -1488,13 +1498,13 @@ export class TimelineEditor {
   }
 
   /** Where the block would land, drawn on the track while the pointer is over it. */
-  showGhost(frame) {
+  showGhost(frame, track) {
     const record = this.fileEntries?.[this.dragFile]?.record;
-    const lane = this.canvas.querySelector(`[data-track="${this.dragTrack}"]`);
+    const lane = this.canvas.querySelector(`[data-track="${track}"]`);
     if (!record || !lane) return this.hideGhost();
 
     const copy = JSON.parse(JSON.stringify(this.read()));
-    const { item } = this.planDrop(copy, record, frame);
+    const { item } = this.planDrop(copy, record, frame, track);
     const scale = this.scale();
     this.ghost.classList.remove("mmd-hide");
     this.ghost.style.top = `${lane.offsetTop}px`;
@@ -1507,7 +1517,7 @@ export class TimelineEditor {
     this.ghost.classList.add("mmd-hide");
   }
 
-  placeFile(index, frame) {
+  placeFile(index, frame, onto) {
     const entry = this.fileEntries?.[index];
     if (!entry?.record?.kind) return;
     const timeline = this.read();
@@ -1528,7 +1538,7 @@ export class TimelineEditor {
       timeline.sources.splice(entry.at, 1);
     }
 
-    const { track, index: target } = this.planDrop(timeline, record, frame);
+    const { track, index: target } = this.planDrop(timeline, record, frame, onto);
     this.selection = { track, index: target };
     this.commit(timeline);
   }
@@ -2465,7 +2475,7 @@ export class TimelineEditor {
     node.style.left = `${item.start * scale}px`;
     node.style.width = `${Math.max(item.length * scale, 14)}px`;
 
-    if (item.media) media.decorate(node, item.media);
+    if (item.media) media.decorate(node, item.media, { sound: track === "cues" });
 
     const caption = document.createElement("span");
     caption.className = "mmd-cap";
@@ -2534,7 +2544,7 @@ export class TimelineEditor {
       const keep = document.createElement("select");
       keep.className = "mmd-keep-pick";
       keep.title = "How much of this file survives into the video";
-      keep.innerHTML = retentionOptions(item.media.retention, item.media.kind);
+      keep.innerHTML = retentionOptions(item.media.retention, item.media.kind, track);
       node.appendChild(keep);
     }
 
@@ -2939,7 +2949,7 @@ export class TimelineEditor {
         </label>
         <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
           <select class="mmd-f-retention">${
-            retentionOptions(item.media.retention, item.media.kind)}</select>
+            retentionOptions(item.media.retention, item.media.kind, track)}</select>
         </label>
         ${!ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
         <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit

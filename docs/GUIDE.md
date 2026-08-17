@@ -128,6 +128,12 @@ no block speaks for.
 A clip carried this way still brings its own soundtrack, numbered `<Audio n>` with the
 blocks' clips and ahead of any cue — the order the model is handed them in.
 
+**A clip can be dropped on MAIN or on AUDIO, and it means two different things.** On MAIN
+it is its pictures, with its own sound travelling beside them: `<Video n>` and an `<Audio n>`
+of its own. On AUDIO it is the sound alone — the node hands the model that clip's decoded
+soundtrack and none of its frames, so there is one `<Audio n>` and no video to reproduce.
+Its `keep file` follows the track too: the audio markers there, the visual ones on MAIN.
+
 **An attached audio or video takes the span it actually runs for.** The file is measured
 before its block is placed, so an eight-second recording gets eight seconds of clip rather
 than a default two — bounded by the block after it and by the end of the clip, so

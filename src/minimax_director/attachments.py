@@ -94,8 +94,12 @@ def collect(timeline: Timeline) -> list[Attachment]:
         video_count += 1
         found.append(Attachment("video", video_count, record, None))
 
+    # A cue is a recording, or a clip dropped on the AUDIO track for its sound alone -- the
+    # director hands the core node that clip's decoded soundtrack and none of its frames,
+    # so it is one `<Audio n>` and no `<Video n>`. The same file on MAIN is the other
+    # reading: the pictures, with their sound travelling beside them.
     for cue in timeline.ordered_cues():
-        if _kind(cue) != "audio":
+        if _kind(cue) not in ("audio", "video"):
             continue
         audio_count += 1
         found.append(Attachment("audio", audio_count, cue.media, ("cues", cue.start)))
