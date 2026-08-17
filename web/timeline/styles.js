@@ -483,7 +483,10 @@ const CSS = `
   font:inherit; font-size:11px; }
 .mmd-cast-add:hover { background:#3d4553; border-color:#5a6474; }
 .mmd-prompt { transition:border-color .12s ease; }
-.mmd-prompt:focus-within { border-color:#3f5a6b; }
+/* The panel lights while something is being *typed* into it, not merely while something in
+   it has focus: a button takes focus when it is clicked, so picking a face out of the deck
+   lit the whole block for as long as the click lasted. */
+.mmd-prompt:has(:is(input, textarea, select):focus) { border-color:#3f5a6b; }
 .mmd-bar .mmd-grow { flex:1; }
 
 /* stage: fixed label column + scrolling track area ------------------------ */
@@ -780,9 +783,11 @@ const CSS = `
    button beside it is dead, and it is where the fix is typed. */
 .mmd-f-line-row.mmd-f-quiet .mmd-f-line { border-color:#6b5533; }
 /* The group you are typing in, ringed in the accent colour -- what a card does, for the
-   same reason: a panel of recessed groups says nothing about which one has the caret. */
-.mmd-f-group:focus-within { border-style:solid; border-color:#3a4150;
-  box-shadow:0 0 0 1px #2f6d8f; }
+   same reason: a panel of recessed groups says nothing about which one has the caret.
+   A caret, though, not any focus: a button takes focus when it is clicked, so picking a
+   face out of the deck ringed the whole DIALOGUE group for the length of the click. */
+.mmd-f-group:has(:is(input, textarea, select):focus) { border-style:solid;
+  border-color:#3a4150; box-shadow:0 0 0 1px #2f6d8f; }
 /* A bulk action reads like the row's other controls, and says so when it cannot run:
    disabled rather than hidden, because a button that comes and goes is one you never
    learn about. Its title says what selection would enable it. */
