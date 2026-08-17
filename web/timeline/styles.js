@@ -134,9 +134,12 @@ const CSS = `
 /* The same padding the file chips under a prompt carry: 9px after the name, 2px before
    the thumbnail. They sit one above the other on this panel, and 4px against 9px read as
    a chip that had been cut off. */
+/* Square corners, a square thumbnail and a monospaced name: the same shape a file takes
+   in the strip under a prompt, so a file reads as a file wherever it is drawn. */
 .mmd-file { display:inline-flex; align-items:center; gap:6px; background:#171a21;
-  border:1px solid #333a45; border-radius:6px; padding:2px 9px 2px 2px; color:#8b93a1;
-  font-size:11px; max-width:280px; }
+  border:1px solid #333a45; border-radius:4px; padding:2px 9px 2px 2px; color:#8b93a1;
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px;
+  max-width:280px; }
 /* Dashed is the pack's mark for "carried but not placed" -- the same border the file
    chips under a prompt use, for the same reason. */
 .mmd-file { cursor:grab; }
@@ -146,7 +149,7 @@ const CSS = `
 .mmd-file-placed { opacity:.75; }
 .mmd-file-token { color:#c8cfda; white-space:nowrap; }
 .mmd-file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mmd-file-thumb { width:22px; height:22px; border-radius:4px; flex:0 0 auto;
+.mmd-file-thumb { width:22px; height:22px; border-radius:3px; flex:0 0 auto;
   background:#0d1014 center/cover no-repeat; display:flex; align-items:center;
   justify-content:center; object-fit:cover; }
 .mmd-file-none { color:#6b7280; }
@@ -441,20 +444,33 @@ const CSS = `
 /* .mmd-hide is declared above this and would lose to it on source order alone. */
 .mmd-subj-strip.mmd-hide { display:none; }
 .mmd-prompt.mmd-bulk > .mmd-subj-strip { display:none; }
+/* Two families in one row, and they are told apart by shape before they are read.
+
+   A **subject** is somebody or something in the video: a rounded pill with a round face,
+   the same language the speaker deck uses for a person. A **file** is a thing on disk:
+   square corners, a square thumbnail and a monospaced name -- the shape of a document
+   rather than of a character. Dimmer as well, because a subject is what the
+   prompt is usually about and the file is the thing behind it. */
 .mmd-subj-strip .mmd-f-subj { display:inline-flex; align-items:center; gap:6px;
-  background:#1c1f26; border:1px solid #333a45; border-radius:6px;
-  padding:2px 9px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
+  background:#1c1f26; border:1px solid #333a45; border-radius:99px;
+  padding:2px 11px 2px 2px; cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; }
 .mmd-subj-strip .mmd-f-subj:hover { background:#232833; border-color:#4b5563;
   color:#cdd3dd; }
-.mmd-subj-strip .mmd-f-subj .mmd-face { width:22px; height:22px; border-radius:4px;
+.mmd-subj-strip .mmd-f-subj .mmd-face { width:22px; height:22px; border-radius:99px;
   border:0; }
 .mmd-subj-strip .mmd-f-subj.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
   background:#22303a; }
-/* A file's own token, beside the subjects taken out of files. Dimmer, because a subject is
-   what the prompt is usually about and a file is the thing behind it -- and darker on the
-   left so a row of both reads as two groups without a separator. */
-.mmd-subj-strip .mmd-f-file { background:#171a21; border-style:dashed; }
-.mmd-subj-strip .mmd-f-file.mmd-on { border-style:solid; }
+.mmd-subj-strip .mmd-f-file { background:#13161b; border-style:solid;
+  border-radius:4px; border-color:#333a45; color:#78828f;
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px;
+  padding:2px 8px 2px 2px; }
+.mmd-subj-strip .mmd-f-file .mmd-face { border-radius:3px; }
+.mmd-subj-strip .mmd-f-file:hover { background:#1a1e25; border-color:#5a6474;
+  color:#b9c1cc; }
+/* Named in the prose already: the edge lights, because the token is in the sentence and
+   this says so. */
+.mmd-subj-strip .mmd-f-file.mmd-on { border-color:#6ea8c4;
+  color:#dfe5ec; background:#1b242c; }
 .mmd-subj-strip .mmd-f-file .mmd-face-audio { display:flex; align-items:center;
   justify-content:center; background:#232833; color:#8b93a1; }
 /* Part of the sentence, not a control beside it: it reads as the words it replaces and
