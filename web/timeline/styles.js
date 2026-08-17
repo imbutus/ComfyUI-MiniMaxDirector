@@ -171,14 +171,14 @@ const CSS = `
 
 /* Two globals, side by side. They are both short and neither needs 1380px, and stacked
    they cost a whole box of node height on a screen that has none to spare. */
-.mmd-globals { display:flex; gap:7px; align-items:stretch; flex:0 0 auto; }
+/* Each card is as tall as what is in it. Only the left one has a subject strip under its
+   text, so stretching them to a common height left the music box's drag corner floating
+   in the middle of dead space -- and letting the music text grow into that space instead
+   made the drag unusable: pairHeights copies a dragged height to the other box, the
+   grown box reported a taller height back, and each attempt ratcheted the pair upwards
+   with no way down. Ragged bottoms, working drags. */
+.mmd-globals { display:flex; gap:7px; align-items:flex-start; flex:0 0 auto; }
 .mmd-globals > .mmd-prompt { flex:1 1 0; min-width:0; }
-/* Only the left box has a subject strip under it, and stretch makes the right box as tall
-   as the left one either way. Without this the music box kept the height it was dragged to
-   and the rest of its card was dead space, with the drag corner floating above the border
-   instead of sitting in it. Growing into that space is what makes the two cards read as
-   one row: the strip's height goes to the text, not to a gap. */
-.mmd-globals > .mmd-prompt > .mmd-music { flex:1 1 auto; }
 
 /* The cast on its own node: no timeline above it, so the box is the whole widget. */
 .mmd-cast-node { gap:0; }
