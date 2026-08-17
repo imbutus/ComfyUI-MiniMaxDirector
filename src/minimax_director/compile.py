@@ -355,17 +355,43 @@ def _retention_analysis(timeline: Timeline) -> str:
                 f"signal.")
             continue
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
-    for subject in attachments.subjects(timeline):
+    people = attachments.subjects(timeline)
+    for subject in people:
         where = _appears_in(timeline, subject)
         # `attribute_transfer` means the feature lands on somebody else, and the guide
         # wants that somebody named -- otherwise the prompt says a face moves and never
         # says onto whom, which the model resolves by guessing.
         onto = str(subject.record.get("onto") or "").strip().rstrip(".")
+        onto = _named_subject(timeline, people, onto) or onto
         moved = f", transferred onto {onto}" if onto else ""
         lines.append(
             f"{subject.token}{where}: {_retention(subject)} - "
             f"{subject.name.rstrip('.')}{moved}.")
     return "\n".join(lines)
+
+
+def _named_subject(timeline: Timeline, people: list, onto: str) -> str:
+    """`<Subject n>` for a card named by `onto`, or "" when it names nobody.
+
+    The picker beside the `onto` box lists the other cards by the name the author filed
+    them under -- `SPEAKER` -- and writes that name into the box. The model is never told
+    that name: a person reaches it as `<Subject n>` and nothing else, so
+    "transferred onto SPEAKER" asked for a face to be moved onto somebody who does not
+    exist in the prompt, and the face stayed where it was. Free text describing whoever
+    the shot is about is left exactly as typed, because that the model can read.
+    """
+    wanted = onto.strip().lower()
+    if not wanted:
+        return ""
+    by_uid = {str(person.record.get("uid", "")): person for person in people
+              if person.record.get("uid")}
+    for speaker in timeline.speakers:
+        if speaker.name.strip().lower() != wanted:
+            continue
+        person = by_uid.get(speaker.uid)
+        if person is not None:
+            return person.token
+    return ""
 
 
 def _described(item) -> str:

@@ -342,9 +342,11 @@ A card holds:
 - **onto** — who receives that transfer. It appears only when `keep it` is
   `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
   offers the other cards and each shot's subject, or you type a receiver the shot
-  describes but no card names. Filled, it compiles as
-  `<Subject 2> …: attribute_transfer - the face…, transferred onto SPEAKER.` Empty, the
-  model is told to move a trait and never told where, and the block's chip stays amber.
+  describes but no card names. Picking a card writes its name — `SPEAKER` — and the
+  compiler turns that name into the token the model actually knows, so the line reads
+  `<Subject 2> …: attribute_transfer - the face…, transferred onto <Subject 1>.` Typed
+  prose is left as written, since the model can read it. Empty, the model is told to move
+  a trait and never told where, and the block's chip stays amber.
 - **motion from** — a second file for the same person, supplying how they move rather than
   what it looks like. A still says nothing about a walk, so pointing the card at a video
   as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>

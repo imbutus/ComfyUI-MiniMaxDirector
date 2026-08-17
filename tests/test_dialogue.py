@@ -6,6 +6,9 @@ reads nicely. The model was trained on those fixed strings; improving the Englis
 change of meaning, so these tests exist to make that change loud.
 """
 
+import json
+
+from minimax_director.cast import merge_json as cast_merge
 from minimax_director.compile import compile_timeline
 from minimax_director.lint import lint
 from minimax_director.timeline import Timeline
@@ -282,6 +285,32 @@ def test_a_transfer_names_who_receives_it():
         subject_retention="attribute_transfer", onto="the woman at the desk")).prompt
     assert ("<Subject 1> (appears in [Shot 1]): attribute_transfer - the man's face, "
             "transferred onto the woman at the desk.") in prompt
+
+
+def test_a_transfer_onto_another_card_names_them_as_a_subject():
+    """The `onto` picker writes the other card's name, which is a label of the editor's.
+
+    The model is introduced to people as `<Subject n>` and never hears what the author
+    filed them under, so "transferred onto SPEAKER" pointed the transfer at nobody and
+    the feature stayed where it was -- visible as a face swap that never happened.
+    """
+    timeline = Timeline.from_json(cast_merge(json.dumps({
+        "duration": 96,
+        "shots": [
+            {"start": 0, "length": 48, "prompt": "He waits.",
+             "media": {"kind": "image", "filename": "him.png"}},
+            {"start": 48, "length": 48, "prompt": "The same man.",
+             "media": {"kind": "image", "filename": "face.jpg"}},
+        ],
+    }), json.dumps({"speech": True, "cards": [
+        {"id": 1, "name": "SPEAKER", "file": "him.png", "keep": "fully_preserved",
+         "description": "the man in the navy suit", "voice": "A man in his forties"},
+        {"id": 2, "name": "FACE", "file": "face.jpg", "keep": "attribute_transfer",
+         "onto": "SPEAKER", "description": "the face in face.jpg"},
+    ]})))
+    prompt = compile_timeline(timeline).prompt
+    assert "transferred onto <Subject 1>." in prompt
+    assert "transferred onto SPEAKER" not in prompt
 
 
 def test_a_subject_without_its_own_marker_follows_the_file():

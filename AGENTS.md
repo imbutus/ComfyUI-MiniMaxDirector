@@ -208,7 +208,11 @@ through `editor.onAddCard`.
   `speech`, because with the switch off no line is compiled at all.
 - `onto` is the receiver of an `attribute_transfer`, and only means anything for that
   marker. `compile.py` appends `, transferred onto <onto>` to the subject's retention
-  line; without it the model is told to move a trait and never told where.
+  line; without it the model is told to move a trait and never told where. A value that
+  matches a card's name is replaced by that card's `<Subject n>` (`_named_subject`): the
+  picker writes the name the author filed somebody under, and the model is introduced to
+  people as tokens and never hears that name, so `transferred onto SPEAKER` addressed
+  nobody and the swap silently did not happen. Free text is passed through untouched.
 - The person and the file they came from are two retentions, deliberately: a photo can be
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
 - `_only_defines` in `compile.py` suppresses a file's own `<Picture n>` entry — in both
