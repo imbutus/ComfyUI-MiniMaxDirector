@@ -173,6 +173,12 @@ const CSS = `
    they cost a whole box of node height on a screen that has none to spare. */
 .mmd-globals { display:flex; gap:7px; align-items:stretch; flex:0 0 auto; }
 .mmd-globals > .mmd-prompt { flex:1 1 0; min-width:0; }
+/* Only the left box has a subject strip under it, and stretch makes the right box as tall
+   as the left one either way. Without this the music box kept the height it was dragged to
+   and the rest of its card was dead space, with the drag corner floating above the border
+   instead of sitting in it. Growing into that space is what makes the two cards read as
+   one row: the strip's height goes to the text, not to a gap. */
+.mmd-globals > .mmd-prompt > .mmd-music { flex:1 1 auto; }
 
 /* The cast on its own node: no timeline above it, so the box is the whole widget. */
 .mmd-cast-node { gap:0; }
