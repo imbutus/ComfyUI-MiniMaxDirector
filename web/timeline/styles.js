@@ -393,30 +393,38 @@ const CSS = `
 .mmd-f-chipcol { position:relative; display:flex; align-items:center; flex:0 0 auto;
   height:26px; }
 .mmd-f-chipcol:has(.mmd-f-deck) {
-  width:calc(30px + (var(--mmd-deck-count, 1) - 1) * 9px); }
+  width:calc(28px + (var(--mmd-deck-count, 1) - 1) * 6px); }
 .mmd-f-deck { position:absolute; left:0; top:50%; transform:translateY(-50%);
   display:flex; align-items:center; z-index:2;
   border:1px solid transparent; border-radius:99px; padding:1px; }
 .mmd-f-chipcol:hover .mmd-f-deck { z-index:9; gap:5px; padding:3px;
   background:#171a21; border-color:#3a4150; box-shadow:0 8px 22px rgba(0,0,0,.55); }
 .mmd-seg-fields .mmd-f-deckitem { position:relative; display:flex; align-items:center;
-  gap:0; background:#1c1f26; border:2px solid #1c1f26; border-radius:99px; padding:0;
+  gap:0; background:#1c1f26; border:1px solid #7b8797; border-radius:99px; padding:0;
   cursor:pointer; color:#8b93a1; font:inherit; font-size:11px; white-space:nowrap; }
-/* Collapsed, each card sits half on top of the one before it and shows nothing but its
-   face. The ring in the row's own colour is what makes the edge underneath read as a card
-   behind rather than as a smudge. */
-.mmd-f-deckitem + .mmd-f-deckitem { margin-left:-17px; }
+/* Collapsed, each card sits nearly on top of the one before it and shows nothing but its
+   face. The grey ring is what makes the sliver underneath read as a card behind rather
+   than as a smudge -- quiet enough that the lit ring of whoever is speaking is still the
+   one you see first. */
+.mmd-f-deckitem + .mmd-f-deckitem { margin-left:-18px; }
 .mmd-f-chipcol:hover .mmd-f-deckitem + .mmd-f-deckitem { margin-left:0; }
 .mmd-f-deckname { max-width:0; overflow:hidden; opacity:0;
   transition:max-width .12s ease, opacity .12s ease, padding .12s ease; }
 .mmd-f-chipcol:hover .mmd-f-deckname { max-width:130px; opacity:1; padding:0 8px 0 6px; }
 .mmd-seg-fields .mmd-f-deckitem .mmd-face { width:22px; height:22px; border-radius:99px;
   border:0; flex:0 0 auto; }
-.mmd-seg-fields .mmd-f-deckitem:hover { border-color:#4b5563; color:#cdd3dd; }
+/* A little brighter under the pointer, and the background is named here on purpose: the
+   panel's own button:hover is the red "detach media" style, and a rule that set only the
+   border let that red through onto a card. */
+.mmd-seg-fields .mmd-f-deckitem:hover { border-color:#cfd8e3; color:#e5e7eb;
+  background:#232833; }
 /* Speaking is the front of the deck and stays legible collapsed, where the ring is the
    only part of a card you can see. */
-.mmd-seg-fields .mmd-f-deckitem.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
-  background:#22303a; }
+/* Speaking is the same 1px ring as everybody else, in a brighter colour, with a glow
+   behind it. Nothing about it is wider: a ring that thickens on selection moves every card
+   behind it, and the hand shifts every time a face is picked. */
+.mmd-seg-fields .mmd-f-deckitem.mmd-on { border-color:#9ddcff; color:#e5e7eb;
+  background:#22303a; box-shadow:0 0 8px rgba(157,220,255,.55); }
 .mmd-seg-fields .mmd-f-deckitem.mmd-f-orphan { border-color:#6b4a44; color:#d98a8a;
   background:#2a1e1d; }
 .mmd-f-nobody { color:#6b7280; font-size:11px; }

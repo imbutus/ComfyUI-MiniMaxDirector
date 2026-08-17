@@ -981,16 +981,15 @@ export class TimelineEditor {
     // fans it out to the right, over the fields after it, and a face is picked by
     // clicking it. Laid out flat it was the whole cast spread across the row to say that
     // one of them talks.
-    // The cast keeps its own order, always. Moving whoever was picked to the front
-    // rearranged the hand under the cursor after every click, so the face you reached for
-    // last time is somewhere else this time -- and a row you cannot learn the shape of is
-    // a row you have to read from the start every time. Speaking lifts a card in front of
-    // its neighbours instead, which is what a deck does anyway.
+    // The cast keeps its own order, always, and so does the stacking: a hand is dealt
+    // left to right and each card sits on the one after it, whoever is speaking. Moving
+    // the picked card to the front -- in the order or in the z -- rearranged the hand
+    // under the cursor after every click, and a row you cannot learn the shape of is a row
+    // you have to read from the start every time.
     const order = cast.cards;
     const held = order.map((card, at) => `
       <button type="button" class="mmd-f-deckitem${chosen.includes(card.id) ? " mmd-on" : ""}"
-              data-speaker="${card.id}"
-              style="z-index:${(chosen.includes(card.id) ? 100 : 0) + order.length - at}"
+              data-speaker="${card.id}" style="z-index:${order.length - at}"
               title="${quote(sole(card.id) ? SOLE : (card.voice || "no voice described yet"))}">
         ${face(card)}<span class="mmd-f-deckname">${text(nameOf(card))}</span>
       </button>`).join("")
