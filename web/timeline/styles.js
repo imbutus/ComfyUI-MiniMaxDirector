@@ -745,9 +745,9 @@ const CSS = `
 /* The panel's buttons are red because the one that was always there removes something.
    This one sets two numbers and takes nothing away, so it wears the ordinary control
    colour instead -- red is reserved for what cannot be undone by looking at it. */
-.mmd-seg-fields button.mmd-f-shape { background:#2c313c; color:#e5e7eb;
+.mmd-seg-fields button.mmd-f-size { background:#2c313c; color:#e5e7eb;
   border-color:#3a4150; }
-.mmd-seg-fields button.mmd-f-shape:hover { background:#39404d; border-color:#4a5464; }
+.mmd-seg-fields button.mmd-f-size:hover { background:#39404d; border-color:#4a5464; }
 
 /* the prompt node ---------------------------------------------------------- */
 /* Read-only, but selectable and scrollable: a compiled prompt is something you copy out

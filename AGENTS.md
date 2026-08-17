@@ -438,7 +438,7 @@ the links in already-saved graphs -- do it at a version bump and re-save `exampl
     the first reference picture whenever `ref_image_size` was `match`, inside `attach` --
     a model setting driving two unrelated widgets, and a picture attached later or used as
     a keyframe never got it. The convenience is now a button on the block,
-    `.mmd-f-shape` ("take its shape"), drawn for `kind === "image"` and calling
+    `.mmd-f-size` ("set width & height"), drawn for `kind === "image"` and calling
     `media.fitGeneration` on the file's own dimensions. Anything that would move the clip's
     size on its own belongs here as a control, not as a side effect of another field.
 

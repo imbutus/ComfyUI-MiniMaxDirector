@@ -257,10 +257,11 @@ face the same face. Neither enlarges a picture or changes its proportions.
 
 **`resize` does not touch `width` and `height`.** Until build `2026-08-17·02:05` the clip
 silently took the shape of the first reference picture whenever `resize` said `match`,
-which made a model setting move two unrelated fields. Now a picture block carries **take
-its shape**, beside `detach media`: press it and `width`/`height` are set from that file,
-scaled to a size H3 renders. It works for a keyframe too — which is exactly what the crop
-warning asks for, and what the old behaviour never did.
+which made a model setting move two unrelated fields. Now a picture block carries **set
+width & height**, beside `detach media`: press it and the clip's `width`/`height` are taken
+from that file's own resolution, scaled down to a size H3 renders and rounded to multiples
+of 32. It works for a keyframe too — which is exactly what the crop warning asks for, and
+what the old behaviour never did.
 
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the
