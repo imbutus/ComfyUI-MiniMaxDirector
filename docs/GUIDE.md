@@ -284,7 +284,17 @@ what the old behaviour never did.
 `keep file` says how much of it survives. An **audio** file is graded in its own words,
 because H3's format defines a different set for sound: `fully_copy` (this recording is the
 finished soundtrack), `partially_copy`, `reference` (only the timbre or texture is
-followed, the signal is not copied), `weak_reference`. Everything visible keeps
+followed, the signal is not copied), `weak_reference`.
+
+**What comes back is always synthesised.** MiniMax's own guide defines `fully_copy` as the
+source audio serving as the clip's complete final track — but nothing hands the file
+through. Every reference audio is *encoded into the conditioning* (`_encode_ref_audio` in
+core's `nodes_minimax_h3.py`), and the soundtrack you get is the one the sampler produced
+and `VAEDecodeAudio` decoded. So the marker states a target, not a guarantee, and it can
+only be met when the recording covers the clip: a 3.4s file under an 8s clip leaves 4.6s
+the model fills with sound of its own. If the actual recording has to be in the output,
+wire the audio into `CreateVideo` instead of the decoded audio and the model's take is
+discarded. Everything visible keeps
 `fully_preserved` / `partially_preserved` / `attribute_transfer` / `weak_reference`. The
 picker follows the file, so there is nothing to get wrong — and an older document holding
 a visual marker on an audio file is translated rather than reset.
