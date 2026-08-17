@@ -24,12 +24,12 @@ it, one of them is the user's own hand, and the answer arrives a frame late.**
 |---|---|---|---|
 | 1 | `pullUp` → `onDrawForeground` (`minimax_director.js:117`) | every canvas frame | `widget.y`, `widget.computedHeight`, and `fitPulled` for the first 3 learned frames |
 | 2 | `fitPulled` (`:95`) | called by 3–7 | `node.setSize` |
-| 3 | `node.onResize` (`:347`) | the user drags the node corner | one rAF later: `setListHeight` on the cast tab, then `fitPulled` |
+| 3 | `node.onResize` (`:347`) | the user drags the node corner | clamps `size[1]` back to the content, in the same frame, on every tab (**proposal 1a, applied**) |
 | 4 | `growWithPrompts` (`:664`) | a `ResizeObserver` per child of `editor.root` | `fitPulled` |
 | 5 | `cast.onResize` (`:261`) | every cast render | `fitPulled` |
 | 6 | `editor.onTab` (`:264`) | tab switch, and now the Files toggle | `fitPulled` twice, on two rAFs |
 | 7 | `fitAfterLoad` (`:529`) | `onConfigure` | `fitPulled` |
-| 8 | `setListHeight` (`:66`) | cast grip drag, `onResize` on the cast tab | `node.properties.castHeight`, `box.style.height` |
+| 8 | `setListHeight` (`:66`) | the cast grip drag, and nothing else | `node.properties.castHeight`, `box.style.height` |
 | 9 | `pairHeights` (`editor.js:884`) | a `ResizeObserver` on the two global textareas | the other box's `style.height` |
 | 10 | the browser | `resize: vertical` on every prompt textarea | inline `style.height`, which wakes #4 |
 
@@ -51,8 +51,9 @@ Drag the node's bottom-right corner on the TIMELINE tab:
 One frame tall, one frame short, for as long as the drag lasts. The snap-back is
 intended — on TIMELINE there is nothing to give the extra room to — but it is applied
 *one frame late*, and a correction that lands a frame late is a flicker rather than a
-refusal. On the WHO & WHAT tab the same gesture does not blink, because there the
-difference is given to the card list (`:352`) and the fit then agrees with the drag.
+refusal. On the WHO & WHAT tab the same gesture did not blink, because there the difference
+was given to the card list and the fit then agreed with the drag -- which is also why that
+one tab kept resizing after every other one stopped.
 
 Two smaller aggravations sit behind the same seam:
 
@@ -87,8 +88,11 @@ The blink is a one-frame argument. Either end it immediately or stop having it:
   from a taller director. This is more work and adds a second stored number, but it makes a
   gesture that currently does nothing do the obvious thing.
 
-**1a is the recommendation**: it is a handful of lines, it removes a state variable rather
-than adding one, and it keeps the "content decides" rule the whole design rests on.
+**1a is what was taken**, on every tab. It is a handful of lines, it removes a state
+variable rather than adding one, and it keeps the "content decides" rule the whole design
+rests on. The cast branch went with it, so one gesture no longer means two things depending
+on which panel is open: the card list is given a height by the grip in its own corner, and
+that is the only way.
 
 ### 2. One writer, one queue
 

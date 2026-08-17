@@ -166,10 +166,11 @@ Two numbers, and one function that writes each.
 
 - **The node's height is its content**, up and down, measured once by
   `contentHeightOf` and applied by `fitPulled`. Every path goes through it: load,
-  tab switch, a card edit, a prompt box growing, the node's own corner.
+  tab switch, a card edit, a prompt box growing. The node's own corner cannot: the height is
+  clamped back to the content inside `onResize`, in the same frame, on every tab.
 - **The card list's height is stored**, in `node.properties.castHeight`, written only by
-  `setListHeight` and only from two gestures: the list's grip, and a drag of the node's
-  corner while WHO & WHAT is open. With none stored the list is as tall as its cards.
+  `setListHeight` and only from one gesture: the list's own grip. With none stored the list
+  is as tall as its cards.
 
 It was not always two. There were six: a fixed-height box fed by a `--mmd-cast-height`
 variable remembered from the *timeline* panel, an `absorb` that handed the node's spare

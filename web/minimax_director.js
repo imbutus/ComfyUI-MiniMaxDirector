@@ -346,16 +346,23 @@ function attach(node) {
   const resized = node.onResize;
   node.onResize = function () {
     const result = resized?.apply(this, arguments);
-    requestAnimationFrame(() => {
-      const state = PULLED.get(widget) ?? { node, editor };
-      if (editor.tab === "cast" && node.castEditor?.box) {
-        const wanted = node.size[1] - contentHeightOf(state, widget);
-        if (Math.abs(wanted) >= 2) {
-          setListHeight(node, editor, node.castEditor.box.offsetHeight + wanted);
-        }
-      }
-      fitPulled(state, widget);
-    });
+    const state = PULLED.get(widget) ?? { node, editor };
+
+    // The height is the content's, on every tab, and the answer is given in this frame
+    // rather than the next one. Answering late is what made the drag blink: litegraph had
+    // already drawn the node at the height the pointer asked for, and the correction
+    // arrived after that frame was on screen -- once per pointer move, for the whole drag.
+    // Refused inside the gesture there is nothing to see; the width still follows the
+    // pointer, which is the dimension a timeline is dragged for.
+    //
+    // The card list used to take the difference on its own tab, which made one gesture
+    // mean two things depending on which panel was open -- and the tab where it meant
+    // something was the tab that still moved while every other one stood still. The grip
+    // in the list's own corner is how it is given a height, and it is the only way.
+    //
+    // `size[1]` directly, never `setSize`: that calls this handler, and a handler that
+    // resizes its own node is a handler that calls itself.
+    node.size[1] = Math.max(MIN_HEIGHT, Math.round(contentHeightOf(state, widget)));
     return result;
   };
 
