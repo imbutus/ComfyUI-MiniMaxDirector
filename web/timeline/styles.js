@@ -353,6 +353,13 @@ const CSS = `
   border:0; }
 .mmd-subj-strip .mmd-f-subj.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
   background:#22303a; }
+/* A file's own token, beside the subjects taken out of files. Dimmer, because a subject is
+   what the prompt is usually about and a file is the thing behind it -- and darker on the
+   left so a row of both reads as two groups without a separator. */
+.mmd-subj-strip .mmd-f-file { background:#171a21; border-style:dashed; }
+.mmd-subj-strip .mmd-f-file.mmd-on { border-style:solid; }
+.mmd-subj-strip .mmd-f-file .mmd-face-audio { display:flex; align-items:center;
+  justify-content:center; background:#232833; color:#8b93a1; }
 /* Part of the sentence, not a control beside it: it reads as the words it replaces and
    underlines like a link, because that is what it does. */
 .mmd-f-tocast, .mmd-seg-fields .mmd-f-tocast,

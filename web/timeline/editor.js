@@ -675,8 +675,9 @@ export class TimelineEditor {
   subjectStrip(timeline) {
     try {
       const cards = this.castOf?.()?.cards || [];
-      if (!cards.length) return "";
       const files = filesOf(timeline || {});
+      const chips = this.fileStrip(timeline);
+      if (!cards.length) return chips;
       const numbers = numbering(timeline, cards);
       const fileOf = (card) =>
         files.find((entry) => (entry.media.filename || "") === card.file) || null;
@@ -693,11 +694,38 @@ export class TimelineEditor {
         return `<button type="button" class="mmd-f-subj" data-token="${text(token)}"
           title="Write this subject into the shot's text, at the caret."
           >${face}<span>&lt;Subject ${index}&gt;${name ? ` ${text(name)}` : ""}</span></button>`;
-      }).join("");
+      }).join("") + chips;
     } catch (error) {
       console.error("[MiniMaxDirector] subject strip:", error);
       return "";
     }
+  }
+
+  /**
+   * The files themselves, as chips: `<Picture 2>`, `<Audio 1>`, `<Video 1>`.
+   *
+   * A file on a block is named in that block's own line by the compiler, but pointing at
+   * it from anywhere else -- a recording the mouth must follow, a picture a later shot
+   * refers back to -- meant typing the token by hand and counting the files to get the
+   * number right. The number moves when a block is dragged, and a wrong one is silent:
+   * the prompt names a reference that does not exist and nothing on screen says so.
+   *
+   * Same chip as a subject, so the box lights up the ones its text already names.
+   */
+  fileStrip(timeline) {
+    const entries = [...filesOf(timeline || {}), ...audioOf(timeline || {})];
+    return entries.map((entry) => {
+      const name = String(entry.media?.filename || "").trim();
+      // A soundtrack has no frame to show and a bare `?` says only that a picture failed
+      // to load, so audio wears a note instead.
+      const face = entry.token.startsWith("<Audio")
+        ? `<span class="mmd-face mmd-face-audio">${ICON.audio}</span>`
+        : this.face(entry);
+      return `<button type="button" class="mmd-f-subj mmd-f-file" data-token="${text(entry.token)}"
+        title="Write this file's token into the text, at the caret. It is how the prompt points at the file."
+        >${face}<span>${text(entry.token).replace("<", "&lt;")}${
+          name ? ` ${text(name)}` : ""}</span></button>`;
+    }).join("");
   }
 
   /**

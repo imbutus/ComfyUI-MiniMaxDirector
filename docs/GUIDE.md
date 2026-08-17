@@ -153,8 +153,14 @@ not on screen — and the TIMELINE tab shows:
   the same strip, because a style or a place is usually named once for the whole clip.
   Typing the number by hand is the alternative, and getting it wrong is silent — the
   prompt then cites a subject that does not exist and nothing on screen says so. A card
-  with no description takes no number and so has no chip, and the strip is absent until
-  WHO & WHAT has at least one numbered card.
+  with no description takes no number and so has no chip.
+- **The file chips** follow them on the same strip, drawn dashed: `<Picture 2> face.jpg`,
+  `<Audio 1> voice.mp3`, `<Video 1> clip.mp4` — one per file on the timeline, whether or
+  not a card names it. A file is written into its own block's line by the compiler, but
+  pointing at it from anywhere else is on you: a recording the mouth must follow, a
+  picture a later shot refers back to. These click in the same way, and they carry the
+  number the compiler will use, which moves when a block is dragged. With no cards and no
+  files there is nothing to show and the strip is absent.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
   `amplitude` and `speed` sit beside it: how far the framing travels and how fast. Both
