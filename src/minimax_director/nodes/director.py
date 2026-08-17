@@ -183,7 +183,9 @@ class MiniMaxDirector(io.ComfyNode):
                 io.Conditioning.Output(display_name="positive"),
                 io.Latent.Output(display_name="latent"),
                 io.String.Output(display_name="prompt"),
-                io.Int.Output(display_name="length"),
+                # No `length` output. The frame count is already in the `latent` the
+                # sampler consumes and on the timeline's own clock, so a socket for it
+                # only offered a third place for the same number to be read from.
                 io.String.Output(display_name="report"),
             ],
         )
@@ -283,7 +285,7 @@ class MiniMaxDirector(io.ComfyNode):
                 last_frame=last_frame,
             )
 
-        return io.NodeOutput(positive, latent, compiled.prompt, compiled.length, report)
+        return io.NodeOutput(positive, latent, compiled.prompt, report)
 
 
 class MiniMaxDirectorPrompt(io.ComfyNode):

@@ -315,6 +315,16 @@ reference the prose points at.
 The first six are the whole product and run under `pytest` with no torch, no ComfyUI,
 no weights, in about 0.2 seconds.
 
+`NODES` is three long -- `MiniMaxDirector`, `MiniMaxDirectorPrompt`, `MiniMaxDirectorReport`
+-- and the director outputs `positive`, `latent`, `prompt`, `report`. Three things were
+removed in 0.10.0 and should not come back without a new reason: a `Compile` node (the
+compile step with no model), a `Length` node (seconds to a legal frame count), and the
+director's `length` output. The product is the whole workflow, not parts wired by hand:
+the timeline's clock reads frames and seconds, the rounded length rides in the `latent`,
+and the editor compiles and lints on every edit pause, so each was a second route to
+something already on screen. Dropping an output renumbers the slots after it, which breaks
+the links in already-saved graphs -- do it at a version bump and re-save `examples/`.
+
 ## Invariants — break these and something silently misbehaves
 
 1. **The lattice exists in two languages.** `lattice.py` and `web/timeline/model.js` must

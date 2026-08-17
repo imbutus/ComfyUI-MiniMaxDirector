@@ -259,15 +259,9 @@
           ]
         },
         {
-          "name": "length",
-          "type": "INT",
-          "slot_index": 3,
-          "links": []
-        },
-        {
           "name": "report",
           "type": "STRING",
-          "slot_index": 4,
+          "slot_index": 3,
           "links": [
             22
           ]
@@ -863,7 +857,7 @@
     [
       22,
       6,
-      4,
+      3,
       20,
       0,
       "STRING"

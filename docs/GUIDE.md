@@ -551,8 +551,11 @@ the model was never told about.
 | `positive` | into `BasicGuider` |
 | `latent` | into `SamplerCustomAdvanced` |
 | `prompt` | **read this** — the exact string the model receives |
-| `length` | frames, after rounding up to the lattice |
 | `report` | linter findings: unmentioned references, gaps, overlaps, padding added |
+
+There is no `length` output. The frame count after rounding is on the timeline's clock
+and in the `latent` the sampler receives, so a socket for it was a third copy of one
+number.
 
 Both are already wired in the shipped workflow: the compiled prompt to the right of the
 director, the linter's findings underneath it. Almost every "why did it do that" question
@@ -588,9 +591,10 @@ cost.
 
 That is the whole pack: three nodes, all three in the shipped workflow. Earlier releases
 also carried a **Compile** node (the compile step with no model attached) and a **Length**
-node (seconds to a legal frame count). Both were for wiring a graph by hand. The timeline
-already outputs `length` and `seconds`, and the editor already compiles and lints on every
-edit pause, so each was a second way to reach a number that was on screen already.
+node (seconds to a legal frame count). Both were for wiring a graph by hand. The timeline's
+clock already reads the frame count in frames and seconds, and the editor already compiles
+and lints on every edit pause, so each was a second way to reach something that was on
+screen already.
 
 ---
 
