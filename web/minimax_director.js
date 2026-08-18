@@ -50,6 +50,55 @@ const SELECTION = new Map();
 const PULLED = new Map();
 const TOP_INSET = 6;
 
+/** Text metrics for the canvas font, kept between frames: this runs on every draw. */
+const RULER = document.createElement("canvas").getContext("2d");
+const INSETS = new Map();
+
+/**
+ * How far the socket labels reach in from each edge of the node, in node pixels.
+ *
+ * The editor's first two rows are drawn over the band the sockets live in, so they have
+ * to keep clear of the labels the canvas paints there. That used to be a fixed 176px on
+ * both sides -- room for a name far longer than any this node has -- and the toolbar,
+ * three hundred pixels poorer than the node it sits on, wrapped its last button onto a
+ * second line with empty band on either side of it.
+ *
+ * So it is measured: the widest input name and the widest output name, in the font the
+ * canvas draws them in, plus the slot dot and a gap. Cached per node by the names
+ * themselves, because the answer only changes when the sockets do.
+ */
+function socketInset(node) {
+  // Only the slots the canvas actually draws in the socket column. `node.inputs` also
+  // holds one entry per widget -- `ref_image_size`, `timeline`, `cast` -- which are drawn
+  // on their own widget rows, not up here. Measured with them the answer came out at
+  // very nearly the old fixed number, which is why the toolbar did not move.
+  const names = (slots) => (slots || [])
+    .filter((slot) => slot && !slot.widget && !slot.hidden)
+    .map((slot) => String(slot.label || slot.localized_name || slot.name || ""));
+  const inputs = names(node?.inputs);
+  const outputs = names(node?.outputs);
+  const key = `${inputs.join("|")}//${outputs.join("|")}`;
+  const held = INSETS.get(node?.id);
+  if (held?.key === key) return held.inset;
+
+  const graph = globalThis.LiteGraph;
+  RULER.font = `${graph?.NODE_TEXT_SIZE ?? 14}px ${graph?.NODE_FONT ?? "Inter"}, sans-serif`;
+  // The dot and the gap between it and the name, then a gap after the name. The label
+  // starts one slot-height in from the edge, which is where the canvas draws the dot.
+  const column = (list) => Math.round(SLOT_INSET
+    + list.reduce((wide, name) => Math.max(wide, RULER.measureText(name).width), 0)
+    + SLOT_GAP);
+  const inset = { left: column(inputs), right: column(outputs) };
+  INSETS.set(node?.id, { key, inset });
+  return inset;
+}
+
+/** Where a slot's name starts, and the air left after it. Both in node pixels: the dot is
+ *  drawn a slot-height in from the edge, and a label that ends flush against a button
+ *  reads as part of it. */
+const SLOT_INSET = 22;
+const SLOT_GAP = 14;
+
 /** The floor the card list is allowed to shrink to. Matches `min-height` in the
  *  stylesheet, which is what the box would clamp to anyway. */
 const CAST_BOX_MIN = 120;
@@ -122,7 +171,7 @@ function pullUp(node, widget, editor) {
       const learned = held.y > TOP_INSET;
       if (learned) state.band = held.y;
       held.y = TOP_INSET;
-      state.editor.setBand(state.band - TOP_INSET);
+      state.editor.setBand(state.band - TOP_INSET, socketInset(state.node));
 
       // Height as well as position. The layout still reserves the band, so the element's
       // own height is computed as if it began below the sockets -- moved up and left at
