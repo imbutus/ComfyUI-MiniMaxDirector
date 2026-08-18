@@ -232,7 +232,7 @@ function attach(node) {
   // -4 cancels the padding ComfyUI adds around every widget.
   json.hidden = true;
   json.computeSize = () => [0, -4];
-  if (json.inputEl) json.inputEl.style.display = "none";
+  hideElement(json);
 
   // The clip settings are short numbers, and ComfyUI gives every widget the node's full
   // width. At 1380px that is four near-empty bars, so they are hidden here and drawn
@@ -260,7 +260,7 @@ function attach(node) {
   if (cast) {
     cast.hidden = true;
     cast.computeSize = () => [0, -4];
-    if (cast.inputEl) cast.inputEl.style.display = "none";
+    hideElement(cast);
     if (!cast.value?.trim()) cast.value = JSON.stringify(EMPTY_CAST, null, 2);
   }
 
@@ -539,7 +539,7 @@ function attachPromptView(node, field = "prompt") {
   const connections = node.onConnectionsChange;
   node.onConnectionsChange = function () {
     const result = connections?.apply(this, arguments);
-    for (const director of app.graph?._nodes ?? []) {
+    for (const director of (this.graph ?? app.canvas?.graph)?._nodes ?? []) {
       if (director.type !== NODE || !director.timelineEditor) continue;
       if (!promptViewsOf(director).includes(node)) continue;
       if (director.timelineEditor.preview) {
@@ -552,7 +552,9 @@ function attachPromptView(node, field = "prompt") {
 
 /** The prompt nodes wired to `director`, in graph order. */
 function promptViewsOf(director) {
-  const graph = director.graph ?? app.graph;
+  // Never `app.graph`: reading it before the app has started logs "ComfyApp graph accessed
+  // before initialization", and this runs while a workflow is still loading.
+  const graph = director.graph ?? app.canvas?.graph;
   const found = [];
   for (const output of director.outputs ?? []) {
     for (const id of output.links ?? []) {
@@ -714,6 +716,18 @@ function stampTitle(node) {
  * there is nothing left to fight over afterwards. The panel's own row is laid out by the
  * panel and never reads this back.
  */
+/** Hide a text widget's own DOM box.
+ *
+ * `widget.element` is the field ComfyUI wants read now; `inputEl` is the old name for the
+ * same node and logs a deprecation every time it is touched. Both are checked, because a
+ * pack that only reads the new one is broken on the frontends that only have the old.
+ */
+function hideElement(widget) {
+  const box = widget.element ?? widget.inputEl;
+  if (box?.style) box.style.display = "none";
+}
+
+
 function refuseWidthStamp(widget) {
   Object.defineProperty(widget, "width", {
     configurable: true,
