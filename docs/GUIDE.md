@@ -314,7 +314,9 @@ The settings row's **`resize`** is the reference-side twin of this, and it sizes
 *pictures* only: core reads it in its `ref_images` loop alone, so a reference video is
 sized by its own canvas rule and a keyframe by `fit`. It goes dead — dimmed and dashed —
 on any clip that carries no reference picture: only frame anchors, only a video, only
-sound, or nothing at all.
+sound, or nothing at all. A picture in the **Files** list counts even before it is dragged
+onto a track: it is handed to the model in the same `ref_images` loop as one on a block,
+so it is sized by this control too.
 
 What it trades is detail against time. A reference picture becomes tokens the model reads
 beside the prompt, and those tokens are re-read at every sampling step — more pixels, finer

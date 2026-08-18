@@ -2412,7 +2412,14 @@ export class TimelineEditor {
     // a keyframe by its own `fit`, so neither is affected by either option. It goes dead in
     // the house form rather than disappearing -- the row's shape is how the settings read,
     // and a control that comes and goes is a control you look for.
-    const governs = [...(timeline.shots || []), ...(timeline.cues || [])].some((item) => {
+    // Sources count as well: a picture in the Files list is handed to the model in the
+    // same `ref_images` loop as one on a block, so it is sized by this control -- and a
+    // clip whose only pictures are unplaced files had the control dead while it was
+    // quietly governing every one of them.
+    const governs = [
+      ...(timeline.shots || []), ...(timeline.cues || []),
+      ...(timeline.sources || []).map((media) => ({ media })),
+    ].some((item) => {
       const media = item?.media;
       return media && media.kind === "image"
         && !ANCHOR_ROLES.includes(String(media.role || "reference"));
