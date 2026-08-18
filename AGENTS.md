@@ -463,6 +463,14 @@ the links in already-saved graphs -- do it at a version bump and re-save `exampl
     `adapt_canvas` and never reads it. What it trades is token count: a reference is encoded
     into tokens that ride through every sampling step, so `match` (the clip's own pixel
     area) is fast and coarse where `max` (2048 px short edge) is slow and keeps identity.
+    A picture may answer for itself: `media.resize` (`SIZINGS` in `timeline.py`, mirrored
+    in `model.js`, offered on a reference picture only) overrides the node's socket for
+    that one file. Core has a single `ref_image_size` for its whole `ref_images` loop, so
+    `director._sized` does the resize -- core's own arithmetic, copied so the result is a
+    fixed point of that loop -- and the node then asks core for `max`, whose branch is
+    scale-down only and therefore leaves sized pictures alone. Sizing them here and asking
+    core for the clip's value instead would size every picture twice. An unplaced picture
+    has no FILE row and takes the clip's value.
 
 19. **`width` and `height` change only when the author changes them.** They used to follow
     the first reference picture whenever `ref_image_size` was `match`, inside `attach` --

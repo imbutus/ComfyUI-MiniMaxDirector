@@ -51,6 +51,15 @@ edges, the same cover-crop ComfyUI's core node gives `last_frame`. `stretch` is 
 node does to `first_frame` left alone -- the whole picture, squashed to fit. Authored per
 block, because two keyframes in one clip can want different answers."""
 
+SIZINGS = ("match", "max")
+"""How large one reference picture reaches the model, when the file says so itself.
+
+The node's `ref_image_size` answers for the whole clip, and core has one socket for it --
+so the director sizes each picture itself and hands core pictures it will leave alone. A
+picture with none of these written on it defers to the clip. Authored per file, because a
+face and a mood board in one clip want different answers: `max` is what keeps a face the
+same face, and paying for it on a picture that only sets a mood is time spent on nothing."""
+
 FRAME_ROLES = ("first frame", "keyframe", "last frame")
 """Roles that make a picture a concrete frame of the target video.
 

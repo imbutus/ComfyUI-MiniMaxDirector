@@ -89,6 +89,11 @@ export const ANCHOR_ROLES = ["first frame", "last frame"];
  *  on its own -- the whole picture, squashed. Kept in step with `FITS` in `timeline.py`. */
 export const FITS = ["crop", "stretch"];
 
+/** How large a reference picture reaches the model. The node's own `ref_image_size` answers
+ *  for the whole clip; a picture may say one of these instead, and blank means it does not.
+ *  Core's two words, kept in step with `SIZINGS` in `timeline.py`. */
+export const SIZINGS = ["match", "max"];
+
 export const RETENTIONS = [
   "fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference",
 ];

@@ -101,6 +101,14 @@ class _H3:
                 "height": height,
                 "length": length,
                 "slots": _slot_names(extra),
+                # The pictures as core would receive them, so a test can check the size
+                # each one arrived at: that is the whole of the per-file `resize`.
+                "ref_image_sizes": [
+                    (int(image.shape[2]), int(image.shape[1]))
+                    for image in (extra.get("ref_images") or {}).values()
+                    if image is not None
+                ],
+                "ref_image_size": extra.get("ref_image_size"),
             }
         )
         latent = {

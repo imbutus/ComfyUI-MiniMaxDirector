@@ -324,6 +324,15 @@ detail, more time. `match` shrinks it to about the clip's pixel count: fast, eno
 scene, a style, a mood. `max` allows 2048 px on the short side: slower, and what keeps a
 face the same face. Neither enlarges a picture or changes its proportions.
 
+**Each picture can answer for itself.** A picture block's FILE row carries its own
+`resize` beside `keep file`: leave it at `— the clip's` and the settings row decides,
+or set `match`/`max` on that one file. A clip usually wants both — `max` on the face it
+has to keep, `match` on the mood board behind it — and one value for the whole clip made
+that a choice between paying for detail nobody needed and losing the detail that mattered.
+Core has one socket for this, so the director sizes each picture itself and hands core
+pictures its own pass leaves alone. An unplaced picture in **Files** has no FILE row and
+uses the clip's answer.
+
 **`resize` does not touch `width` and `height`.** Until build `2026-08-17·02:05` the clip
 silently took the shape of the first reference picture whenever `resize` said `match`,
 which made a model setting move two unrelated fields. Now a picture block carries **set

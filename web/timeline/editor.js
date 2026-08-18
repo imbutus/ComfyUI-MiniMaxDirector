@@ -14,7 +14,7 @@ import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
-  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SPEEDS, TRANSITIONS, TRACKS,
+  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SIZINGS, SPEEDS, TRANSITIONS, TRACKS,
   TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
@@ -80,6 +80,21 @@ const fitOptions = (current) => {
   const value = FITS.includes(current) ? current : FITS[0];
   return FITS
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
+    .join("");
+};
+
+/**
+ * How one picture is sized, as `<option>`s.
+ *
+ * Blank first, and blank is what a file says when it has no opinion: the clip's own
+ * `resize` answers for it. The other two are core's own words, so what is written on the
+ * file is what the model is asked for.
+ */
+const sizeOptions = (current) => {
+  const value = SIZINGS.includes(current) ? current : "";
+  return [["", "— the clip's"], ...SIZINGS.map((name) => [name, name])]
+    .map(([name, shown]) =>
+      `<option value="${name}"${name === value ? " selected" : ""}>${shown}</option>`)
     .join("");
 };
 
@@ -2429,7 +2444,9 @@ export class TimelineEditor {
     if (label && picker) {
       label.classList.toggle("mmd-dead", !governs);
       picker.disabled = !governs;
-      picker.title = governs ? ""
+      picker.title = governs
+        ? "The clip's answer, for every reference picture that does not give one of its "
+          + "own. A picture's FILE row has a `resize` of its own, and that wins."
         : "Nothing on the timeline is sized by this: it fits reference images, and this "
           + "clip has none. A first or last frame is fitted by its own `fit` control.";
     }
@@ -2453,7 +2470,7 @@ export class TimelineEditor {
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label title="Output width, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
       <label title="Output height, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
-      <label class="s-ref-label" title="How reference images are fitted. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time."><span class="mmd-key">resize</span>
+      <label class="s-ref-label" title="How reference images are fitted, for every picture that does not answer for itself. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time. A picture's own FILE row can override this."><span class="mmd-key">resize</span>
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <span class="mmd-renders"></span>`;
@@ -3066,6 +3083,11 @@ export class TimelineEditor {
           <select class="mmd-f-retention">${
             retentionOptions(item.media.retention, item.media.kind, track)}</select>
         </label>
+        ${item.media.kind !== "image"
+          || ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
+        <label title="How large this picture reaches the model. match scales it to about the clip's pixel count: cheap, and enough for a scene or a mood. max allows 2048px on its short side: slower, and what keeps a face the same face. Left as the clip's, the settings row answers. A frame anchor is sized by fit instead.">resize
+          <select class="mmd-f-size-rule">${sizeOptions(item.media.resize)}</select>
+        </label>`}
         ${!ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
         <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
           <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
@@ -3446,6 +3468,8 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
       this.segFields.querySelector(".mmd-f-fit")
         ?.addEventListener("change", (e) => patchMedia({ fit: e.target.value }));
+      this.segFields.querySelector(".mmd-f-size-rule")
+        ?.addEventListener("change", (e) => patchMedia({ resize: e.target.value }));
       // The clip follows a picture only when asked. `fitGeneration` keeps the ratio and
       // lands on multiples of 32 within H3's pixel budget, so the answer is a size the
       // model actually renders rather than the file's own pixel count.
@@ -3484,6 +3508,9 @@ export class TimelineEditor {
     put(".mmd-f-screen", item.screen_text || "");
     // Silence means `crop`, the same reading the node gives a document that predates this.
     put(".mmd-f-fit", item.media?.fit || FITS[0]);
+    // Blank is a real value here -- the file deferring to the clip -- so it is written as
+    // blank rather than filled in with a default the document does not hold.
+    put(".mmd-f-size-rule", item.media?.resize || "");
 
     // Undo and a switch of selection both land here; the rows themselves are built once.
     const rows = [...this.segFields.querySelectorAll(".mmd-f-line-row")];

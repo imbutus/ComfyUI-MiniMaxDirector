@@ -169,6 +169,46 @@ def test_no_loader_node_is_needed(media_run):
     assert len(wired) == 1  # one H3 call, fed entirely from the timeline
 
 
+# --- one picture's size is the file's own answer -----------------------------
+
+SIZED_TIMELINE = {
+    "global_prompt": "Neon-lit alley after rain.",
+    "shots": [
+        {"start": 0, "length": 24, "prompt": "The alley",
+         "media": {"kind": "image", "filename": "example.png", "subfolder": ""}},
+        {"start": 24, "length": 24, "prompt": "Her face",
+         "media": {"kind": "image", "filename": "example.png", "subfolder": "",
+                   "resize": "max"}},
+    ],
+}
+
+
+@pytest.fixture(scope="module")
+def sized_run():
+    graph = base_graph(f"minimax-director-sized-{int(time.time())}")
+    graph["5"]["inputs"]["timeline"] = json.dumps(SIZED_TIMELINE)
+    graph["5"]["inputs"]["ref_image_size"] = "match"
+    return harness.run(graph, outputs=["14"])
+
+
+def test_a_file_that_asks_for_max_arrives_larger_than_one_that_does_not(sized_run):
+    """The clip says `match`; the second block's file says `max`, and gets it.
+
+    example.png is 768x768 and the clip is 448x256, so `match` brings it down to the
+    clip's pixel count and `max` -- scale-down only -- leaves it alone.
+    """
+    first, second = h3_call(sized_run)["ref_image_sizes"]
+    assert second == (768, 768)
+    assert first[0] < 768 and first[0] % 32 == 0
+    assert first[0] * first[1] < second[0] * second[1]
+
+
+def test_core_is_asked_for_max_once_the_pictures_are_sized(sized_run):
+    """Core's `max` is scale-down only, so it leaves sized pictures alone. Passing the
+    node's own value here would size every one of them a second time."""
+    assert h3_call(sized_run)["ref_image_size"] == "max"
+
+
 # --- a keyframe whose shape is not the clip's --------------------------------
 
 

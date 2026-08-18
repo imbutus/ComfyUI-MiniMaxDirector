@@ -16,7 +16,7 @@ from ..cast import EMPTY as CAST_EMPTY
 from ..cast import merge_json as cast_merge
 from ..compile import compile_timeline
 from ..lint import Issue, lint
-from ..timeline import Timeline
+from ..timeline import SIZINGS, Timeline
 
 CATEGORY = "MiniMaxDirector"
 MAX_RESOLUTION = 16384
@@ -91,6 +91,51 @@ def _skewed(image, width: int, height: int) -> bool:
         return False
     theirs, ours = wide / tall, width / height
     return abs(theirs - ours) > 0.02 * ours
+
+
+REF_SHORT_EDGE = 2048
+"""What core's `max` allows a reference picture on its short side
+(`REF_IMAGE_SHORT_EDGE` in `comfy_extras/nodes_minimax_h3.py`)."""
+
+CANVAS_MULTIPLE = 32
+"""The grid core rounds a reference picture onto, and the one the model renders on."""
+
+
+def _sized(image, how: str, width: int, height: int):
+    """One reference picture at the size its own file asked for.
+
+    Core sizes every picture in its `ref_images` loop by one socket value, so `match` for
+    the mood board meant `match` for the face as well. The rule belongs to the file: `max`
+    is what holds a face together, and paying for it on a picture that only sets a mood is
+    time spent on nothing.
+
+    The way out is the one `_fit` already takes for keyframes: do the resize here, and hand
+    core a picture it will leave alone. Core's `max` branch is scale-down only, so a picture
+    already inside `REF_SHORT_EDGE` and already on the 32-grid comes out of it unchanged --
+    which is why the node always asks core for `max` once the pictures are sized.
+
+    The arithmetic is core's own, copied deliberately: what this returns has to be a fixed
+    point of that loop, so the two have to agree on the rounding as well as the scale.
+    """
+    import math
+
+    tall, wide = int(image.shape[1]), int(image.shape[2])
+    if not tall or not wide:
+        return image
+    scale = (min(1.0, math.sqrt((width * height) / (wide * tall))) if how == "match"
+             else min(1.0, REF_SHORT_EDGE / min(wide, tall)))
+    to_wide = max(CANVAS_MULTIPLE,
+                  round(wide * scale / CANVAS_MULTIPLE) * CANVAS_MULTIPLE)
+    to_tall = max(CANVAS_MULTIPLE,
+                  round(tall * scale / CANVAS_MULTIPLE) * CANVAS_MULTIPLE)
+    if (to_wide, to_tall) == (wide, tall):
+        return image
+
+    import comfy.utils
+
+    samples = image[..., :3].movedim(-1, 1)
+    samples = comfy.utils.common_upscale(samples, to_wide, to_tall, "lanczos", "disabled")
+    return samples.movedim(1, -1)
 
 
 def _fit(image, width: int, height: int, how: str = "crop"):
@@ -216,7 +261,10 @@ class MiniMaxDirector(io.ComfyNode):
                 last_frame = image
                 fits[role] = str(item.record.get("fit", "") or "crop")
             else:
-                pictures.append(image)
+                # Sized here rather than by core, so the file's own answer is the one used.
+                how = str(item.record.get("resize", "")).strip()
+                pictures.append(_sized(
+                    image, how if how in SIZINGS else ref_image_size, width, height))
         videos, soundtracks = [], []
         for item in attachments.of_kind(document, "video"):
             frames, sound = _load(item.record)
@@ -280,7 +328,10 @@ class MiniMaxDirector(io.ComfyNode):
                 "MiniMaxH3ReferenceToVideo",
                 **shared,
                 audio_vae=audio_vae,
-                ref_image_size=ref_image_size,
+                # Every picture arrives at the size its file asked for, and core's `max` is
+                # scale-down only, so this leaves them as they are. Passing the node's own
+                # value here would size them a second time, by the clip's rule.
+                ref_image_size="max",
                 ref_images=references.slots("ref_image_", pictures),
                 ref_videos=references.slots("ref_video_", videos),
                 ref_video_audios=references.slots("ref_video_audio_", soundtracks),
