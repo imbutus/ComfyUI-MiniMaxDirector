@@ -158,6 +158,12 @@ const CSS = `
 /* Thin and quiet. Drawn thick and near-white it stopped being a clip and became a bright
    smudge on the corner of every thumbnail -- and this is a label, not a control. */
 .mmd-clip svg { width:17px; height:17px; stroke-width:0.9; }
+/* The file's own size rule, in the row that names the file. Quiet: it is a property of
+   something the row is already showing, not a second thing in the list. */
+.mmd-file-resize { background:#12151b; color:#8b93a1; border:1px solid #2c313c;
+  border-radius:4px; padding:0 2px; font:inherit; font-size:9.5px; cursor:pointer;
+  max-width:96px; }
+.mmd-file-resize:hover { border-color:#4b5563; color:#c8cfda; }
 .mmd-file:hover { border-color:#4a83a8; color:#c8cfda; }
 .mmd-file-loose { border-style:dashed; }
 .mmd-file-lifting { opacity:.45; }

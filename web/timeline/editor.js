@@ -90,9 +90,11 @@ const fitOptions = (current) => {
  * `resize` answers for it. The other two are core's own words, so what is written on the
  * file is what the model is asked for.
  */
-const sizeOptions = (current) => {
+const sizeOptions = (current, label = "") => {
   const value = SIZINGS.includes(current) ? current : "";
-  return [["", "— the clip's"], ...SIZINGS.map((name) => [name, name])]
+  // The Files row has no room for a caption beside the picker, so the option says what it
+  // is; the FILE row is captioned already and takes the bare words.
+  return [["", `${label}default`], ...SIZINGS.map((name) => [name, `${label}${name}`])]
     .map(([name, shown]) =>
       `<option value="${name}"${name === value ? " selected" : ""}>${shown}</option>`)
     .join("");
@@ -1449,6 +1451,10 @@ export class TimelineEditor {
         <span class="mmd-clipped">${this.thumb(record)}<span class="mmd-clip">${ICON.clip}</span></span>
         <span class="mmd-file-token">${tokens.join(" ").replaceAll("<", "&lt;")}</span>
         <span class="mmd-file-name">${value(name)}</span>
+        ${record?.kind !== "image" || ANCHOR_ROLES.includes(String(record.role || "")) ? "" : `
+        <select class="mmd-file-resize" data-file="${index}"
+          title="How large this picture is sent to the model. A picture becomes tokens the model re-reads at every sampling step, so this is detail against time: match scales it to about the clip's pixel count, max allows 2048px on its short side and is what keeps a face the same face. It belongs to the file, so it is the same wherever the file sits. Left as the clip's, `default resize` in the settings row answers."
+          >${sizeOptions(record.resize, "resize: ")}</select>`}
         ${at === null ? "" : `<button data-dropfile="${value(name)}" title="Take this file off the clip">&times;</button>`}
       </span>`;
     };
@@ -1482,6 +1488,26 @@ export class TimelineEditor {
     this.filesList.addEventListener("click", (event) => {
       const drop = event.target.closest("[data-dropfile]");
       if (drop) return this.dropSource(drop.dataset.dropfile);
+    });
+
+    // The file's own size rule, written to every record of that file. This is the one
+    // place an unplaced picture can answer at all: it has no block, so it has no FILE row.
+    this.filesList.addEventListener("change", (event) => {
+      const picker = event.target.closest(".mmd-file-resize");
+      if (!picker) return;
+      const record = this.fileEntries?.[Number(picker.dataset.file)]?.record;
+      if (!record) return;
+      const next = this.read();
+      this.patchFile(next, record, { resize: picker.value });
+      this.commit(next);
+    });
+
+    // A picker inside a draggable chip: pointing at it must not start a drag, or the list
+    // gives the file up instead of opening the list of two words.
+    this.filesList.addEventListener("pointerdown", (event) => {
+      const chip = event.target.closest("[data-file]");
+      if (!chip) return;
+      chip.draggable = !event.target.closest(".mmd-file-resize");
     });
 
     this.filesList.addEventListener("dragstart", (event) => {
@@ -1693,6 +1719,26 @@ export class TimelineEditor {
    * is the same reference, and a second record would be a second `<Picture n>` for one
    * picture.
    */
+  /**
+   * Write a property onto every record of one file.
+   *
+   * A few of these belong to the file itself rather than to where it sits: how large it
+   * is sent to the model is a fact about the picture, and the same photograph placed on
+   * two blocks cannot sensibly be `max` on one and `match` on the other -- the model is
+   * handed one copy of it either way. Each placement carries its own record, so the answer
+   * is written to all of them, sources included, and identity is the filename, the same
+   * one `keepFile` uses to decide whether a file is still on the clip.
+   */
+  patchFile(timeline, record, change) {
+    const name = String(record?.filename || "").trim();
+    if (!name) return;
+    const mine = (item) => String(item?.filename || "").trim() === name;
+    for (const list of [timeline.shots, timeline.cues, timeline.moves]) {
+      for (const item of list || []) if (mine(item?.media)) Object.assign(item.media, change);
+    }
+    for (const source of timeline.sources || []) if (mine(source)) Object.assign(source, change);
+  }
+
   keepFile(timeline, record) {
     const name = String(record?.filename || "").trim();
     if (!name) return;
@@ -3475,8 +3521,13 @@ export class TimelineEditor {
         ?.addEventListener("change", (e) => patchMedia({ role: e.target.value }));
       this.segFields.querySelector(".mmd-f-fit")
         ?.addEventListener("change", (e) => patchMedia({ fit: e.target.value }));
+      // Not `patchMedia`: `resize` is the file's, so it is written wherever that file is.
       this.segFields.querySelector(".mmd-f-size-rule")
-        ?.addEventListener("change", (e) => patchMedia({ resize: e.target.value }));
+        ?.addEventListener("change", (e) => {
+          const next = this.read();
+          this.patchFile(next, items(next, track)[index]?.media, { resize: e.target.value });
+          this.commit(next);
+        });
       // The clip follows a picture only when asked. `fitGeneration` keeps the ratio and
       // lands on multiples of 32 within H3's pixel budget, so the answer is a size the
       // model actually renders rather than the file's own pixel count.

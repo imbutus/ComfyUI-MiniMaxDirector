@@ -474,7 +474,10 @@ the links in already-saved graphs -- do it at a version bump and re-save `exampl
     area) is fast and coarse where `max` (2048 px short edge) is slow and keeps identity.
     A picture may answer for itself: `media.resize` (`SIZINGS` in `timeline.py`, mirrored
     in `model.js`, offered on a reference picture only) overrides the node's socket for
-    that one file. Core has a single `ref_image_size` for its whole `ref_images` loop, so
+    that one file. It is a property of the *file*, so both controls that offer it -- the
+    Files row and the block's FILE row -- go through `editor.patchFile`, which writes it to
+    every record of that filename, sources included. Per-placement it would let one
+    photograph on two blocks disagree with itself about a size the model only applies once. Core has a single `ref_image_size` for its whole `ref_images` loop, so
     `director._sized` does the resize -- core's own arithmetic, copied so the result is a
     fixed point of that loop -- and the node then asks core for `max`, whose branch is
     scale-down only and therefore leaves sized pictures alone. Sizing them here and asking
