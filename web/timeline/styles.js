@@ -172,8 +172,13 @@ const CSS = `
 /* Margin rather than padding: padding insets the contents but the row's own background
    still paints across the socket labels. And the element covers the canvas, so the strips
    it leaves empty have to hand their clicks back to the sockets underneath. */
+/* Both columns are measured from the node's own socket names -- socketInset in
+   minimax_director.js -- because a number wide enough for the longest name any node might
+   carry is three hundred pixels this node does not have, and the toolbar spent them by
+   wrapping its last button onto a second line while empty band sat either side of it.
+   The fallback is that old number, for a browser that cannot measure text. */
 .mmd-banded .mmd-bar, .mmd-banded .mmd-settings {
-  margin-left:176px; margin-right:176px; }
+  margin-left:var(--mmd-band-left, 176px); margin-right:var(--mmd-band-right, 176px); }
 .mmd-banded { pointer-events:none; }
 .mmd-banded > * { pointer-events:auto; }
 /* The leftover height of the socket band sits *above* the toolbar rather than below it,
@@ -423,6 +428,9 @@ const CSS = `
 .mmd-f-deckname { max-width:0; overflow:hidden; opacity:0;
   transition:max-width .12s ease, opacity .12s ease, padding .12s ease; }
 .mmd-f-chipcol:hover .mmd-f-deckname { max-width:130px; opacity:1; padding:0 8px 0 6px; }
+/* One frame with the opening animation off, so the fan can be measured at the size it is
+   going to be rather than at whatever it is passing through. See fitDeck. */
+.mmd-f-deck.mmd-measuring .mmd-f-deckname { transition:none; }
 .mmd-seg-fields .mmd-f-deckitem .mmd-face { width:22px; height:22px; border-radius:99px;
   border:0; flex:0 0 auto; }
 /* A card with no file wears its initial on a plain blue-grey token -- a row of identical

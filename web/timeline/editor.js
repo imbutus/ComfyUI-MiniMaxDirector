@@ -313,20 +313,7 @@ export class TimelineEditor {
       const deck = column?.querySelector(".mmd-f-deck");
       if (!deck || deck.dataset.fanned) return;
       deck.dataset.fanned = "1";
-      const room = this.root.getBoundingClientRect().right
-        - column.getBoundingClientRect().left - 16;
-      column.style.setProperty("--mmd-fan-max", `${Math.max(120, Math.round(room))}px`);
-      // And then back in to the longest row it actually made. A wrapped flex box keeps the
-      // width it was allowed, not the width it used, so the panel stayed as wide as the
-      // node with empty air past the last card of a short second row.
-      requestAnimationFrame(() => {
-        if (!deck.dataset.fanned) return;
-        let right = 0;
-        for (const card of deck.children) {
-          right = Math.max(right, card.offsetLeft + card.offsetWidth);
-        }
-        if (right > 0) deck.style.width = `${Math.ceil(right + 4)}px`;
-      });
+      this.fitDeck(column);
     });
 
     this.segFields.addEventListener("mouseout", (event) => {
@@ -854,6 +841,54 @@ export class TimelineEditor {
   }
 
   /**
+   * Size an open fan: as wide as the row it has room for, and no wider.
+   *
+   * Two numbers, and both have to be measured. The first is how much room there is --
+   * from where the deck starts to the right edge of the editor -- because the column sits
+   * at a different x on every row and a fan wider than the node is a hand whose last
+   * cards cannot be reached. The second is the width the fan actually used: a wrapped
+   * flex box keeps the width it was *allowed*, not the width it filled, so a short second
+   * row left empty air out to the node's edge.
+   *
+   * The second measurement waits for the names to finish growing. Taken a frame after the
+   * pointer arrives it caught the cards mid-transition, a third of their final width, and
+   * wrote that as the deck's width -- which then overrode `max-content` and folded the
+   * hand into a single vertical file. That is the stack you saw instead of a fan.
+   */
+  fitDeck(column) {
+    const deck = column?.querySelector(".mmd-f-deck");
+    if (!deck) return;
+    deck.style.width = "";
+    const room = this.root.getBoundingClientRect().right
+      - column.getBoundingClientRect().left - 16;
+    column.style.setProperty("--mmd-fan-max", `${Math.max(120, Math.round(room))}px`);
+
+    // Measured with the opening animation switched off, in this same frame. Waiting for
+    // the animation instead meant measuring whatever the cards happened to be mid-way
+    // through: a hand that had room for one row was measured narrower than it needed and
+    // told to be that wide, which wrapped it -- the row that looked right and then broke.
+    deck.classList.add("mmd-measuring");
+    let right = 0;
+    for (const card of deck.children) {
+      right = Math.max(right, card.offsetLeft + card.offsetWidth);
+    }
+    if (right > 0) {
+      // `offsetLeft` counts from the deck's padding edge, so `right` already carries the
+      // padding on the left and none of the frame on either side. Written as a plain
+      // `right + a few` the width came out a pixel short of the row it had just measured,
+      // and a box one pixel too narrow wraps its last card -- which looked like the fan
+      // breaking for no reason at all.
+      const box = getComputedStyle(deck);
+      const px = (value) => parseFloat(value) || 0;
+      const frame = box.boxSizing === "border-box"
+        ? px(box.paddingRight) + px(box.borderLeftWidth) + px(box.borderRightWidth)
+        : -px(box.paddingLeft);
+      deck.style.width = `${Math.ceil(right + frame) + 1}px`;
+    }
+    deck.classList.remove("mmd-measuring");
+  }
+
+  /**
    * Refresh the block's speaker list without a render.
    *
    * A full render would rebuild the cast row being typed into and take the caret with it,
@@ -870,6 +905,13 @@ export class TimelineEditor {
         const ids = lines[Number(row.dataset.line)]?.ids;
         deck.innerHTML = this.speakerDeck(timeline, ids);
         deck.style.setProperty("--mmd-deck-count", this.deckCount(ids));
+        // Clicking a face rebuilds the deck under a pointer that never left, so no
+        // `mouseover` follows to size the new one. Without this the fan kept the width it
+        // was allowed rather than the width it used -- the empty air on the right.
+        if (deck.matches(":hover")) {
+          deck.querySelector(".mmd-f-deck")?.setAttribute("data-fanned", "1");
+          this.fitDeck(deck);
+        }
       }
     }
   }
@@ -941,11 +983,20 @@ export class TimelineEditor {
    * full width, so it waits until the band is over.
    *
    * @param {number} height  how much of the element the sockets reach down, in px
+   * @param {{left: number, right: number}} [inset]  how far the socket labels reach in
+   *   from each edge. Measured by the caller from the node's own slot names: a fixed
+   *   guess wide enough for the longest name any node could have threw away three hundred
+   *   pixels of a row that then wrapped its last button onto a second line.
    */
-  setBand(height) {
+  setBand(height, inset) {
     const banded = height > 0;
     this.root.classList.toggle("mmd-banded", banded);
     if (!banded) return;
+
+    if (inset) {
+      this.root.style.setProperty("--mmd-band-left", `${Math.round(inset.left)}px`);
+      this.root.style.setProperty("--mmd-band-right", `${Math.round(inset.right)}px`);
+    }
 
     // The tab strip belongs to the panel below it now, not to the band: it is the panel's
     // own header, and a header that floats away from what it heads reads as a mistake.
