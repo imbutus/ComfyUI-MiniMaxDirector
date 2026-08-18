@@ -516,8 +516,15 @@ keyword arguments. The director declares none of them; it builds those dicts wit
 ```bash
 pytest                                  # the compiler and its rules, no dependencies
 node tests/js/lattice.test.mjs          # the lattice on the JavaScript side
+./tools/loadcheck.sh                    # the web extension, imported as the browser does
 COMFYUI_PATH=~/dev/ComfyUI $COMFYUI_PATH/.venv/bin/python -m pytest tests/graph
 ```
+
+Run `loadcheck` after every edit to `web/`. `node --check` parses these files as *scripts*
+and cannot see the one mistake this codebase keeps making: a backtick inside a template
+literal -- in a tooltip, in a CSS comment -- which closes the literal early and takes the
+whole editor down to raw widgets. `loadcheck` imports the real module graph against stubs
+for ComfyUI's own scripts, so a broken file fails there instead of on the node.
 
 The graph tests import ComfyUI in-process, patch the registry with stubs from
 `tests/graph/stubs.py`, and drive `execution.validate_prompt` and
