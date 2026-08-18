@@ -308,7 +308,7 @@ def test_a_subject_can_be_drawn_from_two_files_with_a_job_each():
     ]})
     prompt = compile_timeline(Timeline.from_dict(merged)).prompt
     assert ("<Subject 1> is the woman, whose appearance comes from <Picture 1> and whose "
-            "motion comes from <Video 1>.") in prompt
+            "motion comes from <Video 1>") in prompt
 
 
 # -- the checks the guides hand us for free ----------------------------------

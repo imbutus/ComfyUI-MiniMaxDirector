@@ -250,6 +250,15 @@ through `editor.onAddCard`.
 - `lint._check_transfers` warns when a receiver kept `fully_preserved`/`partially_preserved`
   describes the very feature being transferred onto it (`FEATURES`). Both instructions
   reach the model and it keeps what it has; the fix is wording, so this is a warning.
+- `compile._spoken_by` writes a bound speaker's voice onto that subject's
+  `subject_definitions` line. The body prints `<Subject 1> (S1)` rather than prose for a
+  speaker a file defines (`_voices`), so before this the `how they sound` typed on any card
+  with a file reached the model nowhere at all and H3 chose the voice itself. A card with
+  no file is untouched: its voice *is* its description, and the body still prints it.
+- The editor dims `keep file` on a block whose file is `used as` `reference` and has cards
+  describing it, for the same reason `_only_defines` drops that file's entry: the marker is
+  the card's `keep it`, and a control that silently does nothing is worse than one that
+  says why.
 - `_only_defines` in `compile.py` suppresses a file's own `<Picture n>` entry — in both
   `subject_definitions` and `retention_analysis` — when its role is `reference` and a
   subject is drawn from it. That is the guide's rule: an image used only to define a

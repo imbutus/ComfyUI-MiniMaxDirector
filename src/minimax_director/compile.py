@@ -198,12 +198,33 @@ def _subject_definitions(timeline: Timeline) -> str:
         described = _described(item)
         voiced = _voice_clause(timeline, item)
         lines.append(f"{item.token} is {described}{voiced}.")
+    spoken = _spoken_by(timeline)
     for subject in attachments.subjects(timeline):
         # Provenance named on the subject's own line, which is what the guide asks for
         # when a picture is only there to supply something else.
         lines.append(f"{subject.token} is {subject.name.rstrip('.')}"
-                     f"{_sources(timeline, subject)}.")
+                     f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}.")
     return "\n".join(lines)
+
+
+def _spoken_by(timeline: Timeline) -> dict[str, str]:
+    """How each subject sounds, for the subjects a speaker was bound to.
+
+    H3 fixes a voice from what the prompt says about the speaker, and the description of a
+    speaker the guide knows as `<Subject 1>` is that subject's line -- the body prints the
+    token there, not prose, so a voice typed on a card with a file used to reach the model
+    nowhere at all. A card with no file is unaffected: its voice *is* its description, and
+    the body still prints it before the `(Sn)`.
+    """
+    if timeline.voices() is None:
+        return {}
+    said: dict[str, str] = {}
+    for number, subject in attachments.bound(timeline).items():
+        voice = next((speaker.voice.strip() for speaker in timeline.speakers
+                      if speaker.id == number), "")
+        if voice:
+            said[subject.token] = f", and sounds like this: {voice.rstrip('.')}"
+    return said
 
 
 def _sources(timeline: Timeline, subject) -> str:

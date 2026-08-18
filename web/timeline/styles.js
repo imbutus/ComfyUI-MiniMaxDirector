@@ -874,6 +874,11 @@ const CSS = `
 .mmd-settings label.mmd-dead { opacity:.45; }
 .mmd-settings label.mmd-dead select {
   background:transparent; border-style:dashed; cursor:not-allowed; }
+/* Same treatment on a block's own row: keep file is read by nobody while a card describes
+   the file, and a control that silently does nothing is worse than one that says so. */
+.mmd-seg-fields label.mmd-dead { opacity:.45; }
+.mmd-seg-fields label.mmd-dead select {
+  background:transparent; border-style:dashed; cursor:not-allowed; }
 .mmd-seg-fields .mmd-f-addline-row {
   display:flex; align-items:center; gap:8px; align-self:flex-start; }
 .mmd-seg-fields .mmd-f-addline[disabled] {

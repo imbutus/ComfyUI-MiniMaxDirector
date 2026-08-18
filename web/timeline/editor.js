@@ -1013,17 +1013,47 @@ export class TimelineEditor {
     this.root.classList.toggle("mmd-banded", banded);
     if (!banded) return;
 
-    if (inset) {
+    // Everything below is written from the canvas draw, which runs at whatever rate
+    // ComfyUI renders at -- a hundred times a second on a graph nobody is touching. So
+    // nothing here reads the DOM and nothing is written twice: a read forces the browser
+    // to lay the editor out before it can answer, and that layout was landing in every one
+    // of those frames.
+    if (inset && (inset.left !== this.bandLeft || inset.right !== this.bandRight)) {
+      this.bandLeft = inset.left;
+      this.bandRight = inset.right;
       this.root.style.setProperty("--mmd-band-left", `${Math.round(inset.left)}px`);
       this.root.style.setProperty("--mmd-band-right", `${Math.round(inset.right)}px`);
     }
 
+    this.watchBand();
+    if (this.bandRows === undefined) this.measureBand();
+    this.bandHeight = height;
     // The tab strip belongs to the panel below it now, not to the band: it is the panel's
     // own header, and a header that floats away from what it heads reads as a mistake.
+    const gap = Math.max(0, Math.round(height - this.bandRows));
+    if (gap === this.bandGap) return;
+    this.bandGap = gap;
+    this.root.style.setProperty("--mmd-band-gap", `${gap}px`);
+  }
+
+  /** How tall the two rows in the band are, together with the gaps between them. */
+  measureBand() {
     const above = [this.bar, this.settings];
-    const rows = above.reduce((sum, el) => sum + (el?.offsetHeight || 0), 0)
+    this.bandRows = above.reduce((sum, el) => sum + (el?.offsetHeight || 0), 0)
       + (parseFloat(getComputedStyle(this.root).rowGap) || 0) * above.length;
-    this.root.style.setProperty("--mmd-band-gap", `${Math.max(0, Math.round(height - rows))}px`);
+  }
+
+  /** Re-measure when a row in the band actually changes height, and only then. */
+  watchBand() {
+    if (this.bandWatch) return;
+    this.bandWatch = new ResizeObserver(() => {
+      const held = this.bandRows;
+      this.measureBand();
+      if (this.bandRows === held || !this.bandHeight) return;
+      this.bandGap = null;
+      this.setBand(this.bandHeight);
+    });
+    for (const el of [this.bar, this.settings]) if (el) this.bandWatch.observe(el);
   }
 
   /** Whether anybody speaks: the `they speak` switch on WHO & WHAT, off by default. */
@@ -3132,8 +3162,13 @@ export class TimelineEditor {
         <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
           <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
         </label>
-        <label title="How much of this file survives into the video. Fixed values from MiniMax's own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ.">keep file
-          <select class="mmd-f-retention">${
+        <label class="${claimed.length && !ANCHOR_ROLES.includes(String(item.media.role || ""))
+          && String(item.media.role || "reference") === "reference" ? "mmd-dead" : ""}"
+          title="${claimed.length && String(item.media.role || "reference") === "reference"
+            ? "Nothing reads this while a card describes the file: MiniMax asks for a file used only to define something to be cited inside that thing&#39;s own definition, so the file&#39;s own entry is left out and the card&#39;s `keep it` is the marker the model gets. Change `used as`, or clear the cards, and this answers again."
+            : "How much of this file survives into the video. Fixed values from MiniMax&#39;s own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ."}">keep file
+          <select class="mmd-f-retention"${claimed.length
+            && String(item.media.role || "reference") === "reference" ? " disabled" : ""}>${
             retentionOptions(item.media.retention, item.media.kind, track)}</select>
         </label>
         ${item.media.kind !== "image"

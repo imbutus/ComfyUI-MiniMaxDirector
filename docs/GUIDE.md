@@ -427,7 +427,11 @@ A card holds:
   entry — a frame anchor, an edit source — this sentence fills that in too.
 - **keep it** — how much of *the subject* survives, compiled as `subject_retention`. Not
   the same field as the block's `keep file`: the photo may be `fully_preserved` while the
-  face taken out of it is an `attribute_transfer` onto somebody else.
+  face taken out of it is an `attribute_transfer` onto somebody else. While a card
+  describes a file whose `used as` is `reference`, the block's `keep file` goes dead —
+  dimmed and dashed: MiniMax asks for a file used only to define something to be cited
+  inside that thing's definition, so the file gets no entry of its own and this is the only
+  marker the model sees.
 - **onto** — who receives that transfer. It appears only when `keep it` is
   `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
   offers the other cards and each shot's subject, or you type a receiver the shot
@@ -450,7 +454,11 @@ A card holds:
   and whose motion comes from <Video 1>.` Shown once there is a video on the timeline.
 - **what it is** — for a card with a file; becomes its `subject_definitions` line
 - **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
-  voice from this, so an empty one is a voice nobody chose and the linter says so.
+  voice from this, so an empty one is a voice nobody chose and the linter says so. For a
+  card with a file it is written onto that subject's `subject_definitions` line
+  (`… from <Picture 1>, and sounds like this: a man in his forties, warm and even.`),
+  because the body names them by token; for a card with no file the body prints it before
+  the `(Sn)` instead.
 - **voice from** — or take the timbre from a recording instead of describing it. Point the
   card at an `<Audio n>` on the timeline and the prompt says
   `<Audio 1> is the voice-timbre reference for <Subject 1> (S1).`, with the file marked

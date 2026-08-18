@@ -495,8 +495,9 @@ def test_one_file_can_define_two_subjects():
     prompt = compile_timeline(_two_in_one_frame(subjects=[
         {"name": "the woman on the left"}, {"name": "the man on the right"},
     ])).prompt
-    assert "<Subject 1> is the woman on the left, from <Picture 1>." in prompt
-    assert "<Subject 2> is the man on the right, from <Picture 1>." in prompt
+    # The speaker's voice follows on the same line, so the sentence does not end here.
+    assert "<Subject 1> is the woman on the left, from <Picture 1>" in prompt
+    assert "<Subject 2> is the man on the right, from <Picture 1>" in prompt
     assert "<Subject 1> (S1) says: <d>[English] Hello.</d>" in prompt
 
 
@@ -521,5 +522,41 @@ def test_an_unnamed_entry_defines_nothing():
 
 def test_the_single_subject_form_still_compiles():
     prompt = compile_timeline(_two_in_one_frame(subject="the woman on the left")).prompt
-    assert "<Subject 1> is the woman on the left, from <Picture 1>." in prompt
+    # The speaker's voice follows on the same line, so the sentence does not end here.
+    assert "<Subject 1> is the woman on the left, from <Picture 1>" in prompt
     assert "<Subject 2>" not in prompt
+
+
+def test_a_voice_typed_on_a_card_with_a_file_reaches_the_model():
+    """The body prints `<Subject 1> (S1)`, not prose, so the voice has to live somewhere.
+
+    H3 fixes a voice from what the prompt says about the speaker. Bound to a subject, the
+    speaker's own description was replaced by their token and the voice typed on the card
+    reached the model nowhere at all -- so every clip whose people came out of photographs
+    got a voice nobody chose.
+    """
+    timeline = Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "speakers": [{"id": 1, "uid": "w1",
+                      "voice": "a woman in her thirties, hoarse and slow"}],
+        "shots": [{"start": 0, "length": 124, "prompt": "Two people at a table.",
+                   "media": {"kind": "image", "filename": "pair.png",
+                             "subjects": [{"name": "the woman on the left", "uid": "w1"}]},
+                   "lines": [{"text": "Hello.", "ids": "S1"}]}],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert ("<Subject 1> is the woman on the left, from <Picture 1>, and sounds like this: "
+            "a woman in her thirties, hoarse and slow.") in prompt
+    # And the body still names her by token, which is the guide's form.
+    assert "<Subject 1> (S1) says:" in prompt
+
+
+def test_a_card_with_no_file_still_says_the_voice_in_the_body():
+    """Nothing changes for a voice-only card: it has no subject line to move into."""
+    timeline = Timeline.from_dict({
+        "speech": True,
+        "speakers": [{"id": 1, "voice": "a young porter, bright and nervous"}],
+        "shots": [{"start": 0, "length": 48, "prompt": "A corridor.",
+                   "lines": [{"text": "Room service.", "ids": "S1"}]}],
+    })
+    assert "a young porter, bright and nervous (S1) says:" in compile_timeline(timeline).prompt
