@@ -347,6 +347,70 @@ export function stretchFor(timeline, item) {
   timeline.duration = snapped;
 }
 
+/** The smallest block a shortened clip will leave standing, in frames. */
+export const FLOOR = 10;
+
+/**
+ * Bring every track inside a clip that just got shorter, and say what had to go.
+ *
+ * A typed duration is the length of the piece, so a block that runs past it is not a
+ * block the model will ever see -- the compiler cuts the tail and the report says so.
+ * Saying so and leaving the timeline alone meant retyping every length by hand to agree
+ * with a number already entered.
+ *
+ * Nothing is thrown away for being late. Each track is walked from its last block
+ * backwards and every block is given the room left in front of the one behind it: a block
+ * straddling the new end keeps its start and loses the overhang, and a block with no room
+ * at all is squeezed to `FLOOR` frames, which pushes the block before it back by that
+ * much. A clip cut from 192 to 141 keeps every block it had, in order, with the cut paid
+ * for by the ones nearest the end.
+ *
+ * Only a block with nowhere left to stand -- the front of the clip is reached and the
+ * floor will not fit -- is removed. Its media record is returned rather than discarded, so
+ * the caller can keep the file on the clip the way deleting a block does.
+ */
+export function clamp(timeline, duration, floor = FLOOR) {
+  const dropped = [];
+  if (!duration || duration <= 0) return { touched: false, dropped };
+  let touched = false;
+
+  for (const { key } of TRACKS) {
+    const list = items(timeline, key);
+    // By start, so "the block before it" is the previous block in time whatever order the
+    // document happens to hold them in.
+    const order = list
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => (Number(a.item?.start) || 0) - (Number(b.item?.start) || 0));
+
+    // How many blocks a clip this short can hold at all, each needing its floor. Past
+    // that the latest ones go: when the room runs out it is the tail that loses, the same
+    // end of the clip that pays for every other frame of the cut. At least one always
+    // stands, so a clip shorter than the floor still shows what it starts with.
+    const room = Math.max(1, Math.floor(duration / floor));
+    const gone = [];
+    for (const { item, index } of order.slice(room)) {
+      if (item?.media) dropped.push(item.media);
+      gone.push(index);
+      touched = true;
+    }
+
+    let limit = duration;   // the first frame the block being placed may not reach
+    for (const { item } of order.slice(0, room).reverse()) {
+      const from = Number(item?.start) || 0;
+      const size = Number(item?.length) || 0;
+      if (from + size <= limit) { limit = from; continue; }
+      const to = Math.max(0, Math.min(from, limit - floor));
+      item.start = to;
+      item.length = limit - to;
+      limit = to;
+      touched = true;
+    }
+    // Highest index first, so earlier removals cannot shift the ones still to come.
+    for (const index of gone.sort((a, b) => b - a)) remove(timeline, key, index);
+  }
+  return { touched, dropped };
+}
+
 export function remove(timeline, track, index) {
   items(timeline, track).splice(index, 1);
 }

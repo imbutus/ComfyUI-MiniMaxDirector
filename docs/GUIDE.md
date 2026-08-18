@@ -159,8 +159,13 @@ the lattice as you work:
 - A block that grows the clip — added, dragged past the end, or given a longer `length` —
   takes the padding itself. Your last block ends up a few frames longer, and the timeline
   is exactly what renders.
-- A **duration** typed by hand snaps up on its own, and leaves the blocks alone: that is a
-  decision about the piece, not about a segment. Empty means "follow the content".
+- A **duration** typed by hand snaps up on its own. Raising it leaves the blocks alone --
+  the clip simply has room to spare. Lowering it past the tracks brings them inside: the
+  block nearest the end loses its overhang, a block that no longer starts inside the clip
+  is squeezed to ten frames at the end and the one in front of it gives up exactly that
+  much, and only a block with nowhere left to stand is removed -- its file staying on the
+  clip, in the Files list, the way it does when a block is deleted. Empty means "follow
+  the content".
 
 The timeline is drawn to the clip, not past it, so there is nothing empty on the end. The
 settings row's `renders 124 f = 5.17s · 120 f rounded up` is the fallback for the cases

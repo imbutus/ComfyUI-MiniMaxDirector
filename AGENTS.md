@@ -139,8 +139,14 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 - **Content that grows the clip lands on the lattice, and takes the padding with it.**
   `stretchFor` snaps the new end up to `17n+5` and adds the difference to the block that
   pushed it, so `span == duration == length` and no frame of the output is undescribed. A
-  duration typed by hand snaps too, but never resizes a block: that is a statement about
-  the piece.
+  duration typed by hand snaps too.
+- **A shortened clip brings its tracks inside, and the tail pays for the cut.** `clamp()`
+  in `model.js` walks each track backwards from the new end: a block straddling it keeps
+  its start and loses the overhang, a block starting past it is squeezed to `FLOOR` (10)
+  frames and the block in front gives up exactly that much. When the room runs out --
+  `floor(duration / FLOOR)` blocks, at least one -- the latest blocks are removed and
+  their media records handed back, so the caller can `keepFile` them the way deleting a
+  block does. Raising a duration clamps nothing. Tested in `tests/js/clamp.test.mjs`.
 - `references` is rebuilt from what is actually connected before compiling; the stored
   copy is never trusted.
 - Unknown keys survive a round trip through the editor.
@@ -518,10 +524,18 @@ keyword arguments. The director declares none of them; it builds those dicts wit
 
 ```bash
 pytest                                  # the compiler and its rules, no dependencies
-node tests/js/lattice.test.mjs          # the lattice on the JavaScript side
+node --test tests/js/*.mjs              # the lattice and the clamp, JavaScript side
 ./tools/loadcheck.sh                    # the web extension, imported as the browser does
 COMFYUI_PATH=~/dev/ComfyUI $COMFYUI_PATH/.venv/bin/python -m pytest tests/graph
+tools/release.sh <x.y.z> <notes.md>      # all four suites, then commit, tag and push
 ```
+
+A release goes through `tools/release.sh` and nowhere else. The version lives in
+`pyproject.toml`, in `VERSION` in `web/build.js` and in the `BUILD` stamp beside it, and
+v0.14.1 was cut by hand with two of the three moved -- the pod ran the fix while the node
+painted the old number, which is indistinguishable from a fix that never shipped. The
+script moves all three, gates on the suites above, and refuses to move a tag that already
+exists unless passed `--retag`.
 
 Run `loadcheck` after every edit to `web/`. `node --check` parses these files as *scripts*
 and cannot see the one mistake this codebase keeps making: a backtick inside a template

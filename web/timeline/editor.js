@@ -15,7 +15,7 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import {
   AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SIZINGS, SPEEDS, TRANSITIONS, TRACKS,
-  TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds,
+  TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds, clamp,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
   remove, reshape, flat, snapUp, span, stretchFor, toSeconds, FPS, STRIDE, PHASE,
@@ -1782,6 +1782,20 @@ export class TimelineEditor {
     timeline.sources.push(rest);
   }
 
+  /**
+   * Bring the tracks inside a shortened clip, keeping the files of any block that went.
+   *
+   * The arithmetic is `clamp` in `model.js`, which is where the timeline's other rules
+   * about where a block may stand already live and where it can be tested without a DOM.
+   */
+  clampTo(timeline, duration) {
+    const { touched, dropped } = clamp(timeline, duration);
+    // After the removals, so a file still on a block that survived is not kept twice.
+    for (const record of dropped) this.keepFile(timeline, record);
+    if (touched) this.selected = [];
+    return touched;
+  }
+
   deleteSelected() {
     if (!this.selected.length) return;
     const timeline = this.read();
@@ -2571,6 +2585,7 @@ export class TimelineEditor {
     bind(".s-duration", (next, node) => {
       const asked = frames(node);
       next.duration = asked ? snapUp(asked) : 0;
+      this.clampTo(next, next.duration);
     }, () => {
       // What was asked for is not always what is set: 144 snaps up to 158, and 0 means
       // "follow the content", which reads as the span the blocks already cover.
