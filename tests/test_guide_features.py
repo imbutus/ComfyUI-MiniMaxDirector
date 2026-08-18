@@ -498,8 +498,12 @@ def test_a_carried_face_is_a_second_source_on_one_subject():
     state what each asset provides". A face is not a content unit of its own."""
     prompt = compile_timeline(_swapped()).prompt
     assert ("<Subject 1> is the man in the navy suit: his build and greying hair, from "
-            "<Picture 1>, whose face: bone structure, eyes, nose and jawline comes from "
-            "<Picture 2>") in prompt
+            "<Picture 1>") in prompt
+    # Its own sentence, subject first. Hung off the end of the definition as a `whose`
+    # clause, the pronoun bound to `<Picture 1>` and the sentence claimed the picture's
+    # face came from another picture -- which the model answered by changing nothing.
+    assert ("<Subject 1>'s face comes from <Picture 2> and not from <Picture 1>: bone "
+            "structure, eyes, nose and jawline.") in prompt
     assert "<Subject 2>" not in prompt
 
 
@@ -514,6 +518,6 @@ def test_the_photograph_a_face_comes_from_keeps_no_entry_of_its_own():
 def test_the_receiver_is_analysed_as_the_transfer():
     prompt = compile_timeline(_swapped()).prompt
     assert ("<Subject 1> (appears in [Shot 1]): attribute_transfer - the face: bone "
-            "structure, eyes, nose and jawline from <Picture 2> onto the man in the navy "
-            "suit: his build and greying hair, whose other features stay fully_preserved "
-            "from <Picture 1>.") in prompt
+            "structure, eyes, nose and jawline from <Picture 2> replaces what <Picture 1> "
+            "shows there; everything else about <Subject 1> stays fully_preserved from "
+            "<Picture 1>.") in prompt

@@ -251,3 +251,18 @@ def test_a_receiver_described_without_the_feature_is_not_reported():
     said = messages(transferring(
         "the man in the navy suit: his build, the desk, the flags behind him"))
     assert "transfers onto it" not in said
+
+
+def test_keeping_the_hair_while_the_face_is_replaced_is_reported():
+    """The words never matched, so the old check passed and the swap did not happen: hair
+    frames the head, and the model handed both instructions keeps the head it has."""
+    said = messages(transferring(
+        "the man in the navy suit: his build, his greying hair, his hands"))
+    assert "names the hair" in said
+    assert "part of the same head" in said
+
+
+def test_a_receiver_named_only_below_the_neck_is_left_alone():
+    said = messages(transferring(
+        "the man in the navy suit: his build, his hands and how he sits"))
+    assert "part of the same head" not in said

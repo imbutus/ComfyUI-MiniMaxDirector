@@ -311,8 +311,9 @@ def test_a_transfer_onto_another_card_folds_into_that_card():
          "onto": "SPEAKER", "description": "the face in face.jpg"},
     ]})))
     prompt = compile_timeline(timeline).prompt
-    assert ("<Subject 1> is the man in the navy suit, from <Picture 1>, whose face in "
-            "face.jpg comes from <Picture 2>") in prompt
+    assert "<Subject 1> is the man in the navy suit, from <Picture 1>" in prompt
+    assert ("<Subject 1>'s face in face.jpg comes from <Picture 2> and not from "
+            "<Picture 1>.") in prompt
     # One person, so one subject -- and the photograph the face came out of is cited
     # inside that person rather than described as a thing the video contains.
     assert "<Subject 2>" not in prompt

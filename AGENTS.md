@@ -234,8 +234,15 @@ through `editor.onAddCard`.
 - `onto` is the receiver of an `attribute_transfer`, and only means anything for that
   marker. When it names another **card**, `attachments.carried` folds this entry into that
   card: the entry takes no `<Subject n>` (`subjects` skips it, so the numbering has no
-  gap), the receiver's definition gains `, whose <name> comes from <Picture n>`, and the
-  receiver's `retention_analysis` line becomes the transfer. `_only_defines` counts a
+  gap), the receiver's definition gains a **sentence of its own** --
+  `<Subject 1>'s face comes from <Picture 2> and not from <Picture 1>: ...`
+  (`compile._carried_sentences`) -- and the receiver's `retention_analysis` line becomes
+  the transfer. The sentence is separate because the first attempt hung it on the
+  definition as `, from <Picture 1>, whose face ... comes from <Picture 2>`, where the
+  relative pronoun binds to `<Picture 1>` rather than to the person: the sentence claimed
+  the picture's face came from another picture, and the model kept the face it had. It
+  names what it overrides for the same reason -- "and not from `<Picture 1>`" is the one
+  clause that cannot be read as agreeing with the definition above it. `_only_defines` counts a
   carried entry too, so the photograph the feature comes from keeps no entry of its own.
   §2.1 is the authority: `<Subject N>` is "a content unit that will actually be used in the
   target video", and "when the same subject comes from multiple assets, combine the sources
@@ -257,6 +264,9 @@ through `editor.onAddCard`.
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
 - `lint._check_transfers` warns when a receiver kept `fully_preserved`/`partially_preserved`
   describes the very feature carried onto it (`FEATURES`, read off `attachments.carried`).
+  Hair belongs in that category in practice even when the transfer is only the face: it
+  frames the head, and a receiver told to keep one picture's hair while wearing another's
+  face keeps both from the first.
   Both instructions reach the model and it keeps what it has; the fix is wording, so this
   is a warning.
 - `compile._spoken_by` writes a bound speaker's voice onto that subject's

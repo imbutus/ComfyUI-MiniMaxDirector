@@ -210,7 +210,8 @@ def _subject_definitions(timeline: Timeline) -> str:
         # Provenance named on the subject's own line, which is what the guide asks for
         # when a picture is only there to supply something else.
         lines.append(f"{subject.token} is {subject.name.rstrip('.')}"
-                     f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}.")
+                     f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}."
+                     f"{_carried_sentences(timeline, subject)}")
     return "\n".join(lines)
 
 
@@ -239,31 +240,44 @@ def _sources(timeline: Timeline, subject) -> str:
 
     One file is the ordinary case and keeps the short form. A second asset makes the
     sentence name what each supplies, because "from <Picture 1> and <Video 1>" leaves the
-    model to decide which of them the walk comes from. A feature carried onto this person
-    from another file is a second asset of exactly that kind, which is why a face swap is
-    written here rather than as a subject of its own.
+    model to decide which of them the walk comes from.
     """
     motion = _token_for(timeline, str(subject.record.get("motion_file", "")).strip())
-    carried = _carried_clause(timeline, subject)
     if not motion:
-        return f", from {subject.source}{carried}"
+        return f", from {subject.source}"
     return (f", whose appearance comes from {subject.source} and whose motion comes "
-            f"from {motion}{carried}")
+            f"from {motion}")
 
 
-def _carried_clause(timeline: Timeline, subject) -> str:
-    """`, whose face comes from <Picture 2>: ...` for every feature folded into this one."""
+def _carried_sentences(timeline: Timeline, subject) -> str:
+    """A sentence of its own for every feature carried onto this subject.
+
+    This used to be a `, whose face ... comes from <Picture 2>` clause hung off the end of
+    `, from <Picture 1>`, which put the relative pronoun immediately after `<Picture 1>`:
+    read literally, the sentence said that *the picture's* face came from another picture.
+    The model resolved that by keeping the face it already had, and the swap never
+    happened -- twice, on paid hardware.
+
+    So the transfer gets its own sentence, subject first, and it names what it overrides.
+    `<Picture 1>` supplies this person; saying "and not from <Picture 1>" is the only part
+    of the instruction that cannot be read as agreeing with the definition above it.
+    """
     parts = []
     for token, entry in attachments.carried(timeline).get(
             str(subject.record.get("uid", "")), []):
         name = str(entry.get("name", "")).strip().rstrip(".")
         if not name:
             continue
-        # The author writes "the face in mmdv-photo.jpg: ...", and the sentence reads
-        # "whose face in ..." -- the article belongs to their phrase, not to this one.
-        if name.lower().startswith("the "):
-            name = name[4:]
-        parts.append(f", whose {name} comes from {token}")
+        # The author writes "the face: bone structure, eyes, ..." -- the head of that
+        # phrase is what is carried, and the rest describes it. Their article belongs to
+        # their phrase rather than to the possessive this builds.
+        head, _, detail = name.partition(":")
+        head = head.strip()
+        if head.lower().startswith("the "):
+            head = head[4:]
+        detail = detail.strip().rstrip(".")
+        parts.append(f" {subject.token}'s {head} comes from {token} and not from "
+                     f"{subject.source}{f': {detail}' if detail else ''}.")
     return "".join(parts)
 
 
@@ -415,9 +429,9 @@ def _retention_analysis(timeline: Timeline) -> str:
                 f"{str(entry.get('name', '')).strip().rstrip('.')} from {token}"
                 for token, entry in taken])
             lines.append(
-                f"{subject.token}{where}: attribute_transfer - {moved} onto "
-                f"{subject.name.rstrip('.')}, whose other features stay "
-                f"{_retention(subject)} from {subject.source}.")
+                f"{subject.token}{where}: attribute_transfer - {moved} replaces what "
+                f"{subject.source} shows there; everything else about {subject.token} "
+                f"stays {_retention(subject)} from {subject.source}.")
             continue
         # An `attribute_transfer` that names nobody the cast knows: the feature moves, and
         # the free text in `onto` is the only word on where it lands.

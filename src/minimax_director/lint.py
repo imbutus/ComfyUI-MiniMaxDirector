@@ -216,6 +216,12 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
 # long list would start matching sentences that only mention the feature in passing.
 FEATURES = ("face", "eyes", "nose", "mouth", "jaw", "hair", "skin", "voice", "smile")
 
+#: The head is one region, so these clash with each other and not only with themselves.
+#: A receiver told to keep one photograph's *hair* while wearing another's *face* keeps
+#: both from the first -- the words never matched, the check passed, and the swap did not
+#: happen on paid hardware. `voice` is deliberately absent: it is not part of the frame.
+HEAD = ("face", "eyes", "nose", "mouth", "jaw", "hair", "skin", "smile")
+
 
 def _check_transfers(timeline: Timeline) -> Iterator[Issue]:
     """A subject told to keep the very feature something else transfers onto it.
@@ -241,14 +247,28 @@ def _check_transfers(timeline: Timeline) -> Iterator[Issue]:
         for token, entry in taken:
             moved = str(entry.get("name", "")).lower()
             clashed = [word for word in FEATURES if word in moved and word in held]
-            if not clashed:
+            if clashed:
+                yield Issue(
+                    "warning",
+                    f"{receiver.token} is {receiver.record.get('retention')} and its "
+                    f"description names the {clashed[0]}, which is carried onto it from "
+                    f"{token}. The model is told to keep that {clashed[0]} and to replace "
+                    f"it; it keeps it. Describe {receiver.token} without the "
+                    f"{clashed[0]}.",
+                )
+                continue
+            # No word in common, but both sides may still be describing the same head.
+            taken_here = next((word for word in HEAD if word in moved), "")
+            kept_here = next((word for word in HEAD if word in held), "")
+            if not taken_here or not kept_here:
                 continue
             yield Issue(
                 "warning",
                 f"{receiver.token} is {receiver.record.get('retention')} and its "
-                f"description names the {clashed[0]}, which is carried onto it from "
-                f"{token}. The model is told to keep that {clashed[0]} and to replace it; "
-                f"it keeps it. Describe {receiver.token} without the {clashed[0]}.",
+                f"description names the {kept_here}, while the {taken_here} carried onto "
+                f"it from {token} is part of the same head. Keeping one and replacing the "
+                f"other is two instructions about one region, and the model keeps what it "
+                f"has. Describe {receiver.token} without the {kept_here}.",
             )
 
 
