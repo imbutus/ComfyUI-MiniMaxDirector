@@ -287,12 +287,14 @@ def test_a_transfer_names_who_receives_it():
             "transferred onto the woman at the desk.") in prompt
 
 
-def test_a_transfer_onto_another_card_names_them_as_a_subject():
+def test_a_transfer_onto_another_card_folds_into_that_card():
     """The `onto` picker writes the other card's name, which is a label of the editor's.
 
-    The model is introduced to people as `<Subject n>` and never hears what the author
-    filed them under, so "transferred onto SPEAKER" pointed the transfer at nobody and
-    the feature stayed where it was -- visible as a face swap that never happened.
+    A feature carried onto somebody is a second source for that person, not a person of
+    its own: §2.1 says to combine the sources and state what each asset provides. Written
+    as its own `<Subject n>` "transferred onto <Subject 1>", the model was told to build a
+    second content unit while `<Subject 1>` kept the face it was handed -- a face swap
+    that never happened.
     """
     timeline = Timeline.from_json(cast_merge(json.dumps({
         "duration": 96,
@@ -309,7 +311,12 @@ def test_a_transfer_onto_another_card_names_them_as_a_subject():
          "onto": "SPEAKER", "description": "the face in face.jpg"},
     ]})))
     prompt = compile_timeline(timeline).prompt
-    assert "transferred onto <Subject 1>." in prompt
+    assert ("<Subject 1> is the man in the navy suit, from <Picture 1>, whose face in "
+            "face.jpg comes from <Picture 2>") in prompt
+    # One person, so one subject -- and the photograph the face came out of is cited
+    # inside that person rather than described as a thing the video contains.
+    assert "<Subject 2>" not in prompt
+    assert "<Picture 2> is" not in prompt
     assert "transferred onto SPEAKER" not in prompt
 
 

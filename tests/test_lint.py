@@ -244,7 +244,7 @@ def transferring(held):
 def test_keeping_the_face_a_transfer_replaces_is_reported():
     said = messages(transferring(
         "the man in the navy suit: his face with visible pores, the desk behind him"))
-    assert "names the face, which <Subject 2> transfers onto it" in said
+    assert "names the face, which is carried onto it from <Picture 2>" in said
 
 
 def test_a_receiver_described_without_the_feature_is_not_reported():

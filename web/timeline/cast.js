@@ -78,10 +78,18 @@ export function parseCast(text) {
 export function numbering(timeline, cards) {
   const numbers = new Map();
   if (!timeline) return numbers;
+  // A card carried onto another card is that person's second source, not a subject of its
+  // own -- the same rule `attachments.carried` follows on the Python side. Numbered here
+  // and not there, the tab would offer a chip for a token the prompt never defines.
+  const named = new Set(cards.map((card) => String(card.name || "").trim().toLowerCase())
+    .filter(Boolean));
+  const folded = (card) => String(card.keep || "") === "attribute_transfer"
+    && named.has(String(card.onto || "").trim().replace(/\.$/, "").toLowerCase());
   let next = 1;
   for (const file of filesOf(timeline)) {
     for (const card of cards) {
       if (card.file !== (file.media.filename || "") || !card.description.trim()) continue;
+      if (folded(card)) continue;
       numbers.set(card.uid || card.id, next);
       next += 1;
     }
@@ -551,7 +559,26 @@ export class CastEditor {
       // The absence of a `<Subject n>` is a fact about this card, not a gap in the row:
       // drawn hollow, it is the answer to "why does the other one have a badge".
       const none = row.querySelector(".mmd-card-nosubject");
-      if (none) none.classList.toggle("mmd-hide", !!index);
+      // A card carried onto another one has no number for a different reason: it is not a
+      // person, it is a second source for one, written into their line. Saying "no
+      // <Subject>" there reads as a card that failed rather than one that landed.
+      const onto = String(card.keep || "") === "attribute_transfer"
+        && state.cards.some((other) => other !== card
+          && String(other.name || "").trim().toLowerCase()
+             === String(card.onto || "").trim().replace(/\.$/, "").toLowerCase()
+          && String(other.name || "").trim())
+        ? String(card.onto).trim() : "";
+      if (none) {
+        none.classList.toggle("mmd-hide", !!index);
+        none.textContent = onto ? `→ ${onto}` : "no <Subject>";
+        none.title = onto
+          ? `Carried onto ${onto}: this is a second source for that person, so it is `
+            + `written into their <Subject n> instead of taking one of its own. MiniMax `
+            + `asks for the sources of one subject to be combined and each one's job named.`
+          : "No file, so there is nothing on screen for the model to look at and keep. "
+            + "This card is a speaker and nothing else. Pick a file in from to give it a "
+            + "<Subject n>.";
+      }
 
       // Both notes are painted rather than built: one turns on at the first character
       // typed into the description, the other at the first character of a voice -- and
@@ -613,7 +640,9 @@ export class CastEditor {
         note.innerHTML = !described
           ? `nothing is written about ${text(file ? file.token : "this file")} yet, so it
              takes no &lt;Subject n&gt; — say what it is below.`
-          : (!index ? "" : (keeps
+          : (onto ? `this sentence is written into ${text(onto)}'s own line: “…, whose
+             ${text(card.description.trim())} comes from ${text(file.token)}”.` : "")
+          || (!index ? "" : (keeps
             ? `this sentence is &lt;Subject ${index}&gt;. ${text(file.token)} keeps a line
                of its own as a ${text(role)}.`
             : `${text(file.token)} has no line of its own — this sentence is

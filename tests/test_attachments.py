@@ -1,7 +1,7 @@
 """Files on the timeline decide their own reference numbers."""
 
 from minimax_director import Timeline, compile_timeline
-from minimax_director.attachments import collect, of_kind, tokens_by_segment
+from minimax_director.attachments import carried, collect, of_kind, subjects, tokens_by_segment
 
 
 def image(name):
@@ -175,12 +175,14 @@ def test_a_clip_on_the_audio_track_is_a_soundtrack_and_not_a_video():
     assert "<Video 1>" not in prompt
 
 
-def test_a_face_carried_onto_somebody_is_named_where_they_appear():
+def test_a_face_carried_onto_somebody_is_not_a_subject_of_its_own():
     """Take 1's shape: the photograph the face comes from sits on no block.
 
-    Stated only in `retention_analysis`, the transfer was never asked for in the sentence
-    that draws the frame -- the shot named the man and the room and nothing else, and the
-    model kept the face it already had.
+    MiniMax's guide calls `<Subject N>` "a content unit that will actually be used in the
+    target video", and says to combine the sources when one subject comes from several
+    files. A face carried onto somebody is a second source for that person -- given a
+    `<Subject n>` of its own it became a second person the video was meant to contain,
+    while its receiver was told to preserve the face they already had.
     """
     timeline = Timeline.from_dict({
         "speech": True,
@@ -192,8 +194,11 @@ def test_a_face_carried_onto_somebody_is_named_where_they_appear():
         "sources": [{"kind": "image", "filename": "two.jpg", "subjects": [
             {"name": "the face", "retention": "attribute_transfer", "onto": "SPEAKER"}]}],
     })
-    assert tokens_by_segment(timeline)[("shots", 0)] == \
-        ["<Subject 1>", "<Subject 2>"]
+    assert tokens_by_segment(timeline)[("shots", 0)] == ["<Subject 1>"]
+    assert [s.name for s in subjects(timeline)] == ["the man in the navy suit"]
+    assert carried(timeline)["u-speaker"] == [
+        ("<Picture 2>", {"retention": "attribute_transfer", "name": "the face",
+                         "onto": "SPEAKER"})]
 
 
 def test_a_subject_onto_nobody_is_named_only_where_its_own_file_is():

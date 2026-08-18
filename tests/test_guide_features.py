@@ -471,3 +471,49 @@ def test_a_timbre_reference_goes_away_when_nobody_speaks():
 def test_the_new_fields_survive_a_round_trip(document):
     once = Timeline.from_dict(document)
     assert Timeline.from_dict(once.to_dict()) == once
+
+
+# -- a face carried onto somebody: one subject, two sources ------------------
+
+
+def _swapped(**receiver):
+    """The face from one photograph, carried onto the person in another."""
+    return Timeline.from_dict({
+        "duration": 124, "speech": True,
+        "global_prompt": "A press room.",
+        "speakers": [{"id": 1, "name": "SPEAKER", "uid": "u1", "voice": "a warm, even voice"}],
+        "shots": [{"start": 0, "length": 124, "prompt": "He sits at the desk.",
+                   "lines": [{"text": "Hello.", "ids": "S1"}],
+                   "media": {"kind": "image", "filename": "man.png", "subjects": [
+                       {"name": "the man in the navy suit: his build and greying hair",
+                        "retention": "fully_preserved", "uid": "u1", **receiver}]}}],
+        "sources": [{"kind": "image", "filename": "face.jpg", "subjects": [
+            {"name": "the face: bone structure, eyes, nose and jawline",
+             "retention": "attribute_transfer", "onto": "SPEAKER"}]}],
+    })
+
+
+def test_a_carried_face_is_a_second_source_on_one_subject():
+    """§2.1: "when the same subject comes from multiple assets, combine the sources and
+    state what each asset provides". A face is not a content unit of its own."""
+    prompt = compile_timeline(_swapped()).prompt
+    assert ("<Subject 1> is the man in the navy suit: his build and greying hair, from "
+            "<Picture 1>, whose face: bone structure, eyes, nose and jawline comes from "
+            "<Picture 2>") in prompt
+    assert "<Subject 2>" not in prompt
+
+
+def test_the_photograph_a_face_comes_from_keeps_no_entry_of_its_own():
+    """Cited inside the definition it feeds, the guide's rule for a defining image. Its own
+    entry said the whole photograph was preserved, beside a sentence taking one feature."""
+    prompt = compile_timeline(_swapped()).prompt
+    assert "<Picture 2> is" not in prompt
+    assert "<Picture 2>:" not in prompt
+
+
+def test_the_receiver_is_analysed_as_the_transfer():
+    prompt = compile_timeline(_swapped()).prompt
+    assert ("<Subject 1> (appears in [Shot 1]): attribute_transfer - the face: bone "
+            "structure, eyes, nose and jawline from <Picture 2> onto the man in the navy "
+            "suit: his build and greying hair, whose other features stay fully_preserved "
+            "from <Picture 1>.") in prompt

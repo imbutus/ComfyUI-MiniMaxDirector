@@ -7,11 +7,12 @@ its conditioning and a clip length the sampler will accept.
 
 H3 makes the picture and the voices in one pass, so the editor has a **WHO & WHAT** tab: one
 card per thing the prompt has to name, holding its face, its voice, how much of it survives
-from a reference, and — for a face swap — who the face is transferred onto. Not only
-people: a costume, a prop, a place or a style out of the same photograph is a card too,
-and several cards may point at one file. A card can also take a person's motion from a
-video and their voice timbre from a recording, which is the guide's one-subject-several-
-assets case. A shot then only says who speaks and what they say.
+from a reference, and — for a face swap — who the face is carried onto, which folds the
+card into that person rather than adding a second one. Not only people: a costume, a prop,
+a place or a style out of the same photograph is a card too, and several cards may point at
+one file. A card can also take a person's motion from a video and their voice timbre from a
+recording — the guide's one-subject-several-assets case, and the same machinery a face swap
+now uses. A shot then only says who speaks and what they say.
 
 A card is also the one place a file is described — there is no second description box on
 the block, because a file used to define something is cited inside that thing's definition

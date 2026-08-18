@@ -227,34 +227,29 @@ def _check_transfers(timeline: Timeline) -> Iterator[Issue]:
     sentence that draws the frame. Nothing about the document is malformed, so this is a
     warning: the fix is to describe the receiver without the feature being replaced.
     """
-    people = attachments.subjects(timeline)
     by_tag = {str(person.record.get("uid", "")): person
-              for person in people if person.record.get("uid")}
-    names = {speaker.name.strip().lower(): speaker.uid
-             for speaker in timeline.speakers if speaker.name.strip()}
+              for person in attachments.subjects(timeline) if person.record.get("uid")}
 
-    for subject in people:
-        if str(subject.record.get("retention", "")).strip() != "attribute_transfer":
-            continue
-        onto = str(subject.record.get("onto") or "").strip().rstrip(".").lower()
-        receiver = by_tag.get(names.get(onto, ""))
+    for tag, taken in attachments.carried(timeline).items():
+        receiver = by_tag.get(tag)
         if receiver is None:
             continue
         if str(receiver.record.get("retention", "")).strip() not in (
                 "fully_preserved", "partially_preserved"):
             continue
-        moved = str(subject.name).lower()
         held = str(receiver.name).lower()
-        clashed = [word for word in FEATURES if word in moved and word in held]
-        if not clashed:
-            continue
-        yield Issue(
-            "warning",
-            f"{receiver.token} is {receiver.record.get('retention')} and its description "
-            f"names the {clashed[0]}, which {subject.token} transfers onto it. The model "
-            f"is told to keep that {clashed[0]} and to replace it; it keeps it. Describe "
-            f"{receiver.token} without the {clashed[0]}.",
-        )
+        for token, entry in taken:
+            moved = str(entry.get("name", "")).lower()
+            clashed = [word for word in FEATURES if word in moved and word in held]
+            if not clashed:
+                continue
+            yield Issue(
+                "warning",
+                f"{receiver.token} is {receiver.record.get('retention')} and its "
+                f"description names the {clashed[0]}, which is carried onto it from "
+                f"{token}. The model is told to keep that {clashed[0]} and to replace it; "
+                f"it keeps it. Describe {receiver.token} without the {clashed[0]}.",
+            )
 
 
 def _check_sources(timeline: Timeline) -> Iterator[Issue]:
@@ -273,6 +268,10 @@ def _check_sources(timeline: Timeline) -> Iterator[Issue]:
             named.add(f"<{kind.capitalize()} {index}>")
 
     defines = {subject.source for subject in attachments.subjects(timeline)}
+    # A file whose card is carried onto somebody is named inside *their* definition, which
+    # is the prose pointing at it -- exactly what this check is asking for.
+    defines |= {token for entries in attachments.carried(timeline).values()
+                for token, _ in entries}
     for item in attachments.collect(timeline):
         if item.origin is not None or item.token in named or item.token in defines:
             continue
@@ -319,27 +318,20 @@ def _check_clip_lengths(timeline: Timeline) -> Iterator[Issue]:
         )
 
 
-def _carried_into(people, timeline: Timeline, subject, start: int) -> bool:
-    """Whether a card attached to the shot at `start` transfers its feature onto `subject`.
+def _carried_into(timeline: Timeline, subject) -> bool:
+    """Whether anything is carried onto `subject`.
 
-    A face lifted out of one photograph and carried onto the person from another is the
-    whole point of `attribute_transfer`, and it means the receiving person *is* on screen
-    in the shot doing the carrying -- even though their own card hangs off a different
-    block. The `onto` box holds the receiving card's name, resolved here through the
-    speaker who wears that name, exactly as `compile` resolves it into a token.
+    A face lifted out of one photograph and carried onto the person from another says that
+    person is who is on screen -- so a speaker whose own card hangs off a different block
+    is not the mistake the warning is looking for. The feature is folded into their
+    definition (`attachments.carried`), which is where the claim lives.
     """
     wanted = str(subject.record.get("uid", ""))
     if not wanted:
         return False
-    named = {speaker.name.strip().lower(): speaker.uid
-             for speaker in timeline.speakers if speaker.name.strip()}
-    for person in people:
-        if person.origin != ("shots", start):
-            continue
-        onto = str(person.record.get("onto") or "").strip().rstrip(".").lower()
-        if onto and named.get(onto) == wanted:
-            return True
-    return False
+    # Anything carried onto them at all: the feature comes off a file that may sit on no
+    # block, and the receiver being on screen is what the carrying says.
+    return bool(attachments.carried(timeline).get(wanted))
 
 
 def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
@@ -362,7 +354,6 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
     # Which shot each subject is attached to, so a speaker bound to one can be checked
     # against the shot they are talking in.
     pairs = attachments.bound(timeline)
-    people = attachments.subjects(timeline)
 
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         for speaking in shot.lines:
@@ -375,7 +366,7 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
                     # Unless this shot carries a card that moves its feature *onto* them:
                     # that is the author saying, in the document, that this person is the
                     # one on screen here -- which is what the warning was asking about.
-                    if _carried_into(people, timeline, subject, shot.start):
+                    if _carried_into(timeline, subject):
                         continue
                     yield Issue(
                         "warning",
@@ -544,10 +535,15 @@ def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
               for shot in timeline.shots
               for line in shot.lines if line.text.strip()
               for number in line.numbers}
+    # A card carried onto somebody else is not a `<Subject n>` and never will be -- it is
+    # written into that person's own line -- so it compiles to something without being one.
+    folded = {str(entry.get("uid", ""))
+              for entries in attachments.carried(timeline).values()
+              for _, entry in entries}
 
     for speaker in timeline.speakers:
         voiced = bool(str(speaker.voice).strip() or str(speaker.voice_from).strip())
-        described = bound.get(speaker.id) is not None
+        described = bound.get(speaker.id) is not None or speaker.uid in folded
         name = str(speaker.name).strip() or f"S{speaker.id}"
 
         if not voiced and not described:

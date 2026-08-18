@@ -226,12 +226,20 @@ through `editor.onAddCard`.
   reference for a speaker nothing ever asks the model to voice. This half *is* guarded on
   `speech`, because with the switch off no line is compiled at all.
 - `onto` is the receiver of an `attribute_transfer`, and only means anything for that
-  marker. `compile.py` appends `, transferred onto <onto>` to the subject's retention
-  line; without it the model is told to move a trait and never told where. A value that
-  matches a card's name is replaced by that card's `<Subject n>` (`_named_subject`): the
-  picker writes the name the author filed somebody under, and the model is introduced to
-  people as tokens and never hears that name, so `transferred onto SPEAKER` addressed
-  nobody and the swap silently did not happen. Free text is passed through untouched.
+  marker. When it names another **card**, `attachments.carried` folds this entry into that
+  card: the entry takes no `<Subject n>` (`subjects` skips it, so the numbering has no
+  gap), the receiver's definition gains `, whose <name> comes from <Picture n>`, and the
+  receiver's `retention_analysis` line becomes the transfer. `_only_defines` counts a
+  carried entry too, so the photograph the feature comes from keeps no entry of its own.
+  §2.1 is the authority: `<Subject N>` is "a content unit that will actually be used in the
+  target video", and "when the same subject comes from multiple assets, combine the sources
+  and state what each asset provides" — the guide never gives the feature a subject of its
+  own, and doing so asked for a second person while the receiver was `fully_preserved`,
+  which is the face swap that did not happen. `cast.numbering` skips the same cards, or the
+  tab would offer a chip for a token the prompt never defines.
+- Free text in `onto` names nobody the cast knows, so there is no definition to fold into:
+  it still compiles as `, transferred onto the woman at the desk` on the subject's own
+  line (`_named_subject` remains for documents written before the fold).
 - `lint._carried_into` reads `onto` through the same lookup, for the opposite purpose. A
   speaker whose card hangs off one block and who speaks on another is normally worth a
   warning -- the model is being told the person on screen is the one talking. When a card
@@ -241,15 +249,10 @@ through `editor.onAddCard`.
   `SPEAKER`, and the line is on segment 2.
 - The person and the file they came from are two retentions, deliberately: a photo can be
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
-- A transfer has to reach the description, not just `retention_analysis`.
-  `attachments.tokens_by_segment` names a subject with `onto` in every shot its receiver
-  appears in — the receiver is found by tag through the cast, the same lookup
-  `compile._named_subject` does — because the photograph a face comes out of is often a
-  source file with no block of its own, and then no shot mentioned it at all. Only a
-  *tagged* card can receive: the blank tag would otherwise match every untagged subject.
 - `lint._check_transfers` warns when a receiver kept `fully_preserved`/`partially_preserved`
-  describes the very feature being transferred onto it (`FEATURES`). Both instructions
-  reach the model and it keeps what it has; the fix is wording, so this is a warning.
+  describes the very feature carried onto it (`FEATURES`, read off `attachments.carried`).
+  Both instructions reach the model and it keeps what it has; the fix is wording, so this
+  is a warning.
 - `compile._spoken_by` writes a bound speaker's voice onto that subject's
   `subject_definitions` line. The body prints `<Subject 1> (S1)` rather than prose for a
   speaker a file defines (`_voices`), so before this the `how they sound` typed on any card

@@ -171,7 +171,14 @@ def _only_defines(timeline: Timeline, item) -> bool:
     """
     if str(item.record.get("role", "reference") or "reference") != "reference":
         return False
-    return any(subject.source == item.token for subject in attachments.subjects(timeline))
+    if any(subject.source == item.token for subject in attachments.subjects(timeline)):
+        return True
+    # A file whose only card is carried onto somebody else is cited inside *their*
+    # definition, which is the same rule -- and given an entry of its own it said the whole
+    # photograph was preserved, right beside the sentence taking one feature out of it.
+    return any(token == item.token
+               for entries in attachments.carried(timeline).values()
+               for token, _ in entries)
 
 
 def _subject_definitions(timeline: Timeline) -> str:
@@ -232,13 +239,32 @@ def _sources(timeline: Timeline, subject) -> str:
 
     One file is the ordinary case and keeps the short form. A second asset makes the
     sentence name what each supplies, because "from <Picture 1> and <Video 1>" leaves the
-    model to decide which of them the walk comes from.
+    model to decide which of them the walk comes from. A feature carried onto this person
+    from another file is a second asset of exactly that kind, which is why a face swap is
+    written here rather than as a subject of its own.
     """
     motion = _token_for(timeline, str(subject.record.get("motion_file", "")).strip())
+    carried = _carried_clause(timeline, subject)
     if not motion:
-        return f", from {subject.source}"
+        return f", from {subject.source}{carried}"
     return (f", whose appearance comes from {subject.source} and whose motion comes "
-            f"from {motion}")
+            f"from {motion}{carried}")
+
+
+def _carried_clause(timeline: Timeline, subject) -> str:
+    """`, whose face comes from <Picture 2>: ...` for every feature folded into this one."""
+    parts = []
+    for token, entry in attachments.carried(timeline).get(
+            str(subject.record.get("uid", "")), []):
+        name = str(entry.get("name", "")).strip().rstrip(".")
+        if not name:
+            continue
+        # The author writes "the face in mmdv-photo.jpg: ...", and the sentence reads
+        # "whose face in ..." -- the article belongs to their phrase, not to this one.
+        if name.lower().startswith("the "):
+            name = name[4:]
+        parts.append(f", whose {name} comes from {token}")
+    return "".join(parts)
 
 
 def _token_for(timeline: Timeline, filename: str) -> str:
@@ -377,11 +403,24 @@ def _retention_analysis(timeline: Timeline) -> str:
             continue
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
     people = attachments.subjects(timeline)
+    folded = attachments.carried(timeline)
     for subject in people:
         where = _appears_in(timeline, subject)
-        # `attribute_transfer` means the feature lands on somebody else, and the guide
-        # wants that somebody named -- otherwise the prompt says a face moves and never
-        # says onto whom, which the model resolves by guessing.
+        taken = folded.get(str(subject.record.get("uid", "")), [])
+        if taken:
+            # The transfer is what this subject is: one person built from two files. Said
+            # as `fully_preserved` over the whole of them, with the transfer stated on a
+            # separate `<Subject n>`, the model kept the face it was handed first.
+            moved = _join([
+                f"{str(entry.get('name', '')).strip().rstrip('.')} from {token}"
+                for token, entry in taken])
+            lines.append(
+                f"{subject.token}{where}: attribute_transfer - {moved} onto "
+                f"{subject.name.rstrip('.')}, whose other features stay "
+                f"{_retention(subject)} from {subject.source}.")
+            continue
+        # An `attribute_transfer` that names nobody the cast knows: the feature moves, and
+        # the free text in `onto` is the only word on where it lands.
         onto = str(subject.record.get("onto") or "").strip().rstrip(".")
         onto = _named_subject(timeline, people, onto) or onto
         moved = f", transferred onto {onto}" if onto else ""

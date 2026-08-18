@@ -2722,7 +2722,9 @@ export class TimelineEditor {
         text: `${card.name || `S${card.id}`} → ${card.onto || "?"}`,
         className: `mmd-chip mmd-chip-move${card.onto ? "" : " mmd-chip-open"}`,
         title: card.onto
-          ? `${card.description || "this person"} is transferred onto ${card.onto}`
+          ? `${card.description || "this feature"} is written into ${card.onto}'s own `
+            + `definition -- one person, two sources -- rather than standing as a subject `
+            + `of its own`
           : "attribute_transfer with no target: say who receives it on the card",
       });
     }

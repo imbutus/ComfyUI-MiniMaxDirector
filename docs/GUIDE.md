@@ -435,19 +435,36 @@ A card holds:
 - **onto** — who receives that transfer. It appears only when `keep it` is
   `attribute_transfer`, and it is what turns "a face" into a face swap: the pick list
   offers the other cards and each shot's subject, or you type a receiver the shot
-  describes but no card names. Picking a card writes its name — `SPEAKER` — and the
-  compiler turns that name into the token the model actually knows, so the line reads
-  `<Subject 2> …: attribute_transfer - the face…, transferred onto <Subject 1>.` Typed
-  prose is left as written, since the model can read it. Empty, the model is told to move
-  a trait and never told where, and the block's chip stays amber.
+  describes but no card names.
 
-  Two things make a transfer actually happen. **Describe the receiver without the feature
-  being replaced**: `fully_preserved` on "the man … *his face* with visible pores" is an
-  instruction to keep that face, the transfer is an instruction to replace it, and the
-  model keeps it — the report warns when a description claims a feature something else
-  carries onto it. And the transferred subject is **named in the shots its receiver appears
-  in**, even when its own photograph sits on no block: stated only in `retention_analysis`
-  and never in the sentence that draws the frame, the swap did not happen.
+  **Picking a card folds this one into that card.** MiniMax's guide calls `<Subject N>`
+  "a content unit that will actually be used in the target video", and says that when one
+  subject comes from several assets you "combine the sources and state what each asset
+  provides" — `<Subject 1> is the woman whose appearance comes from <Picture 1> and whose
+  walking motion comes from <Video 1>`. A face is not a person; it is a second source for
+  one. So the card takes no `<Subject n>` of its own — its badge reads `→ SPEAKER` — and
+  the receiver's line becomes:
+
+  ```
+  <Subject 1> is the man in the navy suit: his build …, from <Picture 1>, whose face:
+  bone structure, eyes, nose and jawline comes from <Picture 2>.
+  <Subject 1> (appears in [Shot 1]): attribute_transfer - the face … from <Picture 2>
+  onto the man in the navy suit …, whose other features stay fully_preserved from
+  <Picture 1>.
+  ```
+
+  Written the old way — the face as `<Subject 2>`, "transferred onto `<Subject 1>`", with
+  `<Subject 1>` `fully_preserved` — the model was asked for a second content unit while
+  being told to keep the face it already had, and it kept it. The photograph the feature
+  comes out of keeps no entry of its own either: it is cited inside the definition it
+  feeds, which is the same rule.
+
+  Typed prose that names no card is left as written and still compiles as
+  `…, transferred onto the woman at the desk` — there is no definition to fold into.
+  Empty, the model is told to move a trait and never told where, and the block's chip
+  stays amber. Either way, **describe the receiver without the feature being replaced**:
+  `fully_preserved` on "the man … *his face* with visible pores" is an instruction to keep
+  that face, and the report warns about it.
 - **motion from** — a second file for the same person, supplying how they move rather than
   what it looks like. A still says nothing about a walk, so pointing the card at a video
   as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>

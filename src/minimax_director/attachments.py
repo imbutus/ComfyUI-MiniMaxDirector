@@ -164,21 +164,75 @@ def _named(record: dict[str, Any]) -> list[dict[str, Any]]:
              "onto": record.get("onto")}]
 
 
-def subjects(timeline: Timeline) -> list[Subject]:
-    """Named subjects drawn from attached files, in the files' own order.
+def _receiver(timeline: Timeline, record: dict[str, Any]) -> str:
+    """The tag of the card this one is carried onto, or "" when it is carried onto nobody.
 
-    Numbered across the whole document rather than per file, because `<Subject 3>` is what
-    the prompt says and the model has one list.
+    Only an `attribute_transfer` naming another *tagged* card counts. Free text in `onto`
+    describes somebody the shot names rather than a card, and there is no definition to
+    fold the feature into.
     """
-    found: list[Subject] = []
+    # `subject_retention` is what the cast writes (the card's own `keep it`); `retention`
+    # is the older single-valued form, and the file's marker copied on as a fallback.
+    marker = str(record.get("subject_retention", "")).strip() \
+        or str(record.get("retention", "")).strip()
+    if marker != "attribute_transfer":
+        return ""
+    onto = str(record.get("onto") or "").strip().rstrip(".").lower()
+    if not onto:
+        return ""
+    for speaker in timeline.speakers:
+        if speaker.name.strip().lower() == onto and speaker.uid:
+            return speaker.uid
+    return ""
+
+
+def _all_named(timeline: Timeline) -> list[tuple[Any, dict[str, Any]]]:
+    """Every named entry on every attached file, with the attachment it came from."""
+    found = []
     for item in collect(timeline):
         # A video's own soundtrack shares the video's record, and a face is not abstracted
         # out of an audio track -- taking the names twice would define each subject twice.
         if item.kind == "audio":
             continue
         for entry in _named(item.record):
-            found.append(Subject(len(found) + 1, str(entry["name"]).strip(),
-                                 item.token, entry, item.origin))
+            found.append((item, entry))
+    return found
+
+
+def carried(timeline: Timeline) -> dict[str, list[tuple[str, dict[str, Any]]]]:
+    """Features folded into somebody else's definition, keyed by the receiver's tag.
+
+    MiniMax's guide: `<Subject N>` is "a content unit that will actually be used in the
+    target video", and when one comes from several files the rule is to "combine the
+    sources and state what each asset provides" -- `<Subject 1> is the woman whose
+    appearance comes from <Picture 1> and whose walking motion comes from <Video 1>`.
+
+    A face lifted out of a photograph and carried onto somebody is exactly that: a second
+    source for one person, not a person of its own. Given its own `<Subject n>` it became
+    a second content unit the video was supposed to contain, while the receiver was told
+    to keep the face it already had -- and the model kept it.
+    """
+    folded: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for item, entry in _all_named(timeline):
+        tag = _receiver(timeline, entry)
+        if tag:
+            folded.setdefault(tag, []).append((item.token, entry))
+    return folded
+
+
+def subjects(timeline: Timeline) -> list[Subject]:
+    """Named subjects drawn from attached files, in the files' own order.
+
+    Numbered across the whole document rather than per file, because `<Subject 3>` is what
+    the prompt says and the model has one list. A feature carried onto another card is not
+    one of these -- see `carried`.
+    """
+    found: list[Subject] = []
+    for item, entry in _all_named(timeline):
+        if _receiver(timeline, entry):
+            continue
+        found.append(Subject(len(found) + 1, str(entry["name"]).strip(),
+                             item.token, entry, item.origin))
     return found
 
 
@@ -220,43 +274,7 @@ def tokens_by_segment(timeline: Timeline) -> dict[tuple[str, int], list[str]]:
         found = named.get(item.token)
         mapping.setdefault(item.origin, []).extend(
             [subject.token for subject in found] if found else [item.token])
-
-    # A subject carried onto another one is named wherever its receiver appears. Its own
-    # file may be on no block at all -- a photograph brought in only for the face it holds
-    # -- and then nothing in any shot's description mentioned it: the transfer was stated
-    # in `retention_analysis` and never asked for in the sentence that draws the frame.
-    everyone = subjects(timeline)
-    homes: dict[str, list[tuple[str, int]]] = {}
-    for subject in everyone:
-        tag = str(subject.record.get("uid", ""))
-        # Only a tagged card can receive: the blank tag is every untagged subject at once,
-        # and matching on it named an unrelated transfer in every shot on the timeline.
-        if tag and subject.origin is not None:
-            homes.setdefault(tag, []).append(subject.origin)
-    for subject in everyone:
-        onto = _receiver(timeline, everyone, str(subject.record.get("onto") or ""))
-        for origin in homes.get(onto, ()) if onto else ():
-            names = mapping.setdefault(origin, [])
-            if subject.token not in names:
-                names.append(subject.token)
     return mapping
-
-
-def _receiver(timeline: Timeline, people: list[Subject], onto: str) -> str:
-    """The tag of the card an `onto` box names, or "" when it names nobody.
-
-    The box holds the name the author filed somebody under, and the cast is where a name
-    and a tag are paired -- the same lookup `compile._named_subject` does to turn that name
-    into a token.
-    """
-    wanted = onto.strip().rstrip(".").lower()
-    if not wanted:
-        return ""
-    tags = {str(person.record.get("uid", "")) for person in people if person.record.get("uid")}
-    for speaker in timeline.speakers:
-        if speaker.name.strip().lower() == wanted and speaker.uid in tags:
-            return speaker.uid
-    return ""
 
 
 def of_kind(timeline: Timeline, kind: str) -> list[Attachment]:
