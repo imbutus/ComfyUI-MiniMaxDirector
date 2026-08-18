@@ -192,3 +192,36 @@ def test_a_source_clip_nothing_points_at_is_reported_but_its_soundtrack_is_not()
     reported = messages(timeline)
     assert "<Video 1> (walk.mp4) is a source file" in reported
     assert "<Audio 1> (walk.mp4) is a source file" not in reported
+
+
+def carried(onto):
+    """Take 1's shape: the speaker's card hangs off shot 1, the line is on shot 2.
+
+    Shot 2 carries a face lifted out of its own photograph, and `onto` says whose face it
+    becomes. With the box filled in the document already states that this person is the
+    one on screen; with it empty nothing does, and the warning is the only thing that
+    would tell the author the model is about to guess.
+    """
+    return Timeline.from_dict({
+        "global_prompt": "A press room.",
+        "speech": True,
+        "speakers": [{"id": 1, "voice": "A man in his forties", "name": "SPEAKER",
+                      "uid": "u-speaker"}],
+        "shots": [
+            {"start": 0, "length": 24, "prompt": "He sits at the desk.",
+             "media": {"kind": "image", "filename": "one.png", "subjects": [
+                 {"name": "the man in the navy suit", "uid": "u-speaker"}]}},
+            {"start": 24, "length": 24, "prompt": "The same man, still speaking.",
+             "media": {"kind": "image", "filename": "two.jpg", "subjects": [
+                 {"name": "the face", "retention": "attribute_transfer", "onto": onto}]},
+             "lines": [{"text": "This face was never in the room.", "ids": "S1"}]},
+        ],
+    })
+
+
+def test_a_speaker_from_another_shot_is_reported():
+    assert "attached to a different shot" in messages(carried(""))
+
+
+def test_a_face_carried_onto_the_speaker_answers_for_them():
+    assert "attached to a different shot" not in messages(carried("SPEAKER"))

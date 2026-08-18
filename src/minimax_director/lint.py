@@ -272,6 +272,29 @@ def _check_clip_lengths(timeline: Timeline) -> Iterator[Issue]:
         )
 
 
+def _carried_into(people, timeline: Timeline, subject, start: int) -> bool:
+    """Whether a card attached to the shot at `start` transfers its feature onto `subject`.
+
+    A face lifted out of one photograph and carried onto the person from another is the
+    whole point of `attribute_transfer`, and it means the receiving person *is* on screen
+    in the shot doing the carrying -- even though their own card hangs off a different
+    block. The `onto` box holds the receiving card's name, resolved here through the
+    speaker who wears that name, exactly as `compile` resolves it into a token.
+    """
+    wanted = str(subject.record.get("uid", ""))
+    if not wanted:
+        return False
+    named = {speaker.name.strip().lower(): speaker.uid
+             for speaker in timeline.speakers if speaker.name.strip()}
+    for person in people:
+        if person.origin != ("shots", start):
+            continue
+        onto = str(person.record.get("onto") or "").strip().rstrip(".").lower()
+        if onto and named.get(onto) == wanted:
+            return True
+    return False
+
+
 def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
     """Spoken lines the model will hear but cannot place.
 
@@ -292,6 +315,7 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
     # Which shot each subject is attached to, so a speaker bound to one can be checked
     # against the shot they are talking in.
     pairs = attachments.bound(timeline)
+    people = attachments.subjects(timeline)
 
     for number, shot in enumerate(timeline.ordered_shots(), start=1):
         for speaking in shot.lines:
@@ -301,6 +325,11 @@ def _check_dialogue(timeline: Timeline) -> Iterator[Issue]:
                 subject = pairs.get(person)
                 home = subject.origin[1] if subject and subject.origin else None
                 if subject and home is not None and home != shot.start:
+                    # Unless this shot carries a card that moves its feature *onto* them:
+                    # that is the author saying, in the document, that this person is the
+                    # one on screen here -- which is what the warning was asking about.
+                    if _carried_into(people, timeline, subject, shot.start):
+                        continue
                     yield Issue(
                         "warning",
                         f"[Shot {number}] S{person} is {subject.token}, which is "

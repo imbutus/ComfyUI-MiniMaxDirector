@@ -232,6 +232,13 @@ through `editor.onAddCard`.
   picker writes the name the author filed somebody under, and the model is introduced to
   people as tokens and never hears that name, so `transferred onto SPEAKER` addressed
   nobody and the swap silently did not happen. Free text is passed through untouched.
+- `lint._carried_into` reads `onto` through the same lookup, for the opposite purpose. A
+  speaker whose card hangs off one block and who speaks on another is normally worth a
+  warning -- the model is being told the person on screen is the one talking. When a card
+  *on that block* transfers its feature onto them, the document has already said they are
+  on screen, and the warning is noise. Take 1 of the scenario is exactly that shape:
+  `SPEAKER` is defined on segment 1, `FACE` on segment 2 is `attribute_transfer` onto
+  `SPEAKER`, and the line is on segment 2.
 - The person and the file they came from are two retentions, deliberately: a photo can be
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
 - `_only_defines` in `compile.py` suppresses a file's own `<Picture n>` entry — in both
