@@ -209,7 +209,9 @@ not on screen — and the TIMELINE tab shows:
   Typing the number by hand is the alternative, and getting it wrong is silent — the
   prompt then cites a subject that does not exist and nothing on screen says so. A card
   with no description takes no number and so has no chip.
-- **The file chips** follow them on the same strip, drawn dashed: `<Picture 2> face.jpg`,
+- **The file chips** follow them on the same strip, told apart by shape rather than by
+  reading them: a subject is a pill with a round face, a file is square-cornered with a
+  square thumbnail and a monospaced name — `<Picture 2> face.jpg`,
   `<Audio 1> voice.mp3`, `<Video 1> clip.mp4` — one per file on the timeline, whether or
   not a card names it. A file is written into its own block's line by the compiler, but
   pointing at it from anywhere else is on you: a recording the mouth must follow, a
@@ -227,12 +229,16 @@ not on screen — and the TIMELINE tab shows:
   amber while a row on this block still has no words, because the compiler ignores a
   wordless row and a second one is a second nothing. The
   red bin at the end of a row removes it — the same delete button the subject cards use.
+  The cast is held on that row as a **deck of cards** — each face peeking out from behind
+  the one in front, whoever speaks this line lit with a bright ring. Hover it and the hand
+  fans out to the right, over the fields after it, wrapping at the node's edge if it is a
+  large cast; the order never changes, so the face you reached for last time is where it
+  was. A card with no file wears its own initial on a plain token instead of a thumbnail.
   Clicking a face hands the line to that person alone; hold **Cmd/Ctrl** and click to add
-  another, and another — the row says so beside the faces. The last lit face cannot be unticked,
-  and says why on hover: an empty speaker list is
-  compiled as `(S1)`, so a line with nobody ticked would be given to speaker 1 rather than
-  to nobody. A line nobody says is a line removed. Who the speakers *are* is written once in the WHO & WHAT tab, not here — see
-  below.
+  another, and another. The last lit face cannot be unticked, and says why on hover: an
+  empty speaker list is compiled as `(S1)`, so a line with nobody ticked would be given to
+  speaker 1 rather than to nobody. A line nobody says is a line removed. Who the speakers
+  *are* is written once in the WHO & WHAT tab, not here — see below.
 - **FILE** — blocks carrying one: `used as`, `keep file`, **detach media**, and a
   read-only `describes` list — one subject per line, `edit` beside each, and
   **+ another card** under them, which makes a card already pointed at this file. That is

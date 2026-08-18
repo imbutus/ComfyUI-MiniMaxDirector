@@ -285,6 +285,18 @@ export class CastEditor {
    */
   growToFit() {
     if (!this.box?.style.height) return;
+    // A hidden tab measures zero, and zero read as "every card is below the fold": leaving
+    // WHO & WHAT re-rendered the list while it was display:none and grew the stored height
+    // to the whole cast, which is what came back when the tab was opened again.
+    if (!this.list.clientHeight || !this.box.offsetParent) return;
+    // Only when a card has actually arrived. Run on every render it also fired on the
+    // render that opens the tab, where the list overflows because somebody chose a short
+    // box -- so a height dragged small grew back to the whole cast on the way in, which
+    // looked exactly like a height that was never stored.
+    const cards = this.read().cards.length;
+    const grew = cards > (this.lastCards ?? cards);
+    this.lastCards = cards;
+    if (!grew) return;
     // The list's own gap on top of the overflow: exactly the hidden pixels leaves the new
     // card flush against the bottom edge, which reads as a card that is still cut off --
     // and one stray pixel of rounding puts the scrollbar back.

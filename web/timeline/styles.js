@@ -400,7 +400,16 @@ const CSS = `
 .mmd-f-deck { position:absolute; left:0; top:50%; transform:translateY(-50%);
   display:flex; align-items:center; z-index:2;
   border:1px solid transparent; border-radius:99px; padding:1px; }
+/* Fanned out it wraps rather than running off the node: a hand of a dozen people is wider
+   than the row it sits on, and the cards past the edge were ones you could not reach. */
 .mmd-f-chipcol:hover .mmd-f-deck { z-index:9; gap:5px; padding:3px;
+  /* width:max-content first: an absolute box shrinks to fit its containing block, and the
+     containing block here is the collapsed column -- about thirty pixels -- so wrapping
+     alone stacked the hand into a single vertical file. */
+  flex-wrap:wrap; width:max-content; max-width:var(--mmd-fan-max, 620px);
+  /* A panel once it wraps, not a lozenge: the pill's ends belong to a single row of cards
+     and read as a stray curve around two. */
+  border-radius:10px;
   background:#171a21; border-color:#3a4150; box-shadow:0 8px 22px rgba(0,0,0,.55); }
 .mmd-seg-fields .mmd-f-deckitem { position:relative; display:flex; align-items:center;
   gap:0; background:#1c1f26; border:1px solid #7b8797; border-radius:99px; padding:0;
@@ -416,6 +425,10 @@ const CSS = `
 .mmd-f-chipcol:hover .mmd-f-deckname { max-width:130px; opacity:1; padding:0 8px 0 6px; }
 .mmd-seg-fields .mmd-f-deckitem .mmd-face { width:22px; height:22px; border-radius:99px;
   border:0; flex:0 0 auto; }
+/* A card with no file wears its initial on a plain blue-grey token -- a row of identical
+   question marks named nobody, and the initial is the only part of a name that fits here. */
+.mmd-seg-fields .mmd-f-deckitem .mmd-face-none { background:#55647a; color:#e9edf3;
+  font-size:11px; font-weight:600; }
 /* A little brighter under the pointer, and the background is named here on purpose: the
    panel's own button:hover is the red "detach media" style, and a rule that set only the
    border let that red through onto a card. */

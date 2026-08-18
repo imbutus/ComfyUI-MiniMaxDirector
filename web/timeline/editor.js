@@ -305,6 +305,39 @@ export class TimelineEditor {
     // tab appears in two unrelated groups of this panel -- the dialogue row when nobody
     // has been written yet, and the file row, which is the only place a file is
     // described. Bound to one of them it was dead in the other.
+    // How much room the fan has: from where the deck starts to the right edge of the
+    // editor. A fixed cap cannot know that -- the column sits at a different x on every
+    // row -- and a fan wider than the node is a hand whose last cards cannot be reached.
+    this.segFields.addEventListener("mouseover", (event) => {
+      const column = event.target.closest?.(".mmd-f-chipcol");
+      const deck = column?.querySelector(".mmd-f-deck");
+      if (!deck || deck.dataset.fanned) return;
+      deck.dataset.fanned = "1";
+      const room = this.root.getBoundingClientRect().right
+        - column.getBoundingClientRect().left - 16;
+      column.style.setProperty("--mmd-fan-max", `${Math.max(120, Math.round(room))}px`);
+      // And then back in to the longest row it actually made. A wrapped flex box keeps the
+      // width it was allowed, not the width it used, so the panel stayed as wide as the
+      // node with empty air past the last card of a short second row.
+      requestAnimationFrame(() => {
+        if (!deck.dataset.fanned) return;
+        let right = 0;
+        for (const card of deck.children) {
+          right = Math.max(right, card.offsetLeft + card.offsetWidth);
+        }
+        if (right > 0) deck.style.width = `${Math.ceil(right + 4)}px`;
+      });
+    });
+
+    this.segFields.addEventListener("mouseout", (event) => {
+      const column = event.target.closest?.(".mmd-f-chipcol");
+      if (!column || column.contains(event.relatedTarget)) return;
+      const deck = column.querySelector(".mmd-f-deck");
+      if (!deck) return;
+      delete deck.dataset.fanned;
+      deck.style.width = "";
+    });
+
     this.segFields.addEventListener("click", (event) => {
       if (event.target.closest(".mmd-f-tocast")) return this.showTab("cast");
       // `edit` beside one subject opens that card, not merely the tab it lives on.
@@ -975,7 +1008,15 @@ export class TimelineEditor {
     const sole = (number) => chosen.length === 1 && chosen[0] === number;
     const quote = (words) => String(words).replace(/"/g, "&quot;");
 
-    const face = (card) => this.face(fileOf(card));
+    // A card with no file wears its own initial on a plain token. A row of identical
+    // question marks named nobody, and at this size the initial is the only part of a name
+    // there is room for.
+    const face = (card) => {
+      const file = fileOf(card);
+      if (file) return this.face(file);
+      const initial = String(card.name || "").trim().charAt(0).toUpperCase();
+      return `<span class="mmd-face mmd-face-none">${text(initial || "?")}</span>`;
+    };
 
     // The deck: every card in the cast, held like cards in a hand -- each one peeking out
     // from behind the one in front of it, whoever speaks this line at the front. Hovering

@@ -266,6 +266,11 @@ function attach(node) {
       // node's properties so a reload comes back to the panel you were working in.
       node.properties.tab = name;
       inside.render();
+      // Each tab keeps its own height, and the one this tab owns is the card list's. It is
+      // put back on the way in rather than trusted to survive: the panel is display:none
+      // while another tab is open, and everything measured in that state reads zero.
+      const stored = Number(node.properties?.castHeight) || 0;
+      if (name === "cast" && stored) setListHeight(node, editor, stored);
       const state = PULLED.get(widget) ?? { node, editor };
       requestAnimationFrame(() => {
         fitPulled(state, widget);
