@@ -173,3 +173,35 @@ def test_a_clip_on_the_audio_track_is_a_soundtrack_and_not_a_video():
     prompt = compile_timeline(timeline).prompt
     assert "<Audio 1>" in prompt
     assert "<Video 1>" not in prompt
+
+
+def test_a_face_carried_onto_somebody_is_named_where_they_appear():
+    """Take 1's shape: the photograph the face comes from sits on no block.
+
+    Stated only in `retention_analysis`, the transfer was never asked for in the sentence
+    that draws the frame -- the shot named the man and the room and nothing else, and the
+    model kept the face it already had.
+    """
+    timeline = Timeline.from_dict({
+        "speech": True,
+        "speakers": [{"id": 1, "voice": "A man in his forties", "name": "SPEAKER",
+                      "uid": "u-speaker"}],
+        "shots": [{"start": 0, "length": 48, "prompt": "He sits at the desk.",
+                   "media": {"kind": "image", "filename": "one.png", "subjects": [
+                       {"name": "the man in the navy suit", "uid": "u-speaker"}]}}],
+        "sources": [{"kind": "image", "filename": "two.jpg", "subjects": [
+            {"name": "the face", "retention": "attribute_transfer", "onto": "SPEAKER"}]}],
+    })
+    assert tokens_by_segment(timeline)[("shots", 0)] == \
+        ["<Subject 1>", "<Subject 2>"]
+
+
+def test_a_subject_onto_nobody_is_named_only_where_its_own_file_is():
+    timeline = Timeline.from_dict({
+        "shots": [{"start": 0, "length": 48, "prompt": "He sits.",
+                   "media": {"kind": "image", "filename": "one.png",
+                             "subjects": [{"name": "the man"}]}}],
+        "sources": [{"kind": "image", "filename": "two.jpg", "subjects": [
+            {"name": "the face", "retention": "attribute_transfer"}]}],
+    })
+    assert tokens_by_segment(timeline)[("shots", 0)] == ["<Subject 1>"]

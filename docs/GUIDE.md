@@ -435,6 +435,14 @@ A card holds:
   `<Subject 2> …: attribute_transfer - the face…, transferred onto <Subject 1>.` Typed
   prose is left as written, since the model can read it. Empty, the model is told to move
   a trait and never told where, and the block's chip stays amber.
+
+  Two things make a transfer actually happen. **Describe the receiver without the feature
+  being replaced**: `fully_preserved` on "the man … *his face* with visible pores" is an
+  instruction to keep that face, the transfer is an instruction to replace it, and the
+  model keeps it — the report warns when a description claims a feature something else
+  carries onto it. And the transferred subject is **named in the shots its receiver appears
+  in**, even when its own photograph sits on no block: stated only in `retention_analysis`
+  and never in the sentence that draws the frame, the swap did not happen.
 - **motion from** — a second file for the same person, supplying how they move rather than
   what it looks like. A still says nothing about a walk, so pointing the card at a video
   as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>

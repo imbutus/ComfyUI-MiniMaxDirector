@@ -241,6 +241,15 @@ through `editor.onAddCard`.
   `SPEAKER`, and the line is on segment 2.
 - The person and the file they came from are two retentions, deliberately: a photo can be
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
+- A transfer has to reach the description, not just `retention_analysis`.
+  `attachments.tokens_by_segment` names a subject with `onto` in every shot its receiver
+  appears in — the receiver is found by tag through the cast, the same lookup
+  `compile._named_subject` does — because the photograph a face comes out of is often a
+  source file with no block of its own, and then no shot mentioned it at all. Only a
+  *tagged* card can receive: the blank tag would otherwise match every untagged subject.
+- `lint._check_transfers` warns when a receiver kept `fully_preserved`/`partially_preserved`
+  describes the very feature being transferred onto it (`FEATURES`). Both instructions
+  reach the model and it keeps what it has; the fix is wording, so this is a warning.
 - `_only_defines` in `compile.py` suppresses a file's own `<Picture n>` entry — in both
   `subject_definitions` and `retention_analysis` — when its role is `reference` and a
   subject is drawn from it. That is the guide's rule: an image used only to define a

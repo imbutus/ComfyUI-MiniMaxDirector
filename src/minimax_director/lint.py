@@ -37,6 +37,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_content(timeline),
         *_check_subjects(timeline),
         *_check_sources(timeline),
+        *_check_transfers(timeline),
         *_check_dialogue(timeline),
         *_check_clip_lengths(timeline),
         *_check_description_length(timeline),
@@ -207,6 +208,52 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
             "warning",
             f"{item.token} ({name}) has no description, so nothing tells the model what "
             f"to keep from it. Describe it on a subject card pointed at this file.",
+        )
+
+
+# Words that name the part of somebody a transfer usually moves. Deliberately short: the
+# check is for a description that claims the very thing another card is taking over, and a
+# long list would start matching sentences that only mention the feature in passing.
+FEATURES = ("face", "eyes", "nose", "mouth", "jaw", "hair", "skin", "voice", "smile")
+
+
+def _check_transfers(timeline: Timeline) -> Iterator[Issue]:
+    """A subject told to keep the very feature something else transfers onto it.
+
+    `fully_preserved` on "the man ... his face with visible pores and stubble" is an
+    instruction to keep that face; an `attribute_transfer` of another face onto him is an
+    instruction to replace it. The model gets both, and it keeps the face -- the transfer
+    is stated once in `retention_analysis` while the description says the opposite in the
+    sentence that draws the frame. Nothing about the document is malformed, so this is a
+    warning: the fix is to describe the receiver without the feature being replaced.
+    """
+    people = attachments.subjects(timeline)
+    by_tag = {str(person.record.get("uid", "")): person
+              for person in people if person.record.get("uid")}
+    names = {speaker.name.strip().lower(): speaker.uid
+             for speaker in timeline.speakers if speaker.name.strip()}
+
+    for subject in people:
+        if str(subject.record.get("retention", "")).strip() != "attribute_transfer":
+            continue
+        onto = str(subject.record.get("onto") or "").strip().rstrip(".").lower()
+        receiver = by_tag.get(names.get(onto, ""))
+        if receiver is None:
+            continue
+        if str(receiver.record.get("retention", "")).strip() not in (
+                "fully_preserved", "partially_preserved"):
+            continue
+        moved = str(subject.name).lower()
+        held = str(receiver.name).lower()
+        clashed = [word for word in FEATURES if word in moved and word in held]
+        if not clashed:
+            continue
+        yield Issue(
+            "warning",
+            f"{receiver.token} is {receiver.record.get('retention')} and its description "
+            f"names the {clashed[0]}, which {subject.token} transfers onto it. The model "
+            f"is told to keep that {clashed[0]} and to replace it; it keeps it. Describe "
+            f"{receiver.token} without the {clashed[0]}.",
         )
 
 

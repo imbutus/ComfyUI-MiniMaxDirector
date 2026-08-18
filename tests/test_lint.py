@@ -225,3 +225,29 @@ def test_a_speaker_from_another_shot_is_reported():
 
 def test_a_face_carried_onto_the_speaker_answers_for_them():
     assert "attached to a different shot" not in messages(carried("SPEAKER"))
+
+
+def transferring(held):
+    """A face carried onto a man whose own description may or may not claim his face."""
+    return Timeline.from_dict({
+        "global_prompt": "A press room.",
+        "speakers": [{"id": 1, "voice": "A man", "name": "SPEAKER", "uid": "u-speaker"}],
+        "shots": [{"start": 0, "length": 48, "prompt": "He sits at the desk.",
+                   "media": {"kind": "image", "filename": "one.png", "subjects": [
+                       {"name": held, "retention": "fully_preserved", "uid": "u-speaker"}]}}],
+        "sources": [{"kind": "image", "filename": "two.jpg", "subjects": [
+            {"name": "the face in two.jpg: bone structure, eyes, nose and jawline",
+             "retention": "attribute_transfer", "onto": "SPEAKER"}]}],
+    })
+
+
+def test_keeping_the_face_a_transfer_replaces_is_reported():
+    said = messages(transferring(
+        "the man in the navy suit: his face with visible pores, the desk behind him"))
+    assert "names the face, which <Subject 2> transfers onto it" in said
+
+
+def test_a_receiver_described_without_the_feature_is_not_reported():
+    said = messages(transferring(
+        "the man in the navy suit: his build, the desk, the flags behind him"))
+    assert "transfers onto it" not in said

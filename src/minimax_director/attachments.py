@@ -220,7 +220,43 @@ def tokens_by_segment(timeline: Timeline) -> dict[tuple[str, int], list[str]]:
         found = named.get(item.token)
         mapping.setdefault(item.origin, []).extend(
             [subject.token for subject in found] if found else [item.token])
+
+    # A subject carried onto another one is named wherever its receiver appears. Its own
+    # file may be on no block at all -- a photograph brought in only for the face it holds
+    # -- and then nothing in any shot's description mentioned it: the transfer was stated
+    # in `retention_analysis` and never asked for in the sentence that draws the frame.
+    everyone = subjects(timeline)
+    homes: dict[str, list[tuple[str, int]]] = {}
+    for subject in everyone:
+        tag = str(subject.record.get("uid", ""))
+        # Only a tagged card can receive: the blank tag is every untagged subject at once,
+        # and matching on it named an unrelated transfer in every shot on the timeline.
+        if tag and subject.origin is not None:
+            homes.setdefault(tag, []).append(subject.origin)
+    for subject in everyone:
+        onto = _receiver(timeline, everyone, str(subject.record.get("onto") or ""))
+        for origin in homes.get(onto, ()) if onto else ():
+            names = mapping.setdefault(origin, [])
+            if subject.token not in names:
+                names.append(subject.token)
     return mapping
+
+
+def _receiver(timeline: Timeline, people: list[Subject], onto: str) -> str:
+    """The tag of the card an `onto` box names, or "" when it names nobody.
+
+    The box holds the name the author filed somebody under, and the cast is where a name
+    and a tag are paired -- the same lookup `compile._named_subject` does to turn that name
+    into a token.
+    """
+    wanted = onto.strip().rstrip(".").lower()
+    if not wanted:
+        return ""
+    tags = {str(person.record.get("uid", "")) for person in people if person.record.get("uid")}
+    for speaker in timeline.speakers:
+        if speaker.name.strip().lower() == wanted and speaker.uid in tags:
+            return speaker.uid
+    return ""
 
 
 def of_kind(timeline: Timeline, kind: str) -> list[Attachment]:
