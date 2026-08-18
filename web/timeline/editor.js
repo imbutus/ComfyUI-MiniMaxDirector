@@ -785,10 +785,13 @@ export class TimelineEditor {
       const face = entry.token.startsWith("<Audio")
         ? `<span class="mmd-face mmd-face-audio">${ICON.audio}</span>`
         : this.face(entry);
+      // The paperclip says "file" at a glance, which is the one thing these chips and the
+      // subject chips beside them have to differ on: a square corner and a monospace name
+      // are a difference you notice only once somebody points them out.
       return `<button type="button" class="mmd-f-subj mmd-f-file" data-token="${text(entry.token)}"
         title="Write this file's token into the text, at the caret. It is how the prompt points at the file."
-        >${face}<span>${text(entry.token).replace("<", "&lt;")}${
-          name ? ` ${text(name)}` : ""}</span></button>`;
+        ><span class="mmd-clipped">${face}<span class="mmd-clip">${ICON.clip}</span></span><span>${
+          text(entry.token).replace("<", "&lt;")}${name ? ` ${text(name)}` : ""}</span></button>`;
     }).join("");
   }
 
@@ -1443,7 +1446,7 @@ export class TimelineEditor {
         title="${at === null
           ? "On the timeline. Drag it onto a track to use it in a second block as well."
           : "On no block, so it costs no time. Drag it onto a track to make it a segment."}">
-        ${this.thumb(record)}
+        <span class="mmd-clipped">${this.thumb(record)}<span class="mmd-clip">${ICON.clip}</span></span>
         <span class="mmd-file-token">${tokens.join(" ").replaceAll("<", "&lt;")}</span>
         <span class="mmd-file-name">${value(name)}</span>
         ${at === null ? "" : `<button data-dropfile="${value(name)}" title="Take this file off the clip">&times;</button>`}
@@ -2445,8 +2448,12 @@ export class TimelineEditor {
       label.classList.toggle("mmd-dead", !governs);
       picker.disabled = !governs;
       picker.title = governs
-        ? "The clip's answer, for every reference picture that does not give one of its "
-          + "own. A picture's FILE row has a `resize` of its own, and that wins."
+        ? "How large a reference picture is sent to the model, for every picture that does "
+          + "not answer for itself. match scales it to about the clip's pixel count: fast, "
+          + "enough for a scene or a mood. max allows 2048px on its short side: slower, and "
+          + "what keeps a face the same face. A picture block's FILE row has a resize of "
+          + "its own and that wins; a picture in the Files list has no row, so this answers "
+          + "for it."
         : "Nothing on the timeline is sized by this: it fits reference images, and this "
           + "clip has none. A first or last frame is fitted by its own `fit` control.";
     }
@@ -2470,7 +2477,7 @@ export class TimelineEditor {
       <label title="MiniMax H3 always generates at 24 fps -- the model has no other rate"><span class="mmd-key">frame rate</span><span class="mmd-value">${FPS}</span><span class="mmd-unit">fps · fixed</span></label>
       <label title="Output width, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">width</span><input class="s-width" type="number" min="32" step="32"></label>
       <label title="Output height, in multiples of 32. The node's own widget, mirrored here."><span class="mmd-key">height</span><input class="s-height" type="number" min="32" step="32"></label>
-      <label class="s-ref-label" title="How reference images are fitted, for every picture that does not answer for itself. match scales them to the output size; max keeps them larger, which holds a face or a logo together better and costs more time. A picture's own FILE row can override this."><span class="mmd-key">resize</span>
+      <label class="s-ref-label" title="How large a reference picture is sent to the model, for every picture that does not answer for itself. A picture becomes tokens the model re-reads at every sampling step, so size is detail against time: match scales it to about the clip's pixel count -- fast, and enough for a scene, a style, a mood; max allows 2048px on its short side -- slower, and what keeps a face the same face. Neither enlarges a picture or changes its proportions. Each picture block's FILE row has a resize of its own, and that wins over this one; a picture in the Files list has no row, so this answers for it. Reference videos and frame anchors are sized by their own rules and never read this."><span class="mmd-key">default resize</span>
         <select class="s-ref">${["match", "max"].map((o) => `<option value="${o}">${o}</option>`).join("")}</select>
       </label>
       <span class="mmd-renders"></span>`;

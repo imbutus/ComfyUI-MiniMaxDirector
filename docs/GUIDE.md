@@ -310,7 +310,7 @@ scaled aspect-preserving and lets the model compose the rest of the frame around
 Nothing here can pad a keyframe and have the model invent the missing sides; that is
 outpainting, and it belongs before H3 sees the file.
 
-The settings row's **`resize`** is the reference-side twin of this, and it sizes reference
+The settings row's **`default resize`** is the reference-side twin of this, and it sizes reference
 *pictures* only: core reads it in its `ref_images` loop alone, so a reference video is
 sized by its own canvas rule and a keyframe by `fit`. It goes dead — dimmed and dashed —
 on any clip that carries no reference picture: only frame anchors, only a video, only

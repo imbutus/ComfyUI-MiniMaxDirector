@@ -142,7 +142,22 @@ const CSS = `
   max-width:280px; }
 /* Dashed is the pack's mark for "carried but not placed" -- the same border the file
    chips under a prompt use, for the same reason. */
-.mmd-file { cursor:grab; }
+.mmd-file { cursor:grab; position:relative; }
+/* The paperclip: the one mark that says "file" without being read. The square corner and
+   the monospace name tell a file chip from a subject chip only once somebody has been told
+   they do.
+
+   Hung over the bottom-right corner of the thumbnail -- half on the picture, half off it,
+   the way a real clip holds a sheet down. Out of the flow, so it costs the chip no width.
+   No rotation: the glyph is drawn on its own 45-degree diagonal, and turning it as well
+   only ever laid it flat. */
+.mmd-clipped { position:relative; display:inline-flex; flex:0 0 auto; }
+.mmd-clip { position:absolute; right:-6px; bottom:-6px; display:inline-flex;
+  align-items:center; justify-content:center; pointer-events:none; color:#77808d;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)); }
+/* Thin and quiet. Drawn thick and near-white it stopped being a clip and became a bright
+   smudge on the corner of every thumbnail -- and this is a label, not a control. */
+.mmd-clip svg { width:17px; height:17px; stroke-width:0.9; }
 .mmd-file:hover { border-color:#4a83a8; color:#c8cfda; }
 .mmd-file-loose { border-style:dashed; }
 .mmd-file-lifting { opacity:.45; }
@@ -481,7 +496,7 @@ const CSS = `
   border:0; }
 .mmd-subj-strip .mmd-f-subj.mmd-on { border-color:#6ea8c4; color:#e5e7eb;
   background:#22303a; }
-.mmd-subj-strip .mmd-f-file { background:#13161b; border-style:solid;
+.mmd-subj-strip .mmd-f-file { position:relative; background:#13161b; border-style:solid;
   border-radius:4px; border-color:#333a45; color:#78828f;
   font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px;
   padding:2px 8px 2px 2px; }
