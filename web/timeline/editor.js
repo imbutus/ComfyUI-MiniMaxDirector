@@ -1483,7 +1483,7 @@ export class TimelineEditor {
         <span class="mmd-file-name">${value(name)}</span>
         ${record?.kind !== "image" || ANCHOR_ROLES.includes(String(record.role || "")) ? "" : `
         <select class="mmd-file-resize" data-file="${index}"
-          title="How large this picture is sent to the model. A picture becomes tokens the model re-reads at every sampling step, so this is detail against time: match scales it to about the clip's pixel count, max allows 2048px on its short side and is what keeps a face the same face. It belongs to the file, so it is the same wherever the file sits. Left as the clip's, `default resize` in the settings row answers."
+          title="How large this picture is sent to the model. A picture becomes tokens the model re-reads at every sampling step, so this is detail against time: match scales it to about the clip's pixel count, max allows 2048px on its short side and is what keeps a face the same face. It belongs to the file, so it is the same wherever the file sits. Left as default, the settings row answers."
           >${sizeOptions(record.resize, "resize: ")}</select>`}
         ${at === null ? "" : `<button data-dropfile="${value(name)}" title="Take this file off the clip">&times;</button>`}
       </span>`;
@@ -3165,7 +3165,7 @@ export class TimelineEditor {
         <label class="${claimed.length && !ANCHOR_ROLES.includes(String(item.media.role || ""))
           && String(item.media.role || "reference") === "reference" ? "mmd-dead" : ""}"
           title="${claimed.length && String(item.media.role || "reference") === "reference"
-            ? "Nothing reads this while a card describes the file: MiniMax asks for a file used only to define something to be cited inside that thing&#39;s own definition, so the file&#39;s own entry is left out and the card&#39;s `keep it` is the marker the model gets. Change `used as`, or clear the cards, and this answers again."
+            ? "Nothing reads this while a card describes the file: MiniMax asks for a file used only to define something to be cited inside that thing&#39;s own definition, so the file&#39;s own entry is left out and the card&#39;s keep it is the marker the model gets. Change used as, or clear the cards, and this answers again."
             : "How much of this file survives into the video. Fixed values from MiniMax&#39;s own guide, and an audio file has a set of its own: fully_copy says this recording is the finished soundtrack, reference says only its timbre is followed. A card lifted out of this file carries its own marker for the person, which can differ."}">keep file
           <select class="mmd-f-retention"${claimed.length
             && String(item.media.role || "reference") === "reference" ? " disabled" : ""}>${
