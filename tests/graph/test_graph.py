@@ -161,7 +161,8 @@ def test_an_attached_image_reaches_the_model(media_run):
 
 
 def test_the_prompt_names_the_attached_image(media_run):
-    assert "The alley <Picture 1>" in h3_call(media_run)["prompt"]
+    # Each part of a shot line is closed as its own sentence, so the token follows one.
+    assert "The alley. <Picture 1>." in h3_call(media_run)["prompt"]
 
 
 def test_no_loader_node_is_needed(media_run):
