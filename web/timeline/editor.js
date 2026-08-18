@@ -1399,9 +1399,7 @@ export class TimelineEditor {
       this.dragTracks = [];
       this.ghostFrame = null;
       this.hideGhost();
-      for (const lane of this.canvas.querySelectorAll(".mmd-track-taking")) {
-        lane.classList.remove("mmd-track-taking");
-      }
+      this.clearTaking();
     });
 
     this.canvas.addEventListener("dragover", (event) => {
@@ -1415,7 +1413,13 @@ export class TimelineEditor {
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = "move";
-      track.classList.add("mmd-track-taking");
+      // One lane lit at a time. `dragleave` between two lanes is not a leave -- the pointer
+      // is still over the tracks -- so the lane crossed on the way here kept its outline
+      // and two tracks claimed the same drop.
+      if (!track.classList.contains("mmd-track-taking")) {
+        this.clearTaking();
+        track.classList.add("mmd-track-taking");
+      }
       // Redrawn only when the pointer has moved to another frame. `dragover` fires far
       // faster than the timeline has frames, and every one of those events would otherwise
       // copy the document to compute a block that has not changed.
@@ -1428,18 +1432,23 @@ export class TimelineEditor {
     });
 
     this.canvas.addEventListener("dragleave", (event) => {
-      // Only when the pointer has left the tracks altogether: `dragleave` also fires on
-      // every block it crosses on the way, and taking the preview down there made it
-      // flicker across exactly the timeline it is describing.
-      if (event.target.closest(".mmd-track") && event.relatedTarget?.closest?.(".mmd-canvas")) return;
-      event.target.closest(".mmd-track")?.classList.remove("mmd-track-taking");
+      // Asked of where the pointer went, not of where it left: `dragleave` fires on every
+      // block and every lane crossed on the way, and taking the preview down on those made
+      // it flicker across exactly the timeline it is describing. Landing on another lane is
+      // not leaving; landing on anything that is not a lane is.
+      if (event.relatedTarget?.closest?.(".mmd-track")) return;
+      this.clearTaking();
       this.ghostFrame = null;
+      this.ghostTrack = null;
       this.hideGhost();
     });
 
     this.canvas.addEventListener("drop", (event) => {
       const track = event.target.closest(".mmd-track");
-      track?.classList.remove("mmd-track-taking");
+      // Every lane, not the one dropped on. The drop rebuilds the Files list, so the chip
+      // the drag started from is gone before `dragend` can fire on it -- and the lane lit
+      // on the way past kept its outline for the rest of the session.
+      this.clearTaking();
       if (this.dragFile === null || this.dragFile === undefined) return;
       if (!track || !this.dragTracks.includes(track.dataset.track)) return;
       event.preventDefault();
@@ -1515,6 +1524,13 @@ export class TimelineEditor {
 
   hideGhost() {
     this.ghost.classList.add("mmd-hide");
+  }
+
+  /** Put out every lane lit as a drop target. */
+  clearTaking() {
+    for (const lane of this.canvas.querySelectorAll(".mmd-track-taking")) {
+      lane.classList.remove("mmd-track-taking");
+    }
   }
 
   placeFile(index, frame, onto) {
