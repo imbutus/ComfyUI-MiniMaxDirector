@@ -128,7 +128,17 @@ nothing points at — no card, no mention — is a warning, because it is the on
 no block speaks for.
 
 A clip carried this way still brings its own soundtrack, numbered `<Audio n>` with the
-blocks' clips and ahead of any cue — the order the model is handed them in.
+blocks' clips and ahead of any cue — the order the model is handed them in. That soundtrack
+is a passenger: the compiler leaves it out of the prompt entirely unless something you wrote
+names its token, because a clip attached for its motion or its look is not a clip whose sound
+you asked for. Named, it is described as the audio in that file and never in the words you
+wrote about the picture — those belong to the frames. A clip used as a **continuation** or a
+frame anchor keeps its soundtrack declared, because carrying the sound over is the point.
+
+**What a reference video will and will not carry.** Motion is what it holds reliably. Grain,
+grade and fine texture are not, and where a clip's grade does land it overrides the light your
+words asked for — a sunny terrace in the prompt and an evening clip on the reference list is a
+fight your words tend to lose. Ask for a film stock in words, and keep the video for movement.
 
 **A clip can be dropped on MAIN or on AUDIO, and it means two different things.** On MAIN
 it is its pictures, with its own sound travelling beside them: `<Video n>` and an `<Audio n>`

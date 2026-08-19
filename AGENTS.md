@@ -111,6 +111,11 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 ```
 
 - **Frames are authoritative.** Seconds are derived at compile time only.
+- A **reference video's soundtrack** is skipped by `_subject_definitions`,
+  `_retention_analysis` and `_task_types` when nothing in the author's text names its token
+  (`_rides_along`). It shares the video's record, so declaring it wrote the picture's
+  description and the file's `fully_copy` as claims about the sound. Only for `role` =
+  `reference`: a continuation or frame anchor carries its audio on purpose.
 - A **subject's** shot list is not its file's. `_appears_in` unions the block the file sits
   on with every shot whose own words name the token (`_named_in`), because that is how the
   guide keeps one thing the same thing across a cut: the author writes `<Subject 1>` into
