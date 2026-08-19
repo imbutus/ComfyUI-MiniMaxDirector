@@ -593,13 +593,18 @@ the canvas when they open the workflow.
 2. **The local docs** — `docs/GUIDE.md` for anything an author can see or press,
    `README.md` when the feature changes what the pack is, this file for schema, flow and
    invariants.
-3. **The-project copies** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/`
-   holds `minimaxh3-director.json`, the same graph, and `minimaxh3-director-advanced.json`,
-   which adds a latent-upscale second stage that cannot ship here (its node pack has no
-   licence). **Edit the shared graph there, then run `tools/sync_workflow.py`** — it rewrites
-   `examples/minimax-director.json` from that copy and adds the two things only an outside
-   user needs, `cnr_id` on our nodes and `properties.models` on the loaders.
-   `tools/sync_workflow.py --check` fails if the two have drifted.
+3. **The-project copy** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/`
+   holds one director workflow, `minimaxh3-director.json`. As of 2026-08-19 that file **is**
+   the former advanced graph: the plain copy was deleted and the advanced one took its name,
+   so the bundle's only director carries the latent-upscale second stage.
+
+   **`tools/sync_workflow.py` must not be run until that is resolved.** It regenerates
+   `examples/minimax-director.json` from that file, and the public workflow may depend on
+   this pack alone — the upscaler's node pack (`LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler`)
+   has no LICENSE, and a graph naming a class the reader cannot install does not open at all.
+   `--check` reports the two as drifted, which they now permanently are. Until the public
+   file gets its own source, **edit the note in both files by hand and keep the shared body
+   identical**; see `notes/workflow-split-public-vs-project.md`.
 4. **The recording plan** —
    `~/Projects/experiments/the-project-promotion/socials/youtube/imbutus-media/minimax-director/actions.md`,
    whenever the feature is something a viewer would see happen on screen.
