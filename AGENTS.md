@@ -602,7 +602,8 @@ the canvas when they open the workflow.
    public file, and re-run it after a version bump — `release.sh` does, because the stamp it
    writes is the version. Opening the graph without `Comfyui_Minimax_h3_latent_Upscaler`
    installed shows a Missing Node Types dialog and one red node,
-   `H3LatentUpscalerNodeMegapixels`; with the Upscale switch off the graph still runs,
+   `MinimaxH3LatentUpscaler3D` — a name the pack changed once already, on 2026-08-19, which is
+   why the pod's onstart pins its clone to a commit rather than tracking `main`; with the Upscale switch off the graph still runs,
    because nothing downstream of it is used. That pack and its model are documented in
    README's Install, which is the only place an outside user is told to fetch them.
 4. **The recording plan** —

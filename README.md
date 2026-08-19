@@ -173,7 +173,8 @@ Ref2VA turbo is a v0.1 preview: audio and fast motion are its weak spots. Switch
 a final render.
 
 **Bigger, when you want it.** The **Upscale** switch in the workflow's *Upscale* group adds
-a second stage: the finished latent is enlarged to `target_megapixels` and refined there.
+a second stage: the finished latent is enlarged to the node's `megapixels` target and refined
+there.
 Off by default, and off it costs nothing — nothing below the branch runs.
 
 Render first, look at it, and only then pay for the resolution. Flip Upscale on and queue
@@ -195,6 +196,10 @@ in `models/latent_upscale_models/`, the folder that pack registers.
 Without the pack, ComfyUI opens the workflow with a Missing Node Types dialog and one red
 node. That is expected, not a broken download: the switch is off, nothing downstream of it
 is used, and the render works. Install the pack when you want the branch.
+
+That pack is days old and still moving: on 2026-08-19 it renamed its nodes, and a graph
+pointing at the old name stopped opening. This workflow tracks the current one,
+`MinimaxH3LatentUpscaler3D`. If yours is older than that rename, `git pull` in the pack.
 
 The upscaler works directly on H3's 24-channel latents, so nothing round-trips through the
 VAE. It is new and unproven at large sizes — check a short clip before trusting it with a
