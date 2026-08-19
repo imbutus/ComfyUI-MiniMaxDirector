@@ -375,6 +375,22 @@ export class TimelineEditor {
     // On the root, not on the segment panel: a strip of these sits under every prompt box,
     // and the one under GLOBAL PROMPT is on a different tab entirely. A chip writes into
     // the box it sits in, and it sits in the box it writes into.
+    // The press, not the click. A mousedown on a button moves focus out of the text box,
+    // and the caret's fate from there is the browser's business -- which is why the token
+    // landed at the end on the first press and at the caret on the second, once the box had
+    // been focused by the insert itself. Cancelling the default on the press keeps focus
+    // where it is, so nothing moves; the caret is recorded here as well, before anything
+    // else can run. The click still fires, and still does the writing.
+    this.root.addEventListener("mousedown", (event) => {
+      const chip = event.target.closest(".mmd-f-subj");
+      if (!chip) return;
+      const box = chip.closest(".mmd-prompt")?.querySelector("textarea") || this.segPrompt;
+      if (box && box.selectionStart != null) {
+        box.dataset.caret = `${box.selectionStart}:${box.selectionEnd}`;
+      }
+      event.preventDefault();
+    });
+
     this.root.addEventListener("click", (event) => {
       const chip = event.target.closest(".mmd-f-subj");
       if (!chip) return;
