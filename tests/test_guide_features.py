@@ -586,3 +586,11 @@ def test_a_subject_named_in_later_shots_is_analysed_across_them():
     })
     prompt = compile_timeline(timeline).prompt
     assert "<Subject 1> (appears in [Shot 1], [Shot 2] and [Shot 3]): fully_preserved" in prompt
+
+
+def test_an_undeclared_soundtrack_does_not_claim_audio_reuse():
+    """The task prefix names relationships the prompt actually states. A soundtrack left out
+    of subject_definitions cannot be the reason the clip is `audio reuse`."""
+    prompt = compile_timeline(_style_source()).prompt
+    assert "[reference generation]" in prompt
+    assert "audio reuse" not in prompt

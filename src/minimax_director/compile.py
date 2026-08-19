@@ -186,6 +186,11 @@ def _rides_along(timeline: Timeline, item) -> bool:
     """
     if item.kind != "audio" or str(item.record.get("kind", "")).strip() != "video":
         return False
+    # Only a plain reference. A video the clip continues from, or takes a frame from, is a
+    # video whose sound is part of what is being carried over -- the guide's own
+    # `video continuation + audio reuse` pairing -- and its soundtrack is not a stowaway.
+    if str(item.record.get("role", "reference") or "reference") != "reference":
+        return False
     return item.token not in _author_text(timeline)
 
 
@@ -400,6 +405,10 @@ def _task_types(timeline: Timeline) -> str:
     found: set[str] = set()
 
     for item in attachments.collect(timeline):
+        # A soundtrack that rides along with a style video is not a relationship the author
+        # asked for: undeclared below, it would still have put `audio reuse` in this line.
+        if _rides_along(timeline, item):
+            continue
         role = str(item.record.get("role", "")).strip()
         marker = _retention(item)
         if item.kind == "audio":
