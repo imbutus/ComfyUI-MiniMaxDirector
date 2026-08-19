@@ -443,7 +443,9 @@ def _retention_analysis(timeline: Timeline) -> str:
                 f"{item.token}'s voice timbre and delivery without copying the original "
                 f"signal.")
             continue
-        lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
+        lines.append(
+            f"{item.token}{where}: {marker} - "
+            f"{_copy_clause(item, marker) or _described(item)}.")
     people = attachments.subjects(timeline)
     pairs = _receivers(timeline)
     written = {receiver.token: incoming
@@ -528,6 +530,27 @@ def _described(item) -> str:
         return described
     name = str(item.record.get("filename", "")).strip()
     return f"the {item.kind} in {name}" if name else f"an unnamed {item.kind} reference"
+
+
+#: What each audio marker asks the model to do, in the guide's own words (ref guide 4.2 and
+#: its examples). A recording nobody has described otherwise compiles to "the audio in
+#: x.mp3", which repeats the filename and says nothing about the copy relationship -- and
+#: the relationship is the entire content of these markers.
+COPY_MEANS = {
+    "fully_copy": "{token} is reused 1:1 as the target video's complete final audio track",
+    "partially_copy": "part of {token} is copied into the target video's audio track, with "
+                      "the rest added, removed or replaced",
+    "reference": "the target video follows {token}'s timbre, rhythm and delivery without "
+                 "copying the original signal",
+    "weak_reference": "only the broad category and atmosphere of {token} are kept",
+}
+
+
+def _copy_clause(item, marker: str) -> str:
+    """The relationship sentence for an audio marker, when nothing better was written."""
+    if str(item.record.get("description", "")).strip():
+        return ""
+    return COPY_MEANS.get(marker, "").format(token=item.token)
 
 
 def _markers(item) -> tuple[str, ...]:
@@ -644,10 +667,20 @@ def _description(timeline: Timeline, style_apart: bool = False) -> str:
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
         # A cue covering the shot end to end is the video's ambience and belongs to
         # `overall_soundscape`; written here as well, the author's room tone was sent twice.
-        sound = " ".join(
-            _sentence(_cue_text(cue, tokens)) for cue in _cues_in(cues, shot)
-            if not _is_ambient(cue, shots)
-        )
+        heard = []
+        for cue in _cues_in(cues, shot):
+            if _is_ambient(cue, shots):
+                continue
+            said = _cue_text(cue, tokens)
+            # A recording with nothing typed on it compiles to its own token. When the
+            # shot's own prose already points at that recording -- "following the words of
+            # <Audio 1>" -- appending it again put a bare `<Audio 1>.` after the sentence
+            # and said nothing the model did not already have.
+            if said and said.strip() in body:
+                continue
+            if said:
+                heard.append(_sentence(said))
+        sound = " ".join(heard)
 
         if number == 1:
             # The guide puts style and initial composition at the head of Shot 1, and

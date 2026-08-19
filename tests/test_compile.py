@@ -100,6 +100,52 @@ def test_shots_are_ordered_by_time_not_by_edit_order():
     assert prompt.index("first") < prompt.index("second")
 
 
+def test_a_recording_the_shot_already_names_is_not_appended_again():
+    """A file with nothing typed on it compiles to its own token. When the shot's prose
+    already points at that recording, appending it put a bare `<Audio 1>.` after the
+    sentence and told the model nothing it did not have."""
+    timeline = Timeline.from_dict({
+        "global_prompt": "",
+        "shots": [{"start": 0, "length": 48,
+                   "prompt": "His mouth follows the words of <Audio 1> exactly."}],
+        "cues": [{"start": 0, "length": 24, "prompt": "",
+                  "media": {"kind": "audio", "filename": "voice.mp3"}}],
+        "references": [{"kind": "audio", "index": 1}],
+    })
+    body = compile_timeline(timeline).prompt
+    # From the field, not from `[Shot 1]`: the retention line names that shot too.
+    body = body[body.index("detailed_description:"):]
+    assert body.count("<Audio 1>") == 1
+
+
+def test_a_copy_marker_states_the_relationship_it_means():
+    """`fully_copy - the audio in x.mp3` repeats the filename and says nothing about
+    copying, which is the entire content of that marker."""
+    timeline = Timeline.from_dict({
+        "shots": [{"start": 0, "length": 48, "prompt": "He speaks."}],
+        "cues": [{"start": 0, "length": 48, "prompt": "",
+                  "media": {"kind": "audio", "filename": "voice.mp3",
+                            "retention": "fully_copy"}}],
+        "references": [{"kind": "audio", "index": 1}],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert ("<Audio 1> (heard in [Shot 1]): fully_copy - <Audio 1> is reused 1:1 as the "
+            "target video's complete final audio track.") in prompt
+
+
+def test_a_described_recording_keeps_the_authors_words():
+    timeline = Timeline.from_dict({
+        "shots": [{"start": 0, "length": 48, "prompt": "He speaks."}],
+        "cues": [{"start": 0, "length": 48, "prompt": "",
+                  "media": {"kind": "audio", "filename": "voice.mp3",
+                            "description": "a recorded speech, close on the microphone",
+                            "retention": "fully_copy"}}],
+        "references": [{"kind": "audio", "index": 1}],
+    })
+    assert ("fully_copy - a recorded speech, close on the microphone."
+            in compile_timeline(timeline).prompt)
+
+
 def test_cues_become_the_soundscape_without_timestamps():
     """The field summarises the whole video; the guide gives it nowhere to put a time."""
     timeline = build(cues=[{"start": 0, "length": 48, "prompt": "Distant siren, then rain."}])
