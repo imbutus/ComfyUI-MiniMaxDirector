@@ -142,6 +142,27 @@ const nameOf = (card) =>
 const isEditable = (el) =>
   !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 
+/**
+ * Write a value into a text box without moving its caret.
+ *
+ * The three prompt boxes are repainted from the document whenever anything on the node
+ * changes, and one of those repaints lands between the click on a token chip and the
+ * insert that click asks for. Assigning `value` -- even the identical string -- drops the
+ * caret at the end of the text, so `<Audio 1>` arrived at the end rather than where it was
+ * left. That is the whole of "sometimes at the cursor, sometimes at the end": it depended
+ * on whether a repaint happened to fall in the gap.
+ *
+ * So: never write a value that is already there, and when a real change has to be written,
+ * put the selection back. The browser clamps it to the new length.
+ */
+const fill = (box, value) => {
+  if (!box || box.value === value) return;
+  const at = box.selectionStart;
+  const to = box.selectionEnd;
+  box.value = value;
+  if (at != null) box.setSelectionRange(at, to ?? at);
+};
+
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
 const TAIL = 34;
@@ -2172,7 +2193,7 @@ export class TimelineEditor {
       if (!target) return;
       target.prompt = box.value;
       this.write(next);
-      this.segPrompt.value = box.value;
+      fill(this.segPrompt, box.value);
     });
     box.addEventListener("blur", save);
     box.addEventListener("keydown", (key) => {
@@ -3067,8 +3088,8 @@ export class TimelineEditor {
     // whether or not a block is selected, and its subjects are the clip's, not a shot's.
     this.renderChips(timeline);
 
-    if (document.activeElement !== this.global) this.global.value = timeline.global_prompt || "";
-    if (document.activeElement !== this.music) this.music.value = timeline.music || "";
+    if (document.activeElement !== this.global) fill(this.global, timeline.global_prompt || "");
+    if (document.activeElement !== this.music) fill(this.music, timeline.music || "");
 
     // Several blocks is a selection, not an absence. The panel used to empty itself for
     // it, which made multi-select good for exactly two things -- deleting and dragging --
@@ -3134,7 +3155,7 @@ export class TimelineEditor {
 
     this.segPrompt.disabled = false;
     if (changed || document.activeElement !== this.segPrompt) {
-      this.segPrompt.value = item.prompt || "";
+      fill(this.segPrompt, item.prompt || "");
     }
 
     const end = item.end ?? item.start + item.length;
