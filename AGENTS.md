@@ -262,13 +262,13 @@ through `editor.onAddCard`.
   `SPEAKER`, and the line is on segment 2.
 - The person and the file they came from are two retentions, deliberately: a photo can be
   `fully_preserved` while the face lifted out of it is an `attribute_transfer`.
-- `lint._check_transfers` warns when a receiver kept `fully_preserved`/`partially_preserved`
-  describes the very feature carried onto it (`FEATURES`, read off `attachments.carried`).
-  Hair belongs in that category in practice even when the transfer is only the face: it
-  frames the head, and a receiver told to keep one picture's hair while wearing another's
-  face keeps both from the first.
-  Both instructions reach the model and it keeps what it has; the fix is wording, so this
-  is a warning.
+- **No lint rule reads the author's prose for words.** There used to be one --
+  `_check_transfers`, warning when a receiver's description named the very feature carried
+  onto it -- and it was removed on 2026-08-19 at the author's instruction. Matching words
+  inside free text cannot be made reliable: it found `hair` inside `chair` and told an
+  author to delete a description that was already correct. Do not add another rule of that
+  shape. Describing the receiver without the feature being replaced is still the right
+  advice; it belongs in the guide, not in the report.
 - `compile._spoken_by` writes a bound speaker's voice onto that subject's
   `subject_definitions` line. The body prints `<Subject 1> (S1)` rather than prose for a
   speaker a file defines (`_voices`), so before this the `how they sound` typed on any card
