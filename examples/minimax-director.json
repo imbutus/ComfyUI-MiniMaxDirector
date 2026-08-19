@@ -258,7 +258,7 @@
       "properties": {
         "Node name for S&R": "MiniMaxDirector",
         "cnr_id": "minimax-director",
-        "ver": "0.15.10"
+        "ver": "0.15.11"
       },
       "widgets_values": [
         "{\n  \"version\": 1,\n  \"fps\": 24,\n  \"duration\": 124,\n  \"global_prompt\": \"\",\n  \"shots\": [],\n  \"moves\": [],\n  \"cues\": [],\n  \"references\": [],\n  \"music\": \"\"\n}",
@@ -683,7 +683,7 @@
       "properties": {
         "Node name for S&R": "MiniMaxDirectorPrompt",
         "cnr_id": "minimax-director",
-        "ver": "0.15.10"
+        "ver": "0.15.11"
       },
       "widgets_values": [],
       "title": "prompt — what the model actually receives"
@@ -713,7 +713,7 @@
       "properties": {
         "Node name for S&R": "MiniMaxDirectorReport",
         "cnr_id": "minimax-director",
-        "ver": "0.15.10"
+        "ver": "0.15.11"
       },
       "title": "report — what the linter found"
     },
