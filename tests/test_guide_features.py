@@ -594,3 +594,22 @@ def test_an_undeclared_soundtrack_does_not_claim_audio_reuse():
     prompt = compile_timeline(_style_source()).prompt
     assert "[reference generation]" in prompt
     assert "audio reuse" not in prompt
+
+
+def test_a_motion_source_is_cited_inside_the_subject_not_given_its_own_entry():
+    """The guide: a file used only to define a subject is cited inside that definition. A
+    motion source is such a file — and its own entry said `fully_preserved` about a whole
+    clip, which asks for the clip back."""
+    timeline = Timeline.from_dict({
+        "duration": 64,
+        "shots": [{"start": 0, "length": 64, "prompt": "A raccoon at the fence.",
+                   "media": {"kind": "image", "filename": "raccoon.png", "role": "reference",
+                             "subjects": [{"name": "the raccoon: a ringed tail",
+                                           "retention": "partially_preserved",
+                                           "motion_file": "walk.mp4"}]}}],
+        "sources": [{"kind": "video", "filename": "walk.mp4", "retention": "fully_preserved"}],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert "whose motion comes from <Video 1>" in prompt
+    assert "<Video 1> is the video in walk.mp4." not in prompt
+    assert "<Video 1>: fully_preserved" not in prompt

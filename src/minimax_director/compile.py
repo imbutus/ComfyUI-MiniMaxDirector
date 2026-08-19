@@ -207,6 +207,13 @@ def _only_defines(timeline: Timeline, item) -> bool:
         return False
     if any(subject.source == item.token for subject in attachments.subjects(timeline)):
         return True
+    # A second asset a card draws on -- the video a subject's motion comes from -- is cited
+    # inside that subject's definition by the same rule. Given an entry of its own it read
+    # as a clip to reproduce: `fully_preserved - the video in walk.mp4`, next to a sentence
+    # that had already said all it was wanted for was the movement.
+    if any(_token_for(timeline, str(subject.record.get("motion_file", "")).strip()) == item.token
+           for subject in attachments.subjects(timeline)):
+        return True
     # A file whose only card is carried onto somebody else is cited inside *their*
     # definition, which is the same rule -- and given an entry of its own it said the whole
     # photograph was preserved, right beside the sentence taking one feature out of it.
