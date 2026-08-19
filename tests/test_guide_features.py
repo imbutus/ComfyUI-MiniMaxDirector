@@ -493,18 +493,24 @@ def _swapped(**receiver):
     })
 
 
-def test_a_carried_face_is_a_second_source_on_one_subject():
-    """§2.1: "when the same subject comes from multiple assets, combine the sources and
-    state what each asset provides". A face is not a content unit of its own."""
+def test_the_incoming_face_is_a_subject_of_its_own():
+    """The shape a working identity replacement uses: the face being brought in is the
+    subject, and the summary says what it replaces."""
     prompt = compile_timeline(_swapped()).prompt
     assert ("<Subject 1> is the man in the navy suit: his build and greying hair, from "
             "<Picture 1>") in prompt
-    # Its own sentence, subject first. Hung off the end of the definition as a `whose`
-    # clause, the pronoun bound to `<Picture 1>` and the sentence claimed the picture's
-    # face came from another picture -- which the model answered by changing nothing.
-    assert ("<Subject 1>'s face comes from <Picture 2> and not from <Picture 1>: bone "
-            "structure, eyes, nose and jawline.") in prompt
-    assert "<Subject 2>" not in prompt
+    assert "<Subject 2> is the face: bone structure, eyes, nose and jawline, from <Picture 2>." in prompt
+    assert ("<Subject 1>'s face is replaced by <Subject 2>, from <Picture 2>, and nothing "
+            "else about <Subject 1> changes.") in prompt
+
+
+def test_the_body_names_the_replacement_where_it_happens():
+    """§5.3: a subject is described where it appears, with its characteristics and its
+    current action. The body used to append a bare token and never mention the swap."""
+    body = compile_timeline(_swapped()).prompt
+    body = body[body.index("detailed_description:"):]
+    assert ("<Subject 2>, the face: bone structure, eyes, nose and jawline, replaces "
+            "<Subject 1>'s face and is mapped onto the same head") in body
 
 
 def test_the_photograph_a_face_comes_from_keeps_no_entry_of_its_own():
@@ -517,7 +523,11 @@ def test_the_photograph_a_face_comes_from_keeps_no_entry_of_its_own():
 
 def test_the_receiver_is_analysed_as_the_transfer():
     prompt = compile_timeline(_swapped()).prompt
-    assert ("<Subject 1> (appears in [Shot 1]): attribute_transfer - the face: bone "
-            "structure, eyes, nose and jawline from <Picture 2> replaces what <Picture 1> "
-            "shows there; everything else about <Subject 1> stays fully_preserved from "
-            "<Picture 1>.") in prompt
+    # The marker rides the subject being brought in, and what the receiver keeps is
+    # enumerated with the replaced region named as excluded.
+    assert ("<Subject 2> (appears in [Shot 1]): attribute_transfer - the face: bone "
+            "structure, eyes, nose and jawline, from <Picture 2>, replaces <Subject 1>'s "
+            "face only, mapped onto the same position and framing at every moment") in prompt
+    assert ("<Subject 1> (appears in [Shot 1]): fully_preserved - the man in the navy "
+            "suit: his build and greying hair are retained from <Picture 1>; the face is "
+            "not retained from <Picture 1> and comes from <Subject 2> instead.") in prompt

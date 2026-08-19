@@ -452,21 +452,32 @@ A card holds:
 
   ```
   <Subject 1> is the man in the navy suit: his build …, from <Picture 1>.
-  <Subject 1>'s face comes from <Picture 2> and not from <Picture 1>: bone structure,
-  eyes, nose and jawline.
-  <Subject 1> (appears in [Shot 1]): attribute_transfer - the face … from <Picture 2>
-  replaces what <Picture 1> shows there; everything else about <Subject 1> stays
-  fully_preserved from <Picture 1>.
+  <Subject 2> is the face: bone structure, eyes, nose and jawline, from <Picture 2>.
+
+  … <Subject 1>'s face is replaced by <Subject 2>, from <Picture 2>, and nothing else
+  about <Subject 1> changes.
+
+  <Subject 1> (appears in [Shot 1]): fully_preserved - the man in the navy suit: his
+  build … are retained from <Picture 1>; the face is not retained from <Picture 1> and
+  comes from <Subject 2> instead.
+  <Subject 2> (appears in [Shot 1]): attribute_transfer - the face … replaces
+  <Subject 1>'s face only, mapped onto the same position and framing at every moment.
+
+  [Shot 1] … <Subject 2>, the face …, replaces <Subject 1>'s face and is mapped onto the
+  same head, in the same position and framing, at every moment.
   ```
 
-  **The transfer is a sentence of its own, and it names what it overrides.** Hung on the
-  end of the definition as a `whose face … comes from <Picture 2>` clause, the pronoun
-  sat straight after `<Picture 1>` and bound to it: read literally, the picture's face
-  came from another picture. The model answered that by changing nothing.
+  **The incoming feature keeps its own subject, and it carries the marker.** That is the
+  shape a working identity replacement uses: the thing being brought in is the
+  `<Subject n>`, its retention line says what it overwrites *and* what it leaves alone,
+  the receiver's line enumerates what its own picture supplies with the replaced region
+  named as excluded, and the summary and the shot body both state the replacement.
 
-  Written the way before that — the face as `<Subject 2>`, "transferred onto
-  `<Subject 1>`", with `<Subject 1>` `fully_preserved` — the model was asked for a second
-  content unit while being told to keep the face it already had, and it kept it. The photograph the feature
+  Two earlier shapes did not work, on three paid runs. Folding the feature into the
+  receiver left the prompt with no subject to point at where the new face belonged.
+  Before that, the face was `<Subject 2>` "transferred onto `<Subject 1>`" while
+  `<Subject 1>` was `fully_preserved` over the whole person — one instruction to replace
+  the face and one to keep it, and the model kept it. The photograph the feature
   comes out of keeps no entry of its own either: it is cited inside the definition it
   feeds, which is the same rule.
 

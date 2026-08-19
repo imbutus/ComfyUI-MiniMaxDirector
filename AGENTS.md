@@ -233,16 +233,15 @@ through `editor.onAddCard`.
   `speech`, because with the switch off no line is compiled at all.
 - `onto` is the receiver of an `attribute_transfer`, and only means anything for that
   marker. When it names another **card**, `attachments.carried` folds this entry into that
-  card: the entry takes no `<Subject n>` (`subjects` skips it, so the numbering has no
-  gap), the receiver's definition gains a **sentence of its own** --
-  `<Subject 1>'s face comes from <Picture 2> and not from <Picture 1>: ...`
-  (`compile._carried_sentences`) -- and the receiver's `retention_analysis` line becomes
-  the transfer. The sentence is separate because the first attempt hung it on the
-  definition as `, from <Picture 1>, whose face ... comes from <Picture 2>`, where the
-  relative pronoun binds to `<Picture 1>` rather than to the person: the sentence claimed
-  the picture's face came from another picture, and the model kept the face it had. It
-  names what it overrides for the same reason -- "and not from `<Picture 1>`" is the one
-  clause that cannot be read as agreeing with the definition above it. `_only_defines` counts a
+  card: the entry keeps its own `<Subject n>` and **carries the marker itself**, while
+  `compile._receivers` pairs it with the subject it is written over. Four places say so:
+  its `retention_analysis` line (`attribute_transfer - ... replaces <Subject 1>'s face
+  only, mapped onto the same position and framing at every moment`), the receiver's line
+  (what its picture supplies, with the replaced region named as excluded), `_replacements`
+  in the summary, and `_in_frame` in the shot body. That is the shape of a working
+  identity replacement; two others failed on three paid runs -- folding the feature into
+  the receiver left nothing to point at where the new face belonged, and before that the
+  receiver was `fully_preserved` over the whole person beside a transfer onto it. `_only_defines` counts a
   carried entry too, so the photograph the feature comes from keeps no entry of its own.
   §2.1 is the authority: `<Subject N>` is "a content unit that will actually be used in the
   target video", and "when the same subject comes from multiple assets, combine the sources

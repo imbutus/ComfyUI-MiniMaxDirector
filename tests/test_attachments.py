@@ -175,14 +175,14 @@ def test_a_clip_on_the_audio_track_is_a_soundtrack_and_not_a_video():
     assert "<Video 1>" not in prompt
 
 
-def test_a_face_carried_onto_somebody_is_not_a_subject_of_its_own():
+def test_a_face_carried_onto_somebody_keeps_a_subject_of_its_own():
     """Take 1's shape: the photograph the face comes from sits on no block.
 
-    MiniMax's guide calls `<Subject N>` "a content unit that will actually be used in the
-    target video", and says to combine the sources when one subject comes from several
-    files. A face carried onto somebody is a second source for that person -- given a
-    `<Subject n>` of its own it became a second person the video was meant to contain,
-    while its receiver was told to preserve the face they already had.
+    The face is what the target video will contain where the receiver's own face was, so
+    it is a `<Subject n>` and `carried` records who it is written over. A working identity
+    replacement defines the incoming identity as a subject and marks *it*
+    `attribute_transfer`; folded into the receiver instead, the prompt had nothing to point
+    at where the new face was meant to be, and three runs kept the original.
     """
     timeline = Timeline.from_dict({
         "speech": True,
@@ -195,7 +195,7 @@ def test_a_face_carried_onto_somebody_is_not_a_subject_of_its_own():
             {"name": "the face", "retention": "attribute_transfer", "onto": "SPEAKER"}]}],
     })
     assert tokens_by_segment(timeline)[("shots", 0)] == ["<Subject 1>"]
-    assert [s.name for s in subjects(timeline)] == ["the man in the navy suit"]
+    assert [s.name for s in subjects(timeline)] == ["the man in the navy suit", "the face"]
     assert carried(timeline)["u-speaker"] == [
         ("<Picture 2>", {"retention": "attribute_transfer", "name": "the face",
                          "onto": "SPEAKER"})]

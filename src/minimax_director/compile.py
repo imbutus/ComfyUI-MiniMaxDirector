@@ -210,8 +210,7 @@ def _subject_definitions(timeline: Timeline) -> str:
         # Provenance named on the subject's own line, which is what the guide asks for
         # when a picture is only there to supply something else.
         lines.append(f"{subject.token} is {subject.name.rstrip('.')}"
-                     f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}."
-                     f"{_carried_sentences(timeline, subject)}")
+                     f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}.")
     return "\n".join(lines)
 
 
@@ -249,36 +248,49 @@ def _sources(timeline: Timeline, subject) -> str:
             f"from {motion}")
 
 
-def _carried_sentences(timeline: Timeline, subject) -> str:
-    """A sentence of its own for every feature carried onto this subject.
+def _receivers(timeline: Timeline) -> dict[str, tuple]:
+    """For each carried subject's token, the subject it is written over.
 
-    This used to be a `, whose face ... comes from <Picture 2>` clause hung off the end of
-    `, from <Picture 1>`, which put the relative pronoun immediately after `<Picture 1>`:
-    read literally, the sentence said that *the picture's* face came from another picture.
-    The model resolved that by keeping the face it already had, and the swap never
-    happened -- twice, on paid hardware.
-
-    So the transfer gets its own sentence, subject first, and it names what it overrides.
-    `<Picture 1>` supplies this person; saying "and not from <Picture 1>" is the only part
-    of the instruction that cannot be read as agreeing with the definition above it.
+    The working example of an identity replacement puts `attribute_transfer` on the
+    subject being *brought in* and says what it overwrites -- "Deadpool's suit, mask ...
+    replace the original performer's visual identity only, mapped exactly onto his same
+    body position". Both halves of that sentence need the pair, so it is computed once.
     """
-    parts = []
-    for token, entry in attachments.carried(timeline).get(
-            str(subject.record.get("uid", "")), []):
-        name = str(entry.get("name", "")).strip().rstrip(".")
-        if not name:
+    people = attachments.subjects(timeline)
+    by_tag = {str(person.record.get("uid", "")): person
+              for person in people if person.record.get("uid")}
+    pairs: dict[str, tuple] = {}
+    for tag, taken in attachments.carried(timeline).items():
+        receiver = by_tag.get(tag)
+        if receiver is None:
             continue
-        # The author writes "the face: bone structure, eyes, ..." -- the head of that
-        # phrase is what is carried, and the rest describes it. Their article belongs to
-        # their phrase rather than to the possessive this builds.
-        head, _, detail = name.partition(":")
-        head = head.strip()
-        if head.lower().startswith("the "):
-            head = head[4:]
-        detail = detail.strip().rstrip(".")
-        parts.append(f" {subject.token}'s {head} comes from {token} and not from "
-                     f"{subject.source}{f': {detail}' if detail else ''}.")
-    return "".join(parts)
+        for token, entry in taken:
+            # By the card's own tag. `carried` and `subjects` each rebuild their entry
+            # dicts from the file record, so the two are equal and never identical.
+            wanted = str(entry.get("uid", "")).strip()
+            for person in people:
+                same = (str(person.record.get("uid", "")).strip() == wanted if wanted
+                        else person.source == token
+                        and person.name.strip() == str(entry.get("name", "")).strip())
+                if same:
+                    pairs[person.token] = (person, receiver)
+                    break
+    return pairs
+
+
+def _region(subject, bare: bool = False) -> str:
+    """The head of a subject's description: `the face`, out of `the face: bone structure...`
+
+    What is replaced has to be nameable in a sentence about the receiver, and the author
+    has already written it -- everything before the colon is the thing, everything after
+    describes it. `bare` drops the author's article for the possessive positions, where
+    "<Subject 1>'s the face" would otherwise come out.
+    """
+    head = str(subject.name).partition(":")[0].strip().rstrip(".")
+    head = head or str(subject.name).strip()
+    if bare and head.lower().startswith("the "):
+        head = head[4:]
+    return head
 
 
 def _token_for(timeline: Timeline, filename: str) -> str:
@@ -393,7 +405,23 @@ def _summary(timeline: Timeline) -> str:
         opening += f" of {scene[0].lower()}{scene[1:]}"
     if tokens:
         opening += f", generated with reference to {_join(tokens)}"
-    return f"{opening}."
+    return f"{opening}.{_replacements(timeline)}"
+
+
+def _replacements(timeline: Timeline) -> str:
+    """What the target video replaces, said in the summary as well as in the analysis.
+
+    The working example's summary carries the whole point of the edit -- "in which only
+    the performer's visual identity is replaced by <Subject 1>". Ours said nothing about a
+    replacement anywhere except one line of `retention_analysis`.
+    """
+    said = [
+        f" {receiver.token}'s {_region(incoming, bare=True)} is replaced by "
+        f"{incoming.token}, "
+        f"from {incoming.source}, and nothing else about {receiver.token} changes."
+        for incoming, receiver in _receivers(timeline).values()
+    ]
+    return "".join(said)
 
 
 def _retention_analysis(timeline: Timeline) -> str:
@@ -417,21 +445,37 @@ def _retention_analysis(timeline: Timeline) -> str:
             continue
         lines.append(f"{item.token}{where}: {marker} - {_described(item)}.")
     people = attachments.subjects(timeline)
-    folded = attachments.carried(timeline)
+    pairs = _receivers(timeline)
+    written = {receiver.token: incoming
+               for incoming, receiver in pairs.values()}
     for subject in people:
         where = _appears_in(timeline, subject)
-        taken = folded.get(str(subject.record.get("uid", "")), [])
-        if taken:
-            # The transfer is what this subject is: one person built from two files. Said
-            # as `fully_preserved` over the whole of them, with the transfer stated on a
-            # separate `<Subject n>`, the model kept the face it was handed first.
-            moved = _join([
-                f"{str(entry.get('name', '')).strip().rstrip('.')} from {token}"
-                for token, entry in taken])
+        if subject.token in pairs:
+            # The marker belongs to the subject being brought in, and the line says what
+            # it overwrites and what it leaves alone -- the shape of the transfer that is
+            # known to work. Marked on the receiver instead, with the receiver preserved
+            # wholesale in the same breath, the model kept the face it already had.
+            incoming, receiver = pairs[subject.token]
+            # Its own file sits in the clip rather than on a block, so it has no shots of
+            # its own -- it is on screen exactly where the subject it replaces is.
+            where = where or _appears_in(timeline, receiver)
             lines.append(
-                f"{subject.token}{where}: attribute_transfer - {moved} replaces what "
-                f"{subject.source} shows there; everything else about {subject.token} "
-                f"stays {_retention(subject)} from {subject.source}.")
+                f"{subject.token}{where}: attribute_transfer - {subject.name.rstrip('.')}, "
+                f"from {subject.source}, replaces {receiver.token}'s "
+                f"{_region(subject, bare=True)} only, mapped onto the same position and "
+                f"framing at every moment; no other part of {receiver.token} and nothing "
+                f"about the scene changes.")
+            continue
+        if subject.token in written:
+            # The receiver. What its own file supplies is listed, and the region being
+            # written over is named as excluded -- the working example enumerates exactly
+            # what survives and leaves the replaced identity out of that list.
+            incoming = written[subject.token]
+            lines.append(
+                f"{subject.token}{where}: {_retention(subject)} - "
+                f"{subject.name.rstrip('.')} are retained from {subject.source}; "
+                f"{_region(incoming)} is not retained from {subject.source} and comes "
+                f"from {incoming.token} instead.")
             continue
         # An `attribute_transfer` that names nobody the cast knows: the feature moves, and
         # the free text in `onto` is the only word on where it lands.
@@ -555,6 +599,7 @@ def _description(timeline: Timeline, style_apart: bool = False) -> str:
     opposite, so which one is right depends only on which format is being written.
     """
     tokens = attachments.tokens_by_segment(timeline)
+    described = _in_frame(timeline)
     voices = _voices(timeline)
     shots = timeline.ordered_shots()
     moves = timeline.ordered_moves()
@@ -567,12 +612,22 @@ def _description(timeline: Timeline, style_apart: bool = False) -> str:
         # A line the shot before left open, and whether there is anywhere for this shot's
         # own open line to continue into. Neither is knowable from inside a shot.
         carried = number > 1 and shots[number - 2].carries_over()
+        here = list(tokens.get(("shots", shot.start), []))
+        # A subject written over somebody belongs in the shot that somebody is in: its own
+        # file sits in the clip rather than on a block, so nothing else would name it, and
+        # a replacement the body never mentions is one the frame never shows.
+        for incoming, receiver in _receivers(timeline).values():
+            if receiver.token in here and incoming.token not in here:
+                here.append(incoming.token)
         body = _with_tokens(
             shot.text(voices, carried=carried, cutoff=number == len(shots)),
-            tokens.get(("shots", shot.start), []))
+            here, described)
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
+        # A cue covering the shot end to end is the video's ambience and belongs to
+        # `overall_soundscape`; written here as well, the author's room tone was sent twice.
         sound = " ".join(
             _sentence(_cue_text(cue, tokens)) for cue in _cues_in(cues, shot)
+            if not _is_ambient(cue, shots)
         )
 
         if number == 1:
@@ -641,6 +696,26 @@ def _cue_text(cue, tokens: dict) -> str:
     return _with_tokens(cue.prompt.strip(), tokens.get(("cues", cue.start), []))
 
 
+def _is_ambient(cue, shots) -> bool:
+    """Sound belonging to the whole video rather than to a moment in it.
+
+    The base guide, §4.6, wants the full video's ambience in `overall_soundscape` and
+    reserves `N/A` for silence the author explicitly asked for. Only a cue running under
+    *every* shot is that ambience. A cue covering one shot of several is still timed --
+    measured 2026-08-05, a bell chime sent to `overall_soundscape` landed on the cuts,
+    because that field carries no timing at all -- so it stays in the shot it covers.
+    """
+    if not shots:
+        return True
+    if all(cue.start <= shot.start
+           and cue.start + cue.length >= shot.start + shot.length
+           for shot in shots):
+        return True
+    # Otherwise it is ambience only if it belongs to no single shot: one that sits inside
+    # a shot is timed, and timing exists there and nowhere else.
+    return not any(cue in _cues_in([cue], shot) for shot in shots)
+
+
 def _soundscape(timeline: Timeline) -> str:
     """Ambience: the cues that are not tied to a single shot.
 
@@ -654,11 +729,9 @@ def _soundscape(timeline: Timeline) -> str:
     """
     tokens = attachments.tokens_by_segment(timeline)
     shots = timeline.ordered_shots()
-    lines = [
-        _cue_text(cue, tokens)
-        for cue in timeline.ordered_cues()
-        if not any(cue in _cues_in([cue], shot) for shot in shots)
-    ]
+
+    lines = [_cue_text(cue, tokens) for cue in timeline.ordered_cues()
+             if _is_ambient(cue, shots)]
     return " ".join(_sentence(line) for line in lines if line)
 
 
@@ -706,18 +779,49 @@ def _sentence(text: str) -> str:
     return stripped if ended else f"{stripped}."
 
 
-def _with_tokens(text: str, tokens: list[str]) -> str:
-    """Make sure a segment's line names the files attached to it.
+def _in_frame(timeline: Timeline) -> dict[str, str]:
+    """What to say about each subject where it appears in the body.
+
+    A subject brought in over somebody else says so here too: the working example repeats
+    the replacement at every beat rather than stating it once in `retention_analysis`.
+    """
+    pairs = _receivers(timeline)
+    said: dict[str, str] = {}
+    for subject in attachments.subjects(timeline):
+        name = subject.name.rstrip(".")
+        if subject.token in pairs:
+            _, receiver = pairs[subject.token]
+            said[subject.token] = (
+                f"{name}, replaces {receiver.token}'s "
+                f"{_region(subject, bare=True)} and is mapped onto the same head, in the "
+                f"same position and framing, at every moment")
+        else:
+            said[subject.token] = name
+    return said
+
+
+def _with_tokens(text: str, tokens: list[str], described: dict[str, str] | None = None) -> str:
+    """Make sure a segment's line names the files attached to it, and says what they are.
 
     A file dropped on a shot is meant to be used in that shot, and H3 only uses a
     reference if the prose points at it. Rather than making the author remember to type
     `<Picture 1>`, the token is appended where it is missing -- and left alone where they
     have already placed it deliberately.
+
+    The token alone is not enough. §5.3: "At the first clear appearance of an important
+    `<Subject N>`, describe its referenced characteristics, position in the frame, and
+    current action" -- and the guide's own example writes every subject as
+    `<Subject 3> (S1), the young woman with long blonde hair ..., sits on the sofa`. A bare
+    `<Subject 2>.` at the end of the line is the label without any of that, in the section
+    that draws the frame.
     """
     missing = [token for token in tokens if token.lower() not in text.lower()]
     if not missing:
         return text
-    joined = " ".join(missing)
+    described = described or {}
+    joined = " ".join(
+        _sentence(f"{token}, {described[token]}") if described.get(token) else token
+        for token in missing)
     # Closed first, or the author's sentence and the tokens read as one phrase: "cuts to
     # second one pmpt <Subject 1>" says the prompt describes the subject. The dialogue path
     # closes it on the way past, so without this the same shot was punctuated one way with

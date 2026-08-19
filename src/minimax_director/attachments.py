@@ -224,13 +224,16 @@ def subjects(timeline: Timeline) -> list[Subject]:
     """Named subjects drawn from attached files, in the files' own order.
 
     Numbered across the whole document rather than per file, because `<Subject 3>` is what
-    the prompt says and the model has one list. A feature carried onto another card is not
-    one of these -- see `carried`.
+    the prompt says and the model has one list.
+
+    A feature carried onto somebody keeps a subject of its own. It is the thing the target
+    video will contain -- the working example of a face swap defines the incoming identity
+    as `<Subject 1>` and marks *it* `attribute_transfer`, while what it replaces is named
+    only as the thing being overwritten. Folding it into the receiver instead left the
+    prompt with nothing to point at where the new face was supposed to be.
     """
     found: list[Subject] = []
     for item, entry in _all_named(timeline):
-        if _receiver(timeline, entry):
-            continue
         found.append(Subject(len(found) + 1, str(entry["name"]).strip(),
                              item.token, entry, item.origin))
     return found

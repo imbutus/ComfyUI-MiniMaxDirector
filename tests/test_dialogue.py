@@ -287,14 +287,13 @@ def test_a_transfer_names_who_receives_it():
             "transferred onto the woman at the desk.") in prompt
 
 
-def test_a_transfer_onto_another_card_folds_into_that_card():
+def test_a_transfer_onto_another_card_names_who_it_is_written_over():
     """The `onto` picker writes the other card's name, which is a label of the editor's.
 
-    A feature carried onto somebody is a second source for that person, not a person of
-    its own: §2.1 says to combine the sources and state what each asset provides. Written
-    as its own `<Subject n>` "transferred onto <Subject 1>", the model was told to build a
-    second content unit while `<Subject 1>` kept the face it was handed -- a face swap
-    that never happened.
+    The carried feature keeps its own `<Subject n>` -- it is what the target video will
+    show where the receiver's own face was -- and the prompt states the replacement in the
+    summary, in `retention_analysis` and in the body. Said only as "transferred onto
+    <Subject 1>" beside a receiver preserved wholesale, the model kept the face it had.
     """
     timeline = Timeline.from_json(cast_merge(json.dumps({
         "duration": 96,
@@ -312,11 +311,11 @@ def test_a_transfer_onto_another_card_folds_into_that_card():
     ]})))
     prompt = compile_timeline(timeline).prompt
     assert "<Subject 1> is the man in the navy suit, from <Picture 1>" in prompt
-    assert ("<Subject 1>'s face in face.jpg comes from <Picture 2> and not from "
-            "<Picture 1>.") in prompt
-    # One person, so one subject -- and the photograph the face came out of is cited
-    # inside that person rather than described as a thing the video contains.
-    assert "<Subject 2>" not in prompt
+    assert "<Subject 2> is the face in face.jpg, from <Picture 2>." in prompt
+    assert ("<Subject 1>'s face in face.jpg is replaced by <Subject 2>, from <Picture 2>, "
+            "and nothing else about <Subject 1> changes.") in prompt
+    # The photograph itself is still cited inside the definition it feeds rather than
+    # described as a thing the video contains.
     assert "<Picture 2> is" not in prompt
     assert "transferred onto SPEAKER" not in prompt
 
