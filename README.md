@@ -202,8 +202,10 @@ pointing at the old name stopped opening. This workflow tracks the current one,
 `MinimaxH3LatentUpscaler3D`. If yours is older than that rename, `git pull` in the pack.
 
 The upscaler works directly on H3's 24-channel latents, so nothing round-trips through the
-VAE. It is new and unproven at large sizes — check a short clip before trusting it with a
-long one.
+VAE. H3's latent carries picture and sound together, though, and the upscaler takes the video
+half alone — so the branch splits the audio off with core `Separate AV Latent`, upscales, and
+rejoins with `Concat AV Latent` before the refine pass. It is new and unproven at large sizes
+— check a short clip before trusting it with a long one.
 
 This is why the workflow is one file and not several. Turbo needs no pack at all; Upscale
 needs that one, and only when you switch it on.
