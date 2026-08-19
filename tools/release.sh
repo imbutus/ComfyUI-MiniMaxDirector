@@ -93,4 +93,9 @@ fi
 git push "$remote" main 2>&1 | sed "s/${token:-__none__}/***/g"
 git push ${retag:+-f} "$remote" "$tag" 2>&1 | sed "s/${token:-__none__}/***/g"
 
+# The push went to a URL rather than to `origin`, so the remote-tracking ref did not
+# move and `git status` starts saying the upstream is gone. One fetch puts it back.
+git fetch -q origin
+git branch -q --set-upstream-to=origin/main main 2>/dev/null || true
+
 echo "release: $tag pushed"
