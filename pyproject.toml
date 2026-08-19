@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "minimax-director"
-version = "0.15.13"
+version = "0.15.14"
 description = "Timeline director for the MiniMax H3 video model in ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
