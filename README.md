@@ -113,7 +113,10 @@ Three steps: the nodes, the weights, the workflow. The nodes on their own leave 
 timeline and nothing to render it — the graph around them is the product, and it ships here
 as `examples/minimax-director.json`.
 
-Requires ComfyUI 0.30.0 or newer, which is where the MiniMax H3 nodes landed.
+Requires ComfyUI 0.31.0 or newer. The nodes themselves work on 0.30.0, where the MiniMax
+H3 nodes landed, but the workflow's **Turbo** switch needs `ModelSamplingAV` from 0.31.0 —
+without it the audio is over-stepped at four steps and comes back distorted while the
+picture looks fine.
 
 **1. The nodes.**
 
@@ -151,14 +154,22 @@ it from the Workflows sidebar. It wires up:
 
 Select a block, describe what happens in it, queue.
 
-**Faster, optional.** `examples/minimax-director-turbo.json` is the same graph with
-[larryvrh's Turbo LoRA](https://huggingface.co/larryvrh/MiniMax-H3-Turbo-Lora) between the
-model loader and the sampler: 6 steps instead of 20, so a draft costs roughly a fifth of
-the GPU time. It needs one extra file in `models/loras/`
-(`minimax_h3_turbo_v4_step600_ema.safetensors`) and the
-[ComfyUI-MiniMax-H3-Turbo](https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo) nodes.
-Kept as a separate file on purpose: the workflow above depends on nothing but ComfyUI and
-this pack.
+**Faster, when you want it.** The **Turbo** switch in the workflow's *Speed* group swaps
+the sampler to a distilled four-step one: 4 steps instead of 20, so a draft costs roughly a
+fifth of the GPU time. Off by default — the graph renders exactly as it would without the
+switch there.
+
+It needs one extra file in `models/loras/`,
+[lightx2v's Ref2VA 4-step LoRA](https://huggingface.co/lightx2v/Minimax-h3-Turbo)
+(`minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors`), and **no extra node pack** —
+it loads through ComfyUI's own `LoraLoaderModelOnly`. Distilled at 544p on the shifts H3
+already defaults to, so leave its strength at 1.0 and the scheduler on `simple`.
+
+Ref2VA turbo is a v0.1 preview: audio and fast motion are its weak spots. Switch it off for
+a final render.
+
+This is why the workflow is one file and not two. Everything here depends on nothing but
+ComfyUI and this pack.
 
 ## Development
 

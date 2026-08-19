@@ -585,16 +585,19 @@ four say the same thing. A feature the docs do not mention is a feature nobody f
 the info note is the only documentation most people ever read, because it is already on
 the canvas when they open the workflow.
 
-1. **The info node** — the `MarkdownNote` inside `examples/minimax-director.json` *and*
-   `examples/minimax-director-turbo.json`. Both, identically; they are two copies of one
-   text and drifting them apart is how the turbo workflow ends up describing an older
-   build.
+1. **The info node** — the `MarkdownNote` inside `examples/minimax-director.json`. One
+   file now: turbo is a switch in that graph rather than a second copy of it, which is what
+   the old pair kept drifting over.
 2. **The local docs** — `docs/GUIDE.md` for anything an author can see or press,
    `README.md` when the feature changes what the pack is, this file for schema, flow and
    invariants.
-3. **The-project docs** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/`
-   holds the shipped copies `minimaxh3-director.json` and `minimaxh3-director-turbo.json`.
-   Their info notes are the same text as (1) and are updated in the same pass.
+3. **The-project copies** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/`
+   holds `minimaxh3-director.json`, the same graph, and `minimaxh3-director-advanced.json`,
+   which adds a latent-upscale second stage that cannot ship here (its node pack has no
+   licence). **Edit the shared graph there, then run `tools/sync_workflow.py`** — it rewrites
+   `examples/minimax-director.json` from that copy and adds the two things only an outside
+   user needs, `cnr_id` on our nodes and `properties.models` on the loaders.
+   `tools/sync_workflow.py --check` fails if the two have drifted.
 4. **The recording plan** —
    `~/Projects/experiments/the-project-promotion/socials/youtube/imbutus-media/minimax-director/actions.md`,
    whenever the feature is something a viewer would see happen on screen.

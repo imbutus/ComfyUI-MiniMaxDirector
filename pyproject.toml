@@ -22,7 +22,8 @@ dev = ["pytest>=8"]
 [tool.comfy]
 PublisherId = "imbutus"
 DisplayName = "MiniMax Director"
-requires-comfyui = ">=0.30.0"  # where the MiniMax H3 nodes landed
+requires-comfyui = ">=0.31.0"  # 0.30.0 has the H3 nodes; 0.31.0 has ModelSamplingAV,
+                                # which the shipped workflow's Turbo path needs
 
 [tool.setuptools]
 package-dir = { "" = "src" }
