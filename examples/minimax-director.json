@@ -720,7 +720,7 @@
       "type": "PrimitiveBoolean",
       "pos": [
         40,
-        1060
+        1160
       ],
       "size": [
         270,
@@ -769,7 +769,7 @@
       "type": "LoraLoaderModelOnly",
       "pos": [
         40,
-        1200
+        1300
       ],
       "size": [
         520,
@@ -819,7 +819,7 @@
       "type": "ComfySwitchNode",
       "pos": [
         620,
-        1200
+        1300
       ],
       "size": [
         270,
@@ -884,7 +884,7 @@
       "type": "PrimitiveInt",
       "pos": [
         40,
-        1340
+        1440
       ],
       "size": [
         270,
@@ -930,7 +930,7 @@
       "type": "PrimitiveInt",
       "pos": [
         40,
-        1460
+        1560
       ],
       "size": [
         270,
@@ -976,7 +976,7 @@
       "type": "ComfySwitchNode",
       "pos": [
         620,
-        1340
+        1480
       ],
       "size": [
         270,
@@ -1040,7 +1040,7 @@
       "type": "KSamplerSelect",
       "pos": [
         40,
-        1580
+        1680
       ],
       "size": [
         300,
@@ -1075,7 +1075,7 @@
       "type": "ComfySwitchNode",
       "pos": [
         620,
-        1520
+        1660
       ],
       "size": [
         270,
@@ -1391,9 +1391,9 @@
       "title": "Speed — Turbo or quality",
       "bounding": [
         20,
-        940,
+        1040,
         890,
-        760
+        800
       ],
       "color": "#3f789e",
       "flags": {}
