@@ -194,8 +194,16 @@ def test_a_fifty_shot_timeline_stays_on_the_lattice():
 
 
 def test_a_move_combines_its_camera_and_its_note():
+    """A lower-case note continues the camera sentence rather than following its full stop."""
     timeline = build(moves=[{"start": 0, "length": 24, "camera": "orbit", "prompt": "around the sign"}])
-    assert "The camera moves in an arc around the subject. around the sign" in compile_timeline(timeline).prompt
+    assert "The camera moves in an arc around the subject, around the sign" in compile_timeline(timeline).prompt
+
+
+def test_a_note_that_is_its_own_sentence_keeps_its_full_stop():
+    timeline = build(moves=[{"start": 0, "length": 24, "camera": "orbit",
+                             "prompt": "The sign fills the frame"}])
+    assert ("The camera moves in an arc around the subject. The sign fills the frame"
+            in compile_timeline(timeline).prompt)
 
 
 def test_moves_extend_the_clip_like_any_other_track():

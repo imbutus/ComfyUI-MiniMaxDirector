@@ -10,7 +10,7 @@ import pytest
 from minimax_director import Timeline, cast, compile_timeline
 from minimax_director.lint import lint
 from minimax_director.timeline import (
-    AUDIO_RETENTIONS, CAMERA_MOTION, RETENTIONS, camera_sentence,
+    AUDIO_RETENTIONS, CAMERA_MOTION, RETENTIONS, Shot, camera_sentence,
 )
 
 
@@ -537,3 +537,33 @@ def test_the_receiver_is_analysed_as_the_transfer():
     assert ("<Subject 1> (appears in [Shot 1]): partially_preserved - the man in the navy "
             "suit: his build and greying hair are retained from <Picture 1>; the face is "
             "not retained from <Picture 1> and comes from <Subject 2> instead.") in prompt
+
+
+def _style_source():
+    """A video attached for its grain alone, with a card taking the film stock out of it."""
+    return Timeline.from_dict({
+        "duration": 64,
+        "global_prompt": "A sunny cafe terrace.",
+        "shots": [{"start": 0, "length": 64, "prompt": "A basket of croissants."}],
+        "sources": [{"kind": "video", "filename": "charade.mp4", "retention": "fully_copy",
+                     "description": "the film stock: heavy Kodak grain",
+                     "subjects": [{"name": "the film stock: heavy Kodak grain",
+                                   "retention": "attribute_transfer"}]}],
+    })
+
+
+def test_a_style_videos_soundtrack_is_not_declared():
+    """The soundtrack rides along with the frames whether or not anybody wanted it. Declared,
+    it claimed the picture's words and promised the clip's whole audio track."""
+    prompt = compile_timeline(_style_source()).prompt
+    assert "<Audio 1>" not in prompt
+
+
+def test_a_soundtrack_the_prose_points_at_keeps_its_entry():
+    timeline = _style_source()
+    timeline.shots = [Shot(start=0, length=64,
+                           prompt="A basket of croissants, to the sound of <Audio 1>.")]
+    prompt = compile_timeline(timeline).prompt
+    assert "<Audio 1> is the audio in charade.mp4." in prompt
+    # ...and never the words written about the picture.
+    assert "<Audio 1> is the film stock" not in prompt

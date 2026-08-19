@@ -160,6 +160,35 @@ def _render_reference(timeline: Timeline) -> str:
     return "\n\n".join(fields)
 
 
+def _author_text(timeline: Timeline) -> str:
+    """Everything the author typed, as one string.
+
+    Used to answer one question: did they point at this token by hand?
+    """
+    parts: list[str] = [timeline.global_prompt, timeline.music]
+    for shot in timeline.shots:
+        parts.extend([shot.prompt, shot.screen_text])
+        parts.extend(line.text for line in shot.lines)
+    parts.extend(cue.prompt for cue in timeline.cues)
+    parts.extend(move.prompt for move in timeline.moves)
+    return " ".join(str(part or "") for part in parts)
+
+
+def _rides_along(timeline: Timeline, item) -> bool:
+    """A reference video's own soundtrack, which nothing in the prose points at.
+
+    The core node wires that soundtrack in beside the frames, so it has a token whether or
+    not anybody wanted it -- and it shares the video's record. Everything written about the
+    picture therefore reads as a claim about the sound: a film stock as the description of
+    a waveform, and the file's `fully_copy` promising the video's audio as the whole clip's
+    final track when all the author took from it was the grain. A style source is the
+    ordinary case here, so the soundtrack is declared only when the prose asks for it.
+    """
+    if item.kind != "audio" or str(item.record.get("kind", "")).strip() != "video":
+        return False
+    return item.token not in _author_text(timeline)
+
+
 def _only_defines(timeline: Timeline, item) -> bool:
     """Is this file here purely to define somebody, rather than to be a frame of the video?
 
@@ -191,7 +220,7 @@ def _subject_definitions(timeline: Timeline) -> str:
     """
     lines = []
     for item in attachments.collect(timeline):
-        if _only_defines(timeline, item):
+        if _only_defines(timeline, item) or _rides_along(timeline, item):
             continue
         if str(item.record.get("role", "")).strip() == "storyboard":
             # The guide's own sentence for a shot-planning image (§2.2). It matters that
@@ -393,7 +422,10 @@ def _task_types(timeline: Timeline) -> str:
 
 def _summary(timeline: Timeline) -> str:
     """One paragraph, opening with the bracketed task type."""
-    tokens = [item.token for item in attachments.collect(timeline)]
+    # A soundtrack nobody asked for is not a reference this clip was generated from, and
+    # naming it here while `subject_definitions` leaves it out is a token defined nowhere.
+    tokens = [item.token for item in attachments.collect(timeline)
+              if not _rides_along(timeline, item)]
     shots = len(timeline.ordered_shots())
     scene = timeline.global_prompt.strip().rstrip(".")
 
@@ -430,7 +462,7 @@ def _retention_analysis(timeline: Timeline) -> str:
     for item in attachments.collect(timeline):
         # Nothing to analyse for a file that has no entry of its own: it was cited inside
         # the subject it defines, and that subject's own line is below.
-        if _only_defines(timeline, item):
+        if _only_defines(timeline, item) or _rides_along(timeline, item):
             continue
         marker = _retention(item)
         where = _appears_in(timeline, item)
@@ -524,8 +556,16 @@ def _named_subject(timeline: Timeline, people: list, onto: str) -> str:
 
 
 def _described(item) -> str:
-    """What the author said this reference is, or the filename as a last resort."""
-    described = str(item.record.get("description", "")).strip().rstrip(".")
+    """What the author said this reference is, or the filename as a last resort.
+
+    A video's soundtrack shares the video's record, and a description written for the
+    picture is not a description of the sound -- so it falls straight through to the
+    filename rather than claiming the frames' words.
+    """
+    if item.kind == "audio" and str(item.record.get("kind", "")).strip() == "video":
+        described = ""
+    else:
+        described = str(item.record.get("description", "")).strip().rstrip(".")
     if described:
         return described
     name = str(item.record.get("filename", "")).strip()

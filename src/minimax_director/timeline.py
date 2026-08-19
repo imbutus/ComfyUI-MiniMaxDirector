@@ -621,6 +621,12 @@ class Move:
         prose = camera_sentence(self.camera, self.amplitude, self.speed).strip()
         body = self.prompt.strip()
         if prose and body:
+            # A note that opens in lower case is a continuation of the camera sentence --
+            # "closing on the croissants" -- and after a full stop it read as a fragment
+            # stranded on its own: "The camera pushes in. closing on the croissants." One
+            # that opens with a capital is a sentence of its own and is left alone.
+            if body[0].islower() and prose.endswith("."):
+                return f"{prose[:-1]}, {body}"
             return f"{prose} {body}"
         return prose or body
 
