@@ -24,7 +24,9 @@ with the exact names and directories, and the workflow that wires them together.
 kept in one place so the two cannot drift apart.
 
 The short version: ComfyUI 0.31.0 or newer, no pip install, no dependencies, and **two**
-VAEs rather than one — H3 produces picture and sound in the same pass.
+VAEs rather than one — H3 produces picture and sound in the same pass. The workflow's
+**Upscale** switch is the one exception: it is off by default, and turning it on needs a
+second node pack, which the README's Install names.
 
 ---
 

@@ -599,9 +599,12 @@ the canvas when they open the workflow.
    `tools/sync_workflow.py` — it rewrites the public file and adds the two things only an
    outside user needs, `cnr_id` on our nodes and `properties.models` on the loaders.
    `tools/sync_workflow.py --check` fails if the two have drifted; never hand-edit the
-   public file. Opening it without `Comfyui_Minimax_h3_latent_Upscaler` installed shows a
-   Missing Node Types dialog and red upscale nodes; with the Upscale switch off the graph
-   still runs, because nothing downstream of it is used.
+   public file, and re-run it after a version bump — `release.sh` does, because the stamp it
+   writes is the version. Opening the graph without `Comfyui_Minimax_h3_latent_Upscaler`
+   installed shows a Missing Node Types dialog and one red node,
+   `H3LatentUpscalerNodeMegapixels`; with the Upscale switch off the graph still runs,
+   because nothing downstream of it is used. That pack and its model are documented in
+   README's Install, which is the only place an outside user is told to fetch them.
 4. **The recording plan** —
    `~/Projects/experiments/the-project-promotion/socials/youtube/imbutus-media/minimax-director/actions.md`,
    whenever the feature is something a viewer would see happen on screen.

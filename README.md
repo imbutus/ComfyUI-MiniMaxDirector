@@ -34,7 +34,9 @@ It ships as a whole workflow, not just a node pack: `examples/minimax-director.j
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
 and video out. Install it, open it, start writing shots. See **[Install](#install)**.
 
-MIT licensed. No dependencies beyond ComfyUI itself.
+MIT licensed. The pack has no dependencies beyond ComfyUI itself; the workflow's
+optional **Upscale** switch is the one thing that asks for another pack, and it is off
+by default.
 
 ## Where this came from
 
@@ -151,6 +153,8 @@ it from the Workflows sidebar. It wires up:
   "why did it do that" is answered by those two panels.
 - the loaders, sampler, both VAE decodes, `CreateVideo` and `SaveVideo` — everything
   needed to get an mp4 with sound out the other end.
+- two switches, both off by default: **Turbo** in the *Speed* group and **Upscale** in the
+  *Upscale* group — described below, with what each one needs.
 
 Select a block, describe what happens in it, queue.
 
@@ -168,8 +172,36 @@ already defaults to, so leave its strength at 1.0 and the scheduler on `simple`.
 Ref2VA turbo is a v0.1 preview: audio and fast motion are its weak spots. Switch it off for
 a final render.
 
-This is why the workflow is one file and not two. Everything here depends on nothing but
-ComfyUI and this pack.
+**Bigger, when you want it.** The **Upscale** switch in the workflow's *Upscale* group adds
+a second stage: the finished latent is enlarged to `target_megapixels` and refined there.
+Off by default, and off it costs nothing — nothing below the branch runs.
+
+Render first, look at it, and only then pay for the resolution. Flip Upscale on and queue
+the same graph again: nothing upstream changed, so ComfyUI serves the first pass from its
+cache and only the second one costs anything. That second pass is a real render at the
+larger size — it costs time and VRAM, not just the download.
+
+This is the one part of the graph that needs a second node pack:
+
+```
+cd ComfyUI/custom_nodes
+git clone https://github.com/LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler.git
+```
+
+and `minimax_h3_latent_upscaler_3d_fp16.safetensors` (691MB) from
+[`LBH-123-AI/Minimax_h3_latent_Upscaler`](https://huggingface.co/LBH-123-AI/Minimax_h3_latent_Upscaler)
+in `models/latent_upscale_models/`, the folder that pack registers.
+
+Without the pack, ComfyUI opens the workflow with a Missing Node Types dialog and one red
+node. That is expected, not a broken download: the switch is off, nothing downstream of it
+is used, and the render works. Install the pack when you want the branch.
+
+The upscaler works directly on H3's 24-channel latents, so nothing round-trips through the
+VAE. It is new and unproven at large sizes — check a short clip before trusting it with a
+long one.
+
+This is why the workflow is one file and not several. Turbo needs no pack at all; Upscale
+needs that one, and only when you switch it on.
 
 ## Development
 

@@ -63,6 +63,16 @@ swap("web/build.js", r'^export const VERSION = ".*";$', f'export const VERSION =
 swap("web/build.js", r'^export const BUILD = ".*";$', f'export const BUILD = "{stamp}";')
 PY
 
+# The public workflow stamps the version on our three nodes, so it moves with the bump. It is
+# generated from the-project's copy; without that checkout there is nothing to regenerate from,
+# and the stamp simply stays where it was rather than failing the release.
+source="$HOME/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/minimaxh3-director.json"
+if [ -f "$source" ]; then
+    python3 tools/sync_workflow.py
+else
+    echo "release: no the-project checkout -- examples/minimax-director.json left as it is" >&2
+fi
+
 # --- the gate --------------------------------------------------------------------------
 COMFYUI_PATH="${COMFYUI_PATH:-$HOME/dev/ComfyUI}"
 python="$COMFYUI_PATH/.venv/bin/python"
@@ -78,7 +88,7 @@ echo "release: loadcheck"
 ./tools/loadcheck.sh >/dev/null
 
 # --- commit, tag, push ------------------------------------------------------------------
-git add pyproject.toml web/build.js
+git add pyproject.toml web/build.js examples/minimax-director.json
 git commit -q -m "$version"
 git tag ${retag:+-f} -a "$tag" -m "$message"
 
