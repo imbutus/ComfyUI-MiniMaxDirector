@@ -216,6 +216,13 @@ not on screen — and the TIMELINE tab shows:
   Typing the number by hand is the alternative, and getting it wrong is silent — the
   prompt then cites a subject that does not exist and nothing on screen says so. A card
   with no description takes no number and so has no chip.
+
+  Naming a subject in a *later* shot is how a thing stays the same thing across a cut: the
+  same basket in three shots is one `<Subject 1>` written into all three, not three
+  descriptions of a basket. The compiler follows — the card's line in `retention_analysis`
+  reads `(appears in [Shot 1], [Shot 2] and [Shot 3])` rather than naming only the shot its
+  file sits on. Without it the model is told the basket belongs to one shot and is free to
+  invent another for the next.
 - **The file chips** follow them on the same strip, told apart by shape rather than by
   reading them: a subject is a pill with a round face, a file is square-cornered with a
   square thumbnail and a monospaced name — `<Picture 2> face.jpg`,

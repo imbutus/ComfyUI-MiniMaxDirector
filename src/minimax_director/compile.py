@@ -629,12 +629,42 @@ def _retention(item) -> str:
     return markers[0]
 
 
+def _named_in(timeline: Timeline, token: str) -> list[int]:
+    """Every shot whose own words name this token, in playback order.
+
+    The guide keeps a thing consistent across a cut by naming the same `<Subject n>` in
+    each shot it appears in -- so a basket written into Shot 2 and Shot 3 is the same
+    basket, not a new one each time. The author does that naming with the subject chips;
+    this reads it back, so the retention line covers every shot rather than only the one
+    the file happens to sit on.
+    """
+    found = []
+    for number, shot in enumerate(timeline.ordered_shots(), start=1):
+        words = " ".join([shot.prompt or "", shot.screen_text or ""]
+                         + [line.text or "" for line in shot.lines])
+        if token in words:
+            found.append(number)
+    return found
+
+
 def _appears_in(timeline: Timeline, item) -> str:
     """`(appears in [Shot 2])`, or `([Shot 1] first frame)` for a concrete frame anchor.
 
     A reference video's own soundtrack has no origin of its own -- it belongs to the video
     rather than to a block on the timeline -- so it gets no shot list.
     """
+    if isinstance(item, attachments.Subject):
+        # The shot its file sits on, plus every shot whose words name it. In the first the
+        # compiler writes the token itself, so the author's prose does not carry it and
+        # `_named_in` alone would leave that shot out of its own subject's line.
+        covers = set(_named_in(timeline, item.token))
+        if item.origin and item.origin[0] == "shots":
+            for number, shot in enumerate(timeline.ordered_shots(), start=1):
+                if shot.start == item.origin[1]:
+                    covers.add(number)
+        if covers:
+            here = _join([f"[Shot {number}]" for number in sorted(covers)])
+            return f" (appears in {here})"
     if item.origin is None:
         return ""
     role = str(item.record.get("role", "")).strip()

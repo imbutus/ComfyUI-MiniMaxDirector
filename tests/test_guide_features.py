@@ -567,3 +567,22 @@ def test_a_soundtrack_the_prose_points_at_keeps_its_entry():
     assert "<Audio 1> is the audio in charade.mp4." in prompt
     # ...and never the words written about the picture.
     assert "<Audio 1> is the film stock" not in prompt
+
+
+def test_a_subject_named_in_later_shots_is_analysed_across_them():
+    """The guide keeps a thing consistent across a cut by naming the same subject in every
+    shot it appears in. The retention line has to follow, or the model is told the basket
+    belongs to Shot 1 while the prose puts it in three."""
+    timeline = Timeline.from_dict({
+        "duration": 192,
+        "shots": [
+            {"start": 0, "length": 64, "prompt": "A basket of croissants on the table.",
+             "media": {"kind": "image", "filename": "croissant.png", "role": "reference",
+                       "subjects": [{"name": "the croissants: golden and flaking",
+                                     "retention": "fully_preserved"}]}},
+            {"start": 64, "length": 64, "prompt": "The same table, wider. <Subject 1>."},
+            {"start": 128, "length": 64, "prompt": "A raccoon reaches into <Subject 1>."},
+        ],
+    })
+    prompt = compile_timeline(timeline).prompt
+    assert "<Subject 1> (appears in [Shot 1], [Shot 2] and [Shot 3]): fully_preserved" in prompt

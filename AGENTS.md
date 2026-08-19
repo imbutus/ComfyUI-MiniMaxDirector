@@ -111,6 +111,11 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 ```
 
 - **Frames are authoritative.** Seconds are derived at compile time only.
+- A **subject's** shot list is not its file's. `_appears_in` unions the block the file sits
+  on with every shot whose own words name the token (`_named_in`), because that is how the
+  guide keeps one thing the same thing across a cut: the author writes `<Subject 1>` into
+  each shot it appears in, with the chips. A file's shot list is unchanged — it is where
+  the file is, not where the thing it defines is.
 - `sources` are media records that belong to the clip rather than to a block. They are
   collected by `attachments.collect` after the blocks of their kind, with `origin=None`,
   which is what `_appears_in` reads when it decides whether to write `(appears in [Shot
@@ -318,6 +323,7 @@ summary:
 
 retention_analysis:
 <Picture 1> (appears in [Shot 1]): fully_preserved - …
+<Subject 1> (appears in [Shot 1], [Shot 2] and [Shot 3]): fully_preserved - …
 
 detailed_description: <global>
 [Shot 1] <shot text> …
