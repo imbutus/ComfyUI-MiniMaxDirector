@@ -7,7 +7,7 @@
  * instead of something to argue about.
  */
 
-export const BUILD = "2026-08-19·02:00";
+export const BUILD = "2026-08-19·06:15";
 
 /**
  * Which release this is.
@@ -16,4 +16,4 @@ export const BUILD = "2026-08-19·02:00";
  * pack am I running?", which is the one you quote in a bug report. Kept in step with
  * `pyproject.toml` by a test, because two versions that can disagree eventually do.
  */
-export const VERSION = "0.14.2";
+export const VERSION = "0.14.3";
