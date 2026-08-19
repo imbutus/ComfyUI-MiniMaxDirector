@@ -237,8 +237,11 @@ through `editor.onAddCard`.
   `compile._receivers` pairs it with the subject it is written over. Four places say so:
   its `retention_analysis` line (`attribute_transfer - ... replaces <Subject 1>'s face
   only, mapped onto the same position and framing at every moment`), the receiver's line
-  (what its picture supplies, with the replaced region named as excluded), `_replacements`
-  in the summary, and `_in_frame` in the shot body. That is the shape of a working
+  (what its picture supplies, with the replaced region named as excluded, and
+  **`partially_preserved` however the card is set** -- the guide defines that marker as
+  content still used with some characteristics changed, and `fully_preserved` beside a
+  sentence excluding the face is a contradiction the model resolves in favour of the
+  marker), `_replacements` in the summary, and `_in_frame` at the **head** of the shot. That is the shape of a working
   identity replacement; two others failed on three paid runs -- folding the feature into
   the receiver left nothing to point at where the new face belonged, and before that the
   receiver was `fully_preserved` over the whole person beside a transfer onto it. `_only_defines` counts a

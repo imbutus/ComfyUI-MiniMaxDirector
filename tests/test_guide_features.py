@@ -504,13 +504,15 @@ def test_the_incoming_face_is_a_subject_of_its_own():
             "else about <Subject 1> changes.") in prompt
 
 
-def test_the_body_names_the_replacement_where_it_happens():
+def test_the_body_opens_the_shot_with_the_replacement():
     """§5.3: a subject is described where it appears, with its characteristics and its
-    current action. The body used to append a bare token and never mention the swap."""
+    current action -- and the working example opens its shot with the incoming identity in
+    the original's place. Appended after the author's sentence, the frame was drawn as the
+    original man first and the swap read as an afterthought."""
     body = compile_timeline(_swapped()).prompt
     body = body[body.index("detailed_description:"):]
-    assert ("<Subject 2>, the face: bone structure, eyes, nose and jawline, replaces "
-            "<Subject 1>'s face and is mapped onto the same head") in body
+    assert ("[Shot 1] <Subject 2>, the face: bone structure, eyes, nose and jawline, "
+            "replaces <Subject 1>'s face and is mapped onto the same head") in body
 
 
 def test_the_photograph_a_face_comes_from_keeps_no_entry_of_its_own():
@@ -528,6 +530,10 @@ def test_the_receiver_is_analysed_as_the_transfer():
     assert ("<Subject 2> (appears in [Shot 1]): attribute_transfer - the face: bone "
             "structure, eyes, nose and jawline, from <Picture 2>, replaces <Subject 1>'s "
             "face only, mapped onto the same position and framing at every moment") in prompt
-    assert ("<Subject 1> (appears in [Shot 1]): fully_preserved - the man in the navy "
+    # partially_preserved, though the card says fully: the guide's own definition of the
+    # marker is content still used with some characteristics changed, and a person whose
+    # face is replaced is that. Marked fully beside a sentence excluding the face, the
+    # prompt gave the model a contradiction and the model took the marker.
+    assert ("<Subject 1> (appears in [Shot 1]): partially_preserved - the man in the navy "
             "suit: his build and greying hair are retained from <Picture 1>; the face is "
             "not retained from <Picture 1> and comes from <Subject 2> instead.") in prompt

@@ -471,8 +471,17 @@ def _retention_analysis(timeline: Timeline) -> str:
             # written over is named as excluded -- the working example enumerates exactly
             # what survives and leaves the replaced identity out of that list.
             incoming = written[subject.token]
+            # Not `fully_preserved`, whatever the card says. The guide defines
+            # `partially_preserved` as "the referenced content is still used, but some
+            # defined characteristics are changed or only partially retained", which is
+            # what a person whose face is replaced is. Marked `fully_preserved` beside a
+            # sentence excluding the face, the prompt said keep-everything and
+            # keep-everything-but-the-face at once, and the model took the marker.
+            marker = _retention(subject)
+            if marker == "fully_preserved":
+                marker = "partially_preserved"
             lines.append(
-                f"{subject.token}{where}: {_retention(subject)} - "
+                f"{subject.token}{where}: {marker} - "
                 f"{subject.name.rstrip('.')} are retained from {subject.source}; "
                 f"{_region(incoming)} is not retained from {subject.source} and comes "
                 f"from {incoming.token} instead.")
@@ -616,12 +625,22 @@ def _description(timeline: Timeline, style_apart: bool = False) -> str:
         # A subject written over somebody belongs in the shot that somebody is in: its own
         # file sits in the clip rather than on a block, so nothing else would name it, and
         # a replacement the body never mentions is one the frame never shows.
+        #
+        # It goes *before* the author's sentence, not after it. The working example opens
+        # its shot with the incoming identity in the original's place; appended at the end,
+        # the frame was drawn as the original man for a whole sentence, and the swap read
+        # as an afterthought to a scene already described without it.
+        opens = []
         for incoming, receiver in _receivers(timeline).values():
             if receiver.token in here and incoming.token not in here:
-                here.append(incoming.token)
+                opens.append(incoming.token)
         body = _with_tokens(
             shot.text(voices, carried=carried, cutoff=number == len(shots)),
             here, described)
+        if opens:
+            body = " ".join(
+                [_sentence(f"{token}, {described[token]}") for token in opens]
+                + ([body] if body else []))
         camera = " ".join(move.text() for move in _moves_in(moves, shot) if move.text())
         # A cue covering the shot end to end is the video's ambience and belongs to
         # `overall_soundscape`; written here as well, the author's room tone was sent twice.

@@ -457,15 +457,22 @@ A card holds:
   … <Subject 1>'s face is replaced by <Subject 2>, from <Picture 2>, and nothing else
   about <Subject 1> changes.
 
-  <Subject 1> (appears in [Shot 1]): fully_preserved - the man in the navy suit: his
+  <Subject 1> (appears in [Shot 1]): partially_preserved - the man in the navy suit: his
   build … are retained from <Picture 1>; the face is not retained from <Picture 1> and
   comes from <Subject 2> instead.
   <Subject 2> (appears in [Shot 1]): attribute_transfer - the face … replaces
   <Subject 1>'s face only, mapped onto the same position and framing at every moment.
 
-  [Shot 1] … <Subject 2>, the face …, replaces <Subject 1>'s face and is mapped onto the
-  same head, in the same position and framing, at every moment.
+  [Shot 1] <Subject 2>, the face …, replaces <Subject 1>'s face and is mapped onto the
+  same head, in the same position and framing, at every moment. <your shot prompt> …
   ```
+
+  The receiver reads `partially_preserved` even when its card says `fully_preserved`:
+  the guide defines that marker as content still used with some characteristics changed,
+  and a person whose face is replaced is exactly that. `fully_preserved` beside a sentence
+  excluding the face is a contradiction, and the model resolves it in favour of the
+  marker. The shot opens with the replacement, before your own sentence, so the frame is
+  never drawn as the original person first.
 
   **The incoming feature keeps its own subject, and it carries the marker.** That is the
   shape a working identity replacement uses: the thing being brought in is the
