@@ -22,6 +22,7 @@ import {
   audioOf, filesOf,
 } from "./model.js";
 import { numbering } from "./cast.js";
+import { caretOf, fill, rememberCaret } from "./caret.js";
 
 
 /**
@@ -142,26 +143,6 @@ const nameOf = (card) =>
 const isEditable = (el) =>
   !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 
-/**
- * Write a value into a text box without moving its caret.
- *
- * The three prompt boxes are repainted from the document whenever anything on the node
- * changes, and one of those repaints lands between the click on a token chip and the
- * insert that click asks for. Assigning `value` -- even the identical string -- drops the
- * caret at the end of the text, so `<Audio 1>` arrived at the end rather than where it was
- * left. That is the whole of "sometimes at the cursor, sometimes at the end": it depended
- * on whether a repaint happened to fall in the gap.
- *
- * So: never write a value that is already there, and when a real change has to be written,
- * put the selection back. The browser clamps it to the new length.
- */
-const fill = (box, value) => {
-  if (!box || box.value === value) return;
-  const at = box.selectionStart;
-  const to = box.selectionEnd;
-  box.value = value;
-  if (at != null) box.setSelectionRange(at, to ?? at);
-};
 
 const ZOOM_STEP = 1.35;
 const HISTORY_LIMIT = 100;
@@ -318,6 +299,13 @@ export class TimelineEditor {
     // box beside a short one -- a layout nobody chose, just the one the last drag happened
     // to leave behind.
     this.pairHeights(".mmd-global", ".mmd-music");
+
+    // Every box a token chip can write into remembers where its caret was left. The click
+    // that asks for the token is also the click that blurred the box, so by the time the
+    // insert runs the only reliable answer is the one recorded here.
+    for (const selector of [".mmd-seg-prompt", ".mmd-global", ".mmd-music"]) {
+      rememberCaret(this.root.querySelector(selector));
+    }
 
     this.bar = this.root.querySelector(".mmd-bar");
     this.tabs = this.root.querySelector(".mmd-tabs");
@@ -867,8 +855,7 @@ export class TimelineEditor {
   /** Put a token where the caret is, as though it had been typed. */
   writeToken(token, box = this.segPrompt) {
     if (!box || box.disabled) return;
-    const at = box.selectionStart ?? box.value.length;
-    const to = box.selectionEnd ?? at;
+    const [at, to] = caretOf(box, document.activeElement);
     const before = box.value.slice(0, at);
     const after = box.value.slice(to);
     // Spaced off the words around it, but never doubling a space that is already there.
