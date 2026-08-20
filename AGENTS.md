@@ -234,20 +234,26 @@ through `editor.onAddCard`.
   card has a voice", which is false in exactly the case it exists for.
 - `speaks` on a card (new field, absent means true) is a per-card mute. `cast.merge` calls
   `_silence`, which strips that speaker's `Sn` from every line's `ids` and drops a line left
-  with nobody — so the words stay in the document and stop compiling. The clip-wide
-  `they speak` box now sets every card's `speaks` rather than being a mode of its own.
+  with nobody — so the words stay in the document and stop compiling. It is the only
+  dialogue switch on the panel: the clip-wide `they speak` box is gone, `speech` on the
+  cast document is derived in `parseCast` as "some card speaks", and a document that stored
+  `speech: false` is folded into the cards on the way in (`quiet`) — left on the document it
+  would mute every card while every card's own box said otherwise. An empty cast still reads
+  `speech: true`, so a clip with no cards yet keeps its dialogue row on the TIMELINE tab.
 - The mute reaches everything a voice touches, not only the lines: `Speaker.speaks` carries
   it into the compiler, where `_spoken_by` skips the card so its subject stops saying
   `, and sounds like this: …`; `_check_speakers` reads a muted card as unvoiced, so it is
   told to point `from` at a file or tick `speaks` and is never told it "has a voice but says
-  nothing"; and `cast.paint` puts `mmd-mute` on the row, which hides the voice row and
-  hollows the `Sn` badge. Wiring the mute into `_silence` alone left a voice compiled for
+  nothing"; and `cast.paint` puts `mmd-mute` on the row, which disables the voice row and
+  hollows the `Sn` badge. Locked, never hidden: `display:none` on a control inside a card
+  changes that card's height while the pointer is still on the tick, and everything below
+  it moves. Wiring the mute into `_silence` alone left a voice compiled for
   somebody with no lines and a card asking on screen for a voice it would not use.
-- `voice_from` is dropped by `cast.merge` when `they speak` is off, and the editor hides
-  the whole voice row with it. A timbre reference is an instruction about a voice; with no
-  dialogue compiled the prompt was saying a recording was the reference for a speaker it
-  never asked the model to voice. `.mmd-card-sid` — the `Sn` badge on a card and the `S1…Sn`
-  line of the legend — is hidden by the same rule, for the same reason.
+- `voice_from` is dropped by `cast.merge` for a card that does not speak, and the editor
+  locks the whole voice row with it. A timbre reference is an instruction about a voice;
+  with no dialogue compiled the prompt was saying a recording was the reference for a
+  speaker it never asked the model to voice. The `S1…Sn` line of the legend is faded once
+  nobody speaks, by `.mmd-cast-box.mmd-off`, for the same reason.
 - The other half is the reverse -- a voice, and no line naming its `S`. `voice_from` makes
   it a wrong statement rather than an idle one: the prompt says a recording is the timbre
   reference for a speaker nothing ever asks the model to voice. This half *is* guarded on

@@ -966,5 +966,5 @@ def _with_tokens(text: str, tokens: list[str], described: dict[str, str] | None 
     # Closed first, or the author's sentence and the tokens read as one phrase: "cuts to
     # second one pmpt <Subject 1>" says the prompt describes the subject. The dialogue path
     # closes it on the way past, so without this the same shot was punctuated one way with
-    # `they speak` on and another way with it off.
+    # a speaking cast and another way with a silent one.
     return f"{_sentence(text)} {joined}" if text else joined

@@ -1080,7 +1080,7 @@ export class TimelineEditor {
     for (const el of [this.bar, this.settings]) if (el) this.bandWatch.observe(el);
   }
 
-  /** Whether anybody speaks: the `they speak` switch on WHO & WHAT, off by default. */
+  /** Whether anybody speaks: some card on WHO & WHAT with its `speaks` box ticked. */
   speaks() {
     const cast = this.castOf?.();
     return !!cast && cast.speech !== false;

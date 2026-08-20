@@ -547,24 +547,27 @@ amber across it and the same line in `report`.
 A green **`[Shot n]`** badge says where the card is heard, which is otherwise only visible
 from the TIMELINE tab.
 
-**Each card has its own speech box**, under its picture. Unticked, that card stops speaking
-and its words stay where they are: the lines sit on their blocks, out of the prompt, and one
-click puts them back. A line two cards share loses only the one that was silenced. The
-whole voice row goes with it — the description as well as `voice from` — for the reason the
-clip-wide switch takes it away: with nothing of that card compiled, how they sound is an
-instruction about nothing, and the prompt stops carrying it. `S2` is hollowed out rather
-than hidden, because the number is still theirs the moment the box is ticked again.
+**speaks**, under each card's picture, is the only dialogue switch there is. Unticked, that
+card stops speaking and its words stay where they are: the lines sit on their blocks, out of
+the prompt, and one click puts them back. A line two cards share loses only the one that was
+silenced. Nothing else of that card is compiled either — how they sound goes with the lines,
+`voice from` included, because a timbre reference is an instruction about a voice and with
+nobody speaking it would tell the model a recording is the reference for a speaker it is
+never asked to voice.
 
-**Add** adds a card. **they speak** is that box for all of them at once — one press silences
-the whole cast, another gives it back, and the per-card boxes show which way it went.
-Historically it was a switch of its own; it now sets the cards. Dialogue off for the clip: the
-rows and
-every `<d>` go at once, and the cards stay — a character can be in a clip without saying
-anything. The voice row goes with them, `voice from` included: a timbre reference is an
-instruction about a voice, and with nobody speaking the compiler drops it rather than
-telling the model a recording is the reference for a speaker it never voices. The `Sn`
-badge goes too, on the cards and in the legend: it is the number a card is called by when
-it says something, and with the switch off no card says anything.
+The voice row stays on screen and locks: dimmed, dashed, not typeable. Taking it away
+changed the height of the card under the pointer and moved every card below it, and a panel
+that jumps when you press something is one you stop trusting. `S2` is hollowed out for the
+same reason — the number is still theirs the moment the box is ticked again — and so is the
+`S1…Sn` line of the legend, once nobody is left speaking.
+
+Untick every card and nobody speaks: the dialogue rows leave the blocks and every `<d>`
+leaves the prompt. There is no separate box for that any more. One that said `they speak`
+sat under the list and set all of them at once; it said the same thing as the cards in the
+other direction, and two controls for one fact is one too many. A document that stored the
+old clip-wide `off` is read as every card muted, which is what it meant.
+
+**Add** adds a card.
 
 WHO & WHAT lives on the document rather than on each line because a speaker is not a property
 of one shot. Describing the same `S1` two different ways in two blocks was possible before,

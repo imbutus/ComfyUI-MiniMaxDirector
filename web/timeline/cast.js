@@ -39,35 +39,40 @@ export function parseCast(text) {
   try {
     const document = JSON.parse(text || "{}");
     if (!document || typeof document !== "object") return { ...EMPTY };
-    return {
-      version: 1,
-      speech: document.speech !== false,
-      cards: (Array.isArray(document.cards) ? document.cards : [])
-        .filter((card) => card && typeof card === "object")
-        .map((card, position) => ({
-          id: Number(card.id) || position + 1,
-          uid: String(card.uid || ""),
-          name: String(card.name || ""),
-          file: String(card.file || ""),
-          description: String(card.description || ""),
-          // Never blank. The select shows the first marker when the value is empty, while
-          // the compiler reads an empty subject marker as "retain this person the way the
-          // file they came from is retained" -- so a card reading `fully_preserved` beside
-          // a `weak_reference` photo compiled as `weak_reference`. What is displayed is
-          // what is stored.
-          keep: String(card.keep || RETENTIONS[0]),
-          onto: String(card.onto || ""),
-          voice: String(card.voice || ""),
-          // A second asset for the same person, and a third: the guide allows one subject
-          // to be defined by several files, each supplying a different thing. A still says
-          // what somebody looks like and can say nothing about how they move or sound.
-          motion_from: String(card.motion_from || ""),
-          voice_from: String(card.voice_from || ""),
-          // Whether this card speaks. Absent means yes, so a document written before the
-          // box existed keeps every voice it had.
-          speaks: card.speaks !== false,
-        })),
-    };
+    // A clip-wide `speech: false`, written when there was a box for it, is folded into
+    // the cards it was standing in for. Left on the document it would mute every card
+    // while every card's own box said otherwise, and nothing on screen would undo it.
+    const quiet = document.speech === false;
+    const cards = (Array.isArray(document.cards) ? document.cards : [])
+      .filter((card) => card && typeof card === "object")
+      .map((card, position) => ({
+        id: Number(card.id) || position + 1,
+        uid: String(card.uid || ""),
+        name: String(card.name || ""),
+        file: String(card.file || ""),
+        description: String(card.description || ""),
+        // Never blank. The select shows the first marker when the value is empty, while
+        // the compiler reads an empty subject marker as "retain this person the way the
+        // file they came from is retained" -- so a card reading `fully_preserved` beside
+        // a `weak_reference` photo compiled as `weak_reference`. What is displayed is
+        // what is stored.
+        keep: String(card.keep || RETENTIONS[0]),
+        onto: String(card.onto || ""),
+        voice: String(card.voice || ""),
+        // A second asset for the same person, and a third: the guide allows one subject
+        // to be defined by several files, each supplying a different thing. A still says
+        // what somebody looks like and can say nothing about how they move or sound.
+        motion_from: String(card.motion_from || ""),
+        voice_from: String(card.voice_from || ""),
+        // Whether this card speaks. Absent means yes, so a document written before the
+        // box existed keeps every voice it had.
+        speaks: card.speaks !== false && !quiet,
+      }));
+    // Derived, not authored: "does anybody speak" is the answer the cards give. The
+    // compiler and the TIMELINE tab both read it, so it is still written to the document.
+    // With no cards at all nobody has said otherwise, and the TIMELINE tab keeps its
+    // dialogue row -- which is where the first line of a clip gets written.
+    return { version: 1, speech: !cards.length || cards.some((card) => card.speaks), cards };
   } catch {
     return { ...EMPTY };
   }
@@ -139,9 +144,6 @@ export class CastEditor {
           <div class="mmd-cast"></div>
           <div class="mmd-cast-foot">
             <button class="mmd-cast-add" title="A card for one subject -- a person, but equally a costume, a prop, a place or a style. Drawn from a file on the director's timeline if there is one, so the picture and the voice are known to be the same subject. Several cards may point at the same file: that is how one photograph names several things.">Add</button>
-            <label class="mmd-switch" title="The dialogue switch for the whole clip. Off, nobody speaks: every DIALOGUE row goes off the blocks and every <d> goes out of the prompt, in one press. The cards stay -- a card can be in a clip without saying anything, and most of them never do.">
-              <input class="mmd-speech" type="checkbox"> they speak
-            </label>
             <span class="mmd-grow"></span>
             <span class="mmd-stamp">${BUILD}</span>
           </div>
@@ -149,18 +151,8 @@ export class CastEditor {
       </div>`;
 
     this.list = this.root.querySelector(".mmd-cast");
-    this.speech = this.root.querySelector(".mmd-speech");
     this.box = this.root.querySelector(".mmd-cast-box");
     this.grip();
-
-    this.speech.addEventListener("change", () => {
-      const next = this.read();
-      next.speech = this.speech.checked;
-      // One press sets every card, because that is what a reader expects of a box that
-      // says "they speak" above a list of them -- and the per-card boxes then show it.
-      for (const card of next.cards) card.speaks = this.speech.checked;
-      this.commit(next);
-    });
 
     this.list.addEventListener("change", (event) => {
       const box = event.target.closest(".mmd-card-speech");
@@ -170,7 +162,8 @@ export class CastEditor {
       const card = next.cards[position];
       if (!card) return;
       card.speaks = box.checked;
-      // The clip-wide box is the answer to "does anybody speak", so it follows the cards.
+      // "Does anybody speak" is the answer the cards give, and the compiler and the
+      // TIMELINE tab both read it off the document.
       next.speech = next.cards.some((one) => one.speaks !== false);
       this.commit(next);
     });
@@ -344,7 +337,7 @@ export class CastEditor {
   }
 
   /**
-   * Every card gone, and `they speak` back on.
+   * Every card gone, and with them every mute -- a cast of nobody speaks by default.
    *
    * The toolbar's Clear empties the piece, not the tab that happens to be open: cards
    * describe files that are no longer on the timeline, so leaving them behind leaves a
@@ -412,8 +405,8 @@ export class CastEditor {
     const heard = audioOf(timeline || {});
     const numbers = numbering(timeline, state.cards);
 
-    this.speech.checked = state.speech !== false
-      && state.cards.some((card) => card.speaks !== false);
+    // Nobody speaks: only the legend reads differently, and it says so by fading rather
+    // than by leaving, which moved the whole list up the first time a card was muted.
     this.box.classList.toggle("mmd-off", state.speech === false);
 
     // Rebuilt only when the list itself changed, or a caret would be taken out of the box
@@ -577,6 +570,16 @@ export class CastEditor {
       const own = row.querySelector(".mmd-card-speech");
       if (own) own.checked = card.speaks !== false;
       row.classList.toggle("mmd-mute", !speaks);
+      // Locked rather than removed: the row keeps its place so the card keeps its height,
+      // and the boxes stop taking words the prompt would not use. The reason goes on the
+      // row, because a disabled input gets no hover and its own title never opens.
+      const voice = row.querySelector(".mmd-card-voice-row");
+      if (voice) {
+        voice.title = speaks ? "" : "This card does not speak, so how it sounds is not "
+          + "compiled -- neither this description nor a timbre reference. Tick speaks to "
+          + "use it again; what is written here is kept either way.";
+        for (const box of voice.querySelectorAll("input, select")) box.disabled = !speaks;
+      }
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
         badge.textContent = `<Subject ${index}>`;

@@ -86,15 +86,11 @@ const CSS = `
 .mmd-switch input { margin:0; cursor:pointer; accent-color:#6ea8c4; }
 /* Speech off hides the voices, not the people: a character can be in a clip without ever
    saying anything, and hiding the whole list took the subjects with it. */
-/* Nobody speaks: the voice goes, and so does the recording it could have been taken
-   from. A timbre reference is an instruction about a voice, and with the switch off the
-   compiler drops it -- a picker still on screen would be a control with no effect. */
-/* And the speaker ID goes with them. Sn is the number a card is called by when it says
-   something; with the switch off no card says anything, so the badge names a role nothing
-   in the compiled prompt can play. */
-.mmd-cast-box.mmd-off .mmd-card-voice-row,
-.mmd-cast-box.mmd-off .mmd-card-sid,
-.mmd-cast-box.mmd-off .mmd-card-speak { display:none; }
+/* Nobody speaks: the voice is locked rather than taken away -- see the mute rules on the
+   card below, which is where a control with no effect is drawn. This line explained the S
+   token to a panel that no longer uses it, and removing it moved everything under it up
+   the moment the switch was pressed, so it is dimmed in place instead. */
+.mmd-cast-box.mmd-off .mmd-cast-legend .mmd-card-sid { opacity:.45; }
 .mmd-cast-foot { display:flex; align-items:center; gap:12px; }
 .mmd-cast-foot .mmd-grow { flex:1; }
 /* The button sits under the transport rather than up on the bar: it opens a list that
@@ -313,12 +309,17 @@ const CSS = `
    are two answers to the same question, and stacked they read as two unrelated fields. */
 .mmd-card-voice-row { display:flex; align-items:center; gap:9px; min-width:0; }
 .mmd-card-voice-row .mmd-card-voice { flex:1 1 auto; }
-/* One card muted: the clip-wide argument applied to one person. Nothing of theirs is
-   compiled, so the voice box goes the way it goes with the switch off, and Sn -- the
-   number a card is called by when it says something -- stops being stated as a fact. The
-   badge is hollowed rather than hidden: a gap in S1, S3 reads as renumbering, and the
-   number is still theirs the moment the box is ticked again. */
-.mmd-card.mmd-mute .mmd-card-voice-row { display:none; }
+/* A muted card, on its own switch or on the clip-wide one. Nothing of it is compiled, so
+   the voice row and the Sn badge are controls with no effect -- and they keep their place
+   all the same. Taking them out changed the height of the card under the pointer, which
+   moved every card below it while the tick was still under the cursor; a panel that jumps
+   when you press something is a panel you stop trusting. So this is the dead form the rest
+   of the editor uses -- dimmed, dashed, not clickable -- and the reason is on the row,
+   where a disabled input cannot carry a title of its own. */
+.mmd-card.mmd-mute .mmd-card-voice-row { opacity:.45; }
+.mmd-card.mmd-mute .mmd-card-voice-row input,
+.mmd-card.mmd-mute .mmd-card-voice-row select {
+  background:transparent; border-style:dashed; cursor:not-allowed; }
 .mmd-card.mmd-mute .mmd-card-sid { background:transparent; color:#6b7280;
   border:1px dashed #3a4150; padding:1px 5px; }
 /* Where the description ends up. Grey and one size down: it is the answer to a question
