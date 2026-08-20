@@ -43,7 +43,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
  * somebody types in the box. A recording in `voice from` says it more precisely than
  * prose does, so it counts as saying it.
  */
-const speaking = (card) => !!(String(card.voice || "").trim()
+const hasVoice = (card) => !!(String(card.voice || "").trim()
   || String(card.voice_from || "").trim());
 
 export function parseCast(text) {
@@ -77,7 +77,7 @@ export function parseCast(text) {
     // from the days of a switch is ignored, because a stored flag could only disagree with
     // what is written on screen. With no cards at all nobody has said otherwise, and the
     // TIMELINE tab keeps its dialogue row -- which is where a first line gets written.
-    return { version: 1, speech: !cards.length || cards.some(speaking), cards };
+    return { version: 1, speech: !cards.length || cards.some(hasVoice), cards };
   } catch {
     return { ...EMPTY };
   }
@@ -551,7 +551,7 @@ export class CastEditor {
       // because the way to make somebody speak is to type in it. Never hidden: taking the
       // row away changed the height of the card under the pointer and moved every card
       // below it. Written on every keystroke, since typing repaints without rebuilding.
-      const speaks = speaking(card);
+      const speaks = hasVoice(card);
       row.classList.toggle("mmd-mute", !speaks);
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
