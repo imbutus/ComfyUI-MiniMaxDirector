@@ -183,9 +183,9 @@ The timeline is drawn to the clip, not past it, so there is nothing empty on the
 settings row's `renders 124 f = 5.17s · 120 f rounded up` is the fallback for the cases
 that still round — a clip following its content — and stays silent otherwise.
 
-### The three tabs
+### The tabs
 
-The panel under the toolbar shows one of three things, and remembers which one across a
+The panel under the toolbar shows one of four things, and remembers which one across a
 reload — along with the block that was selected, so a reload comes back to the fields you
 were in:
 
@@ -193,6 +193,40 @@ were in:
 - **WHO & WHAT** — one card per thing the prompt has to name
 - **GLOBAL** — GLOBAL PROMPT and GLOBAL MUSIC, the two things that are set once for the
   whole piece and then left alone
+- **IMPORT / EXPORT** — the whole piece as one JSON, out and back in
+
+The first three are where the piece is written, and they sit together on the left.
+IMPORT / EXPORT is what you do with the piece once it is written, so it sits apart at the
+right-hand end of the row rather than in the run of panels.
+
+### Import and export
+
+The tab holds the whole piece as one JSON — the timeline, the cards on WHO & WHAT and the
+clip's own `width`, `height` and default resize — and four buttons:
+
+- **Save file** — writes it to `minimax-director-<date>.json`
+- **Load file** — reads one back
+- **Copy** — the same JSON onto the clipboard, to paste into a message or another director
+- **Paste** — reads the clipboard and loads whatever piece is on it
+
+A load replaces the node — the timeline, the cards and the settings — and asks first when
+there is anything to lose. Cmd/Ctrl+Z puts the timeline back; the cards are a document of
+their own and the undo stack does not hold them, exactly as Clear says. A bare timeline is
+accepted too, not just a saved piece: that is what the node's own hidden widget holds, and
+it is the JSON you are most likely to have on the clipboard.
+
+The document names the files, it does not carry them: a picture's filename, never its
+pixels. Base64 is not an alternative here — a reference video is tens of megabytes, and a
+third larger again as text. So a load ends by asking ComfyUI which of the named files it
+actually has, and lists the ones it does not, with an **Upload** button: pick them from
+disk and every block pointing at each name is re-pointed at the uploaded copy. ComfyUI
+renames a collision rather than overwriting a file another workflow is using, which is why
+the document is re-pointed rather than trusted to keep the name. The same check runs
+whenever the tab is opened, so a workflow somebody sent you says what it is missing without
+being imported at all.
+
+Reading the clipboard needs a permission the browser may simply refuse. When it does, a box
+appears to paste into by hand, with an **Apply** button beside it.
 
 ### Editing a block
 

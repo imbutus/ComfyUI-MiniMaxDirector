@@ -333,6 +333,11 @@ function attach(node) {
     // Clear empties the piece, and the cards are part of the piece -- they just live in a
     // widget of their own, which the timeline editor has no hand on.
     editor.onClearCast = () => inside.clear();
+    // A piece loaded on IMPORT / EXPORT brings its cards with it, and they land the same
+    // way: through the cast editor's own commit, so the tab, the chips and the compiled
+    // preview all hear about it exactly as they do for a card typed by hand. Parsed on the
+    // way in, because a document written by an older build is normalised there.
+    editor.onImportCast = (loaded) => inside.commit(parseCast(JSON.stringify(loaded)));
     // `edit` beside a subject on the FILE row lands on that card's name box. A frame
     // later, because the tab it lives on was hidden until the click that got here.
     editor.onEditCard = (at) => requestAnimationFrame(() => {

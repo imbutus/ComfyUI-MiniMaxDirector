@@ -211,6 +211,11 @@ const CSS = `
 /* A segmented control, not folder tabs. A tab implies the panel is attached to it, and
    this one cannot be: the strip sits inset inside the socket band while the panel below
    runs the full width, so the two never line up and the join reads as a mistake. */
+/* The two groups share a row. IMPORT / EXPORT is not a fourth place to work -- it is what
+   you do with the work once it is written -- so it sits apart at the far end rather than
+   in the run of panels, where it would read as somewhere to go next. */
+.mmd-tabrow { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.mmd-tabs-end { margin-left:auto; }
 .mmd-tabs { display:inline-flex; gap:2px; flex:0 0 auto; align-self:flex-start;
   background:#15181e; border:1px solid #2c313c; border-radius:7px; padding:2px; }
 .mmd-tab { background:transparent; color:#8b93a1; border:0; border-radius:5px;
@@ -227,6 +232,44 @@ const CSS = `
    given, so a cast of ten never pushes the node past the screen. */
 .mmd-panel[data-panel="cast"] { overflow:hidden; }
 .mmd-panel .mmd-cast-node { overflow:hidden; }
+
+/* import / export --------------------------------------------------------
+   Boxed like every other panel on this node, so the tab that is about the whole piece
+   still looks like it belongs to the same editor. */
+.mmd-io { flex:0 0 auto; display:flex; flex-direction:column; gap:7px;
+  border:1px solid #2c313c; border-radius:6px; padding:7px 9px; background:#15181e; }
+.mmd-io > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
+.mmd-io > label .mmd-hint { letter-spacing:0; color:#6b7280; }
+.mmd-io-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.mmd-io-row .mmd-grow { flex:1; }
+.mmd-io button { background:#2c313c; color:#e5e7eb; border:1px solid #3a4150;
+  border-radius:5px; padding:5px 11px; cursor:pointer; font:inherit;
+  display:inline-flex; align-items:center; gap:6px;
+  transition:background .12s ease, border-color .12s ease, color .12s ease; }
+.mmd-io button:hover { background:#3d4553; border-color:#5a6474; color:#fff; }
+.mmd-io button:active { background:#232833; border-color:#4b5563; }
+/* A rule between the file pair and the clipboard pair: the same two verbs twice over, and
+   without it the four read as one row of unrelated buttons. */
+.mmd-io-gap { width:1px; align-self:stretch; background:#2c313c; margin:0 5px; }
+.mmd-io-note, .mmd-io-say, .mmd-io-names { font-size:11px; }
+.mmd-io-note, .mmd-io-names { color:#6b7280; }
+.mmd-io-names { word-break:break-all; }
+.mmd-io-say { color:#8b93a1; }
+/* The house amber, for the two things that go wrong here: a clipboard the browser will not
+   open, and a document that is not one. */
+.mmd-io-say.mmd-io-bad, .mmd-io-warn { color:#e0b055; }
+.mmd-io-warn { font-size:11px; }
+/* Files named but not here: its own boxed note, because it is the one thing on this tab
+   that is asking to be answered rather than reporting what happened. */
+.mmd-io-missing { display:flex; flex-direction:column; gap:6px;
+  border:1px solid #4a3a20; border-radius:6px; padding:7px 8px; background:#1d1a14; }
+.mmd-io-missing.mmd-hide { display:none; }
+.mmd-io-manual { display:flex; flex-direction:column; gap:6px; }
+.mmd-io-manual.mmd-hide { display:none; }
+.mmd-io-box { min-height:78px; resize:vertical; background:#0f1216; color:#e5e7eb;
+  border:1px solid #2c313c; border-radius:6px; outline:none; font:inherit; font-size:11px;
+  padding:6px 8px; }
+.mmd-io-box:focus { border-color:#4a83a8; }
 /* The whole block is the box you drag -- header, list and footer together -- so the grip
    sits on its own corner, where a textarea's does, and the list takes what is left inside
    and scrolls. The grip is the browser's own -- a hidden overflow is what makes it draw

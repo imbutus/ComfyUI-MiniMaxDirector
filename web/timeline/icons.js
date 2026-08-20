@@ -22,4 +22,10 @@ export const ICON = {
   caret: svg('<path d="M4 6.2l4 4.2 4-4.2"/>'),
   clip: svg('<path d="M11.6 7.2l-4.5 4.5a2.4 2.4 0 01-3.4-3.4l5.1-5.1a1.6 1.6 0 012.3 2.3l-5 5a.8.8 0 01-1.2-1.1l4.5-4.5"/>'),
   files: svg('<path d="M1.8 12.6V4.2a1 1 0 011-1h3l1.2 1.6h5.2a1 1 0 011 1v6.8a1 1 0 01-1 1H2.8a1 1 0 01-1-1z"/>'),
+  // Out of the node and into the tray, and back out of it: the same tray both times, so
+  // the pair reads as one direction reversed rather than two unrelated buttons.
+  save: svg('<path d="M8 2.2v6.6M5.4 6.4L8 9l2.6-2.6M2.6 10.8v1.8a1 1 0 001 1h8.8a1 1 0 001-1v-1.8"/>'),
+  load: svg('<path d="M8 9V2.4M5.4 5L8 2.4 10.6 5M2.6 10.8v1.8a1 1 0 001 1h8.8a1 1 0 001-1v-1.8"/>'),
+  copy: svg('<rect x="5.6" y="5.6" width="7.8" height="7.8" rx="1.2"/><path d="M10.4 5.6v-2a1 1 0 00-1-1H3.6a1 1 0 00-1 1v5.8a1 1 0 001 1h2"/>'),
+  paste: svg('<path d="M6.2 3.2H4.4a1 1 0 00-1 1v8.4a1 1 0 001 1h7.2a1 1 0 001-1V4.2a1 1 0 00-1-1H9.8"/><rect x="6.2" y="2" width="3.6" height="2.4" rx=".7"/>'),
 };

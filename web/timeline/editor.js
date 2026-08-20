@@ -13,6 +13,7 @@ import { api } from "../../../scripts/api.js";
 import { ICON } from "./icons.js";
 import { install } from "./styles.js";
 import * as media from "./media.js";
+import * as io from "./io.js";
 import {
   AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SIZINGS, SPEEDS, TRANSITIONS, TRACKS,
   TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds, clamp,
@@ -171,6 +172,9 @@ export class TimelineEditor {
     this.onState = null;
     /** Called by Clear, for the half of the document this editor does not own. */
     this.onClearCast = null;
+    /** Called by a load on IMPORT / EXPORT, for that same half: the cards arrive here
+     *  with the timeline and have to be written to a widget this editor has no hand on. */
+    this.onImportCast = null;
     this.selected = [];
     this.drag = null;
     this.scrubbing = false;
@@ -219,10 +223,15 @@ export class TimelineEditor {
       <div class="mmd-settings"></div>
 
       <div class="mmd-tabbed">
+      <div class="mmd-tabrow">
       <div class="mmd-tabs">
         <button class="mmd-tab mmd-on" data-tab="timeline">TIMELINE</button>
         <button class="mmd-tab" data-tab="cast" title="Everyone and everything the prompt has to name: people, costumes, props, places. One card each, and the only place a file is described. A card with a file becomes a &lt;Subject n&gt;; a card that talks is a speaker, S1 upwards.">WHO &amp; WHAT <span class="mmd-tab-count"></span></button>
         <button class="mmd-tab" data-tab="global">GLOBAL</button>
+      </div>
+      <div class="mmd-tabs mmd-tabs-end">
+        <button class="mmd-tab" data-tab="io" title="The piece as one JSON -- the timeline, the cards and the clip's settings -- to a file or the clipboard, and back. The files themselves are named, not carried: an import says which ones this ComfyUI does not have and offers to upload them.">IMPORT / EXPORT</button>
+      </div>
       </div>
 
       <div class="mmd-panel" data-panel="timeline">
@@ -293,6 +302,27 @@ export class TimelineEditor {
         </div>
       </div>
       </div>
+
+      <div class="mmd-panel mmd-hide" data-panel="io">
+      <div class="mmd-io">
+        <label>IMPORT / EXPORT <span class="mmd-hint">the whole piece as one JSON: the timeline, the cards and the clip's settings</span></label>
+        <div class="mmd-io-row">
+          <button data-io="save" title="Write the piece to a .json file">${ICON.save} Save file</button>
+          <button data-io="load" title="Read a piece back from a .json file. It replaces everything on this node.">${ICON.load} Load file</button>
+          <span class="mmd-io-gap"></span>
+          <button data-io="copy" title="The same JSON onto the clipboard, to paste into a message or another director">${ICON.copy} Copy</button>
+          <button data-io="paste" title="Read the clipboard and load whatever piece is on it. It replaces everything on this node.">${ICON.paste} Paste</button>
+          <span class="mmd-grow"></span>
+          <span class="mmd-io-say"></span>
+        </div>
+        <div class="mmd-io-note">Files are named, not carried — the JSON holds a picture's filename, never its pixels. Loading a piece on another machine finds every block in place and says which files to upload.</div>
+        <div class="mmd-io-missing mmd-hide"></div>
+        <div class="mmd-io-manual mmd-hide">
+          <textarea class="mmd-io-box" placeholder="Paste the JSON here, then press Apply"></textarea>
+          <div class="mmd-io-row"><button data-io="apply">Apply</button><span class="mmd-hint">your browser would not hand over the clipboard, so this box asks for it instead</span></div>
+        </div>
+      </div>
+      </div>
       </div>`;
 
     // The two globals are one row, so they resize as one. Dragging one alone left a tall
@@ -308,7 +338,10 @@ export class TimelineEditor {
     }
 
     this.bar = this.root.querySelector(".mmd-bar");
-    this.tabs = this.root.querySelector(".mmd-tabs");
+    // The row, not one of the two groups inside it: IMPORT / EXPORT sits in a group of its
+    // own at the far end, and a handle on the left group alone left that tab unclickable
+    // and never cleared its highlight.
+    this.tabs = this.root.querySelector(".mmd-tabrow");
     this.panels = [...this.root.querySelectorAll(".mmd-panel")];
     /** Where the cast editor mounts, when the host gives us one. */
     this.castPanel = this.root.querySelector('[data-panel="cast"]');
@@ -326,6 +359,7 @@ export class TimelineEditor {
     this.segFields = this.root.querySelector(".mmd-seg-fields");
     this.filesPanel = this.root.querySelector(".mmd-files");
     this.filesList = this.root.querySelector(".mmd-files-list");
+    this.io = this.root.querySelector(".mmd-io");
     this.bindFiles();
     // Delegated once, on an element that outlives every rebuild: the link to the WHO & WHAT
     // tab appears in two unrelated groups of this panel -- the dialogue row when nobody
@@ -570,6 +604,13 @@ export class TimelineEditor {
     this.tabs.addEventListener("click", (event) => {
       const tab = event.target.closest(".mmd-tab");
       if (tab) this.showTab(tab.dataset.tab);
+    });
+
+    // Delegated: the missing-files row is rebuilt after every check, so its button is not
+    // the one that was there when this was bound.
+    this.io.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-io]");
+      if (button) this.transfer(button.dataset.io);
     });
 
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
@@ -988,6 +1029,9 @@ export class TimelineEditor {
     // and coming back showed a timeline squeezed into a corner. Re-measured on the way
     // in, a frame later, once layout has caught up with the class that was just removed.
     if (name === "timeline") requestAnimationFrame(() => this.render());
+    // Which files are missing is asked on the way in, not only after a load: a workflow
+    // somebody sent you arrives with the same problem and no import to notice it.
+    if (name === "io") this.checkMedia();
     this.onTab?.(name);
   }
 
@@ -1220,6 +1264,175 @@ export class TimelineEditor {
     this.commit({ ...emptyTimeline(), duration: current.duration || 0 });
     // Second, because the cast editor's own commit renders this one on the way out.
     this.onClearCast?.();
+  }
+
+  /** Every button on IMPORT / EXPORT, which are four verbs and no state. */
+  async transfer(action) {
+    if (action === "save") {
+      io.save(this.pieceText());
+      return this.say("saved");
+    }
+    if (action === "copy") {
+      const done = await io.copy(this.pieceText());
+      return this.say(
+        done ? "copied — paste it anywhere" : "the browser would not take the clipboard",
+        !done);
+    }
+    if (action === "load") {
+      const chosen = await io.load();
+      if (chosen) this.absorb(chosen.text, chosen.name);
+      return;
+    }
+    if (action === "paste") {
+      // Not `text`: that is the module's escape helper, and a local of the same name has
+      // shadowed it here once already.
+      let held;
+      try {
+        held = await io.paste();
+      } catch {
+        // Reading the clipboard needs a permission the browser may simply refuse, and
+        // there is no arguing with it -- so the box below asks the keyboard for the same
+        // thing, which is a permission nobody can withhold.
+        this.io.querySelector(".mmd-io-manual").classList.remove("mmd-hide");
+        this.io.querySelector(".mmd-io-box").focus();
+        return this.say("the browser will not hand over the clipboard — paste below", true);
+      }
+      return this.absorb(held, "the clipboard");
+    }
+    if (action === "apply") {
+      return this.absorb(this.io.querySelector(".mmd-io-box").value, "the box");
+    }
+    if (action === "upload") return this.uploadMissing();
+  }
+
+  /** One sentence under the buttons, amber when it is bad news. */
+  say(sentence, bad = false) {
+    const line = this.io.querySelector(".mmd-io-say");
+    line.textContent = sentence;
+    line.classList.toggle("mmd-io-bad", bad);
+  }
+
+  /**
+   * The piece as one document: the timeline, the cards, and the clip's own settings.
+   *
+   * The three live in three widgets -- and one of them belongs to a whole other editor --
+   * which is exactly why this exists. What somebody wants to hand over is the piece, not
+   * the node it happens to be sitting on.
+   */
+  pieceText() {
+    return JSON.stringify(io.bundle({
+      timeline: this.read(),
+      cast: this.castOf?.() ?? null,
+      settings: this.clipSettings(),
+    }), null, 2);
+  }
+
+  /** The node's own width, height and default resize, as plain values. */
+  clipSettings() {
+    const values = {};
+    for (const [name, widget] of Object.entries(this.widgets || {})) {
+      if (widget && widget.value !== undefined) values[name] = widget.value;
+    }
+    return values;
+  }
+
+  /** Write one of the node's own widgets, the way its box in the settings row does. */
+  setWidget(name, raw) {
+    const widget = this.widgets?.[name];
+    if (!widget || raw === undefined || raw === null) return;
+    widget.value = raw;
+    widget.callback?.(raw);
+  }
+
+  /**
+   * Take a written piece in, wherever it came from.
+   *
+   * It replaces the node rather than merging into it: two timelines laid over each other
+   * is not a document anybody asked for, and a merge would have to guess at every block
+   * whether it is the same block. The confirm names what goes, and undo covers the
+   * timeline half -- the cards are their own document, exactly as Clear says.
+   */
+  async absorb(written, where = "that") {
+    let piece;
+    try {
+      piece = io.unbundle(written);
+    } catch (error) {
+      return this.say(`${where}: ${error.message}`, true);
+    }
+
+    const current = this.read();
+    const cards = (this.castOf?.()?.cards || []).length;
+    const populated = TRACKS.some(({ key }) => items(current, key).length)
+      || current.global_prompt?.trim() || current.music?.trim() || cards;
+    if (populated && !confirm(
+      "Load this piece over the timeline and every card? Cmd/Ctrl+Z puts the timeline back.",
+    )) return;
+
+    this.selected = [];
+    this.selection = null;
+    this.panelShape = null;
+    this.playhead = 0;
+    // Settings first: the commit below renders the row that shows them.
+    for (const [name, value] of Object.entries(piece.settings || {})) {
+      this.setWidget(name, value);
+    }
+    this.commit(piece.timeline);
+    // A bare timeline says nothing about the cast, and nothing is not the same as none:
+    // clearing the cards over a document that never mentioned them would throw away work
+    // the author did not offer up.
+    if (piece.cast) this.onImportCast?.(piece.cast);
+    this.io.querySelector(".mmd-io-manual").classList.add("mmd-hide");
+    this.say(piece.bare ? `loaded a bare timeline from ${where}` : `loaded from ${where}`);
+    this.checkMedia();
+  }
+
+  /**
+   * Which files the piece names that this ComfyUI has never been given.
+   *
+   * The whole cost of naming files instead of carrying them, and the whole repair: the
+   * blocks are all in place, so this is a list of things to drag in, not a piece to
+   * rebuild.
+   */
+  async checkMedia() {
+    const row = this.io.querySelector(".mmd-io-missing");
+    const absent = await io.missing(io.mediaOf(this.read()));
+    const names = [...new Set(absent.map((record) => record.filename))];
+    if (!names.length) {
+      row.classList.add("mmd-hide");
+      row.innerHTML = "";
+      return;
+    }
+    const many = names.length !== 1;
+    row.innerHTML = `
+      <div class="mmd-io-row">
+        <span class="mmd-io-warn">${names.length} file${many ? "s are" : " is"} named
+          here but not in this ComfyUI's input folder.</span>
+        <button data-io="upload">Upload ${many ? "them" : "it"}</button>
+      </div>
+      <div class="mmd-io-names">${names.map(text).join(", ")}</div>`;
+    row.classList.remove("mmd-hide");
+  }
+
+  /** Put the missing files back: uploaded under their own names, matched by name. */
+  async uploadMissing() {
+    const chosen = await io.pickFiles();
+    if (!chosen.length) return;
+    this.say("uploading…");
+
+    const next = this.read();
+    const absent = await io.missing(io.mediaOf(next));
+    let placed = [];
+    try {
+      ({ placed } = await io.restore(absent, chosen));
+    } catch (error) {
+      return this.say(`upload failed: ${error.message}`, true);
+    }
+
+    if (placed.length) this.commit(next);
+    this.say(placed.length
+      ? `uploaded ${placed.length} file${placed.length === 1 ? "" : "s"}`
+      : "none of those is a file the piece is missing", !placed.length);
+    this.checkMedia();
   }
 
   /**
@@ -2617,12 +2830,9 @@ export class TimelineEditor {
       return now.duration || span(now);
     });
 
-    const setWidget = (name, raw) => {
-      const w = this.widgets[name];
-      if (!w) return;
-      w.value = raw;
-      w.callback?.(raw);
-    };
+    // One hand on the node's own widgets: the boxes here and a loaded piece write them
+    // through the same method, so a value arriving either way is set the same way.
+    const setWidget = (name, raw) => this.setWidget(name, raw);
     const dimension = (selector, name) => this.numberField(
       this.settings.querySelector(selector),
       (node) => setWidget(name, Math.max(32, Math.round(Number(node.value)))),

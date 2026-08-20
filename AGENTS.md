@@ -324,6 +324,41 @@ through `editor.onAddCard`.
   on the speaker and marks the audio's own record with a `voices` entry, which is what
   lets `_retention` tell "nothing was said" from "this is a timbre reference".
 
+## Import and export
+
+The IMPORT / EXPORT tab hands the piece around on its own, without the workflow it was
+written in. `web/timeline/io.js` owns the envelope:
+
+```json
+{ "format": "minimax-director", "version": 1, "pack": "0.15.15",
+  "written": "…", "settings": {…}, "timeline": {…}, "cast": {…} }
+```
+
+- `format` and `version` describe the document. `pack` records which build wrote it, for a
+  bug report, and is never read on the way back in: refusing a file for the build that
+  wrote it would age every document anybody saved.
+- The three parts are the node's three stores -- the `timeline` widget, the `cast` widget,
+  and the `width`/`height`/`ref_image_size` widgets. Nothing new is stored for this: the
+  envelope is assembled on the click and taken apart on the load.
+- A bare timeline is accepted as well as an envelope. That is what the hidden widget holds,
+  and it is the JSON most likely to be on somebody's clipboard.
+- A load lands through `commit` for the timeline (so Cmd/Ctrl+Z covers it), through the
+  host's `onImportCast` for the cards -- they live in a widget the timeline editor has no
+  hand on, exactly as with Clear -- and through `setWidget` for the settings, the same
+  method the settings row writes with. Cards absent from the document are left alone:
+  nothing said is not the same as none.
+
+**Files are named, never carried.** The document holds `{kind, filename, subfolder}`, the
+same reference a saved workflow stores. Base64 was considered and rejected: a reference
+video is tens of megabytes, a third larger again as text, and no clipboard will take it. So
+`io.missing` asks ComfyUI's own `/view` with HEAD -- 404 is a file that is not there, 200 is
+one that is -- and `io.restore` uploads whatever the author picks, re-pointing every record
+that named each file. The upload keeps `overwrite=false`, so ComfyUI renames a collision
+rather than replacing a file another workflow is using, and the returned name is written
+back: that is what keeps the document true either way. Only a real 404 counts as missing --
+a network error reported as "everything is gone" sends somebody hunting for files that are
+sitting right there.
+
 ## What the compiler emits
 
 Two formats, chosen by whether anything is attached -- never by a widget. Nothing attached
