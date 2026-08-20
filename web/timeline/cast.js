@@ -35,14 +35,21 @@ const text = (value) => String(value ?? "")
 /** A tag that survives renumbering: the pairing the compiler resolves. */
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+/**
+ * Whether a card speaks, which is the one question the voice box answers.
+ *
+ * There is no switch: a card that says how it sounds is a speaker, and one that says
+ * nothing is a subject and nothing else -- its dialogue rows stop compiling until
+ * somebody types in the box. A recording in `voice from` says it more precisely than
+ * prose does, so it counts as saying it.
+ */
+const speaking = (card) => !!(String(card.voice || "").trim()
+  || String(card.voice_from || "").trim());
+
 export function parseCast(text) {
   try {
     const document = JSON.parse(text || "{}");
     if (!document || typeof document !== "object") return { ...EMPTY };
-    // A clip-wide `speech: false`, written when there was a box for it, is folded into
-    // the cards it was standing in for. Left on the document it would mute every card
-    // while every card's own box said otherwise, and nothing on screen would undo it.
-    const quiet = document.speech === false;
     const cards = (Array.isArray(document.cards) ? document.cards : [])
       .filter((card) => card && typeof card === "object")
       .map((card, position) => ({
@@ -64,15 +71,13 @@ export function parseCast(text) {
         // what somebody looks like and can say nothing about how they move or sound.
         motion_from: String(card.motion_from || ""),
         voice_from: String(card.voice_from || ""),
-        // Whether this card speaks. Absent means yes, so a document written before the
-        // box existed keeps every voice it had.
-        speaks: card.speaks !== false && !quiet,
       }));
-    // Derived, not authored: "does anybody speak" is the answer the cards give. The
-    // compiler and the TIMELINE tab both read it, so it is still written to the document.
-    // With no cards at all nobody has said otherwise, and the TIMELINE tab keeps its
-    // dialogue row -- which is where the first line of a clip gets written.
-    return { version: 1, speech: !cards.length || cards.some((card) => card.speaks), cards };
+    // Derived, not authored, and not stored on the card either: a card speaks when it says
+    // how it sounds, which is the voice box and nothing else. Anything a document carries
+    // from the days of a switch is ignored, because a stored flag could only disagree with
+    // what is written on screen. With no cards at all nobody has said otherwise, and the
+    // TIMELINE tab keeps its dialogue row -- which is where a first line gets written.
+    return { version: 1, speech: !cards.length || cards.some(speaking), cards };
   } catch {
     return { ...EMPTY };
   }
@@ -153,20 +158,6 @@ export class CastEditor {
     this.list = this.root.querySelector(".mmd-cast");
     this.box = this.root.querySelector(".mmd-cast-box");
     this.grip();
-
-    this.list.addEventListener("change", (event) => {
-      const box = event.target.closest(".mmd-card-speech");
-      if (!box) return;
-      const position = Number(box.closest(".mmd-card")?.dataset.card);
-      const next = this.read();
-      const card = next.cards[position];
-      if (!card) return;
-      card.speaks = box.checked;
-      // "Does anybody speak" is the answer the cards give, and the compiler and the
-      // TIMELINE tab both read it off the document.
-      next.speech = next.cards.some((one) => one.speaks !== false);
-      this.commit(next);
-    });
 
     // Enter finishes a field and leaves it, the same as on the timeline tab. A card's
     // boxes are one sentence each -- the compiler flattens them anyway -- so there is
@@ -337,7 +328,7 @@ export class CastEditor {
   }
 
   /**
-   * Every card gone, and with them every mute -- a cast of nobody speaks by default.
+   * Every card gone, and with them every voice.
    *
    * The toolbar's Clear empties the piece, not the tab that happens to be open: cards
    * describe files that are no longer on the timeline, so leaving them behind leaves a
@@ -433,12 +424,7 @@ export class CastEditor {
 
         return `
         <div class="mmd-card" data-card="${position}">
-          <div class="mmd-card-face">
-            ${this.face(card, file)}
-            <label class="mmd-card-speaks" title="Whether this card speaks. Unticked, its lines stay written on their blocks and stop compiling -- a take without this character's speech, and one click back. A line it shared with somebody else keeps the somebody else.">
-              <input class="mmd-card-speech" type="checkbox"${card.speaks === false ? "" : " checked"}> speaks
-            </label>
-          </div>
+          ${this.face(card, file)}
           <div class="mmd-card-body">
             <div class="mmd-card-top">
               <input class="mmd-card-name" type="text" placeholder="name it: WOMAN, COAT"
@@ -501,7 +487,7 @@ export class CastEditor {
             <div class="mmd-card-note mmd-card-wordless"></div>`}
             <div class="mmd-card-voice-row">
               <input class="mmd-card-voice" type="text"
-                     title="How this person sounds, not what they say. Compiled as the words in front of (S1) -- age, gender, pitch, timbre, accent, pace. The lines themselves are written on a shot's dialogue row, because the same person speaks in several shots and says something different in each."
+                     title="How this person sounds, not what they say. This box is also the speech switch: filled in, this card speaks and its dialogue rows compile; empty, it is a subject and nothing else, and its lines stay written on their blocks and are left out -- MiniMax invents a voice for a speaker nobody described, and an invented one is worse than a line left out. Compiled as the words in front of (S1) -- age, gender, pitch, timbre, accent, pace. The lines themselves are written on a shot's dialogue row, because the same person speaks in several shots and says something different in each."
                      placeholder="how they sound — not what they say: age, gender, pitch, timbre, accent"
                      value="${value(card.voice)}">
               ${!heard.length ? "" : `
@@ -560,26 +546,13 @@ export class CastEditor {
       const index = marks.get(card.uid || card.id) || 0;
       const shots = speaking.get(card.id) || [];
 
-      // Whether anything of this card's is compiled. The clip-wide switch is the same
-      // mute applied to everybody, so one card is silent under either. Off, the voice box
-      // goes -- a control with no effect, the reason the clip-wide switch already hides it
-      // -- and the row says so. The card's own box is written here rather than only when
-      // it is clicked, because the clip-wide switch sets every card and the list is not
-      // rebuilt for it.
-      const speaks = state.speech !== false && card.speaks !== false;
-      const own = row.querySelector(".mmd-card-speech");
-      if (own) own.checked = card.speaks !== false;
+      // Whether this card speaks, which is not a switch: it is whether the voice box has
+      // anything in it. Empty, the row goes quiet -- dimmed and dashed, still typeable,
+      // because the way to make somebody speak is to type in it. Never hidden: taking the
+      // row away changed the height of the card under the pointer and moved every card
+      // below it. Written on every keystroke, since typing repaints without rebuilding.
+      const speaks = speaking(card);
       row.classList.toggle("mmd-mute", !speaks);
-      // Locked rather than removed: the row keeps its place so the card keeps its height,
-      // and the boxes stop taking words the prompt would not use. The reason goes on the
-      // row, because a disabled input gets no hover and its own title never opens.
-      const voice = row.querySelector(".mmd-card-voice-row");
-      if (voice) {
-        voice.title = speaks ? "" : "This card does not speak, so how it sounds is not "
-          + "compiled -- neither this description nor a timbre reference. Tick speaks to "
-          + "use it again; what is written here is kept either way.";
-        for (const box of voice.querySelectorAll("input, select")) box.disabled = !speaks;
-      }
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
         badge.textContent = `<Subject ${index}>`;
@@ -630,13 +603,10 @@ export class CastEditor {
       // number -- or it is the words in front of `(S1)` when it describes a voice. With
       // neither, the compiled prompt is byte-for-byte what it would be with no card here.
       const described = !!file && !!card.description.trim();
-      // A muted card's voice is not compiled, so it is not what this card contributes and
-      // not what would rescue it either -- the same reading the linter takes.
-      const voiced = speaks && !!(card.voice.trim() || card.voice_from);
+      const voiced = speaks;
       // A voice is an instruction about how somebody sounds; with no line naming it, it
-      // instructs nothing. Exempt while this card is silent, when no line of theirs is
-      // compiled at all -- the same exemption the linter makes.
-      const heard = !speaks || shots.length > 0;
+      // instructs nothing.
+      const heard = shots.length > 0;
       const mode = !described && !voiced ? "dead"
         : (!described && !heard ? "mute" : "ok");
       row.classList.toggle("mmd-card-off", mode !== "ok");
@@ -648,18 +618,14 @@ export class CastEditor {
       // card is waiting for are written on a shot's dialogue row, not on the card.
       const asks = mode === "ok" ? []
         : (file ? [".mmd-card-description"]
-                : (voiced ? [] : speaks ? [".mmd-card-file", ".mmd-card-voice"]
-                                        : [".mmd-card-file"]));
+                : (voiced ? [] : [".mmd-card-file", ".mmd-card-voice"]));
       for (const box of row.querySelectorAll(".mmd-ask")) box.classList.remove("mmd-ask");
       for (const selector of asks) row.querySelector(selector)?.classList.add("mmd-ask");
 
       if (note && note.classList.contains("mmd-card-wordless")) {
         note.innerHTML = {
-          dead: speaks
-            ? `this card compiles to nothing — give it a voice, or point <b>from</b> at
-               a file.`
-            : `this card compiles to nothing — point <b>from</b> at a file. It does not
-               <b>speak</b>, so a voice would not be compiled either.`,
+          dead: `this card compiles to nothing — give it a voice, or point <b>from</b> at
+                 a file.`,
           mute: `nobody speaks this card's lines — the words go on a shot's
                  <b>dialogue</b> row, where you tick this face. The box below is
                  <b>how they sound</b>, not what they say.`,
@@ -667,9 +633,7 @@ export class CastEditor {
                to make it a &lt;Subject n&gt; you can describe.`,
         }[mode];
         note.title = {
-          dead: speaks
-            ? "A card reaches the prompt as a subject drawn out of a file, or as the words in front of (S1). With neither, the compiled prompt is byte-for-byte what it would be with no card here at all."
-            : "A card reaches the prompt as a subject drawn out of a file, or as the words in front of (S1). This one is muted, so the second way is closed until speaks is ticked -- a file is what it needs, or its voice back.",
+          dead: "A card reaches the prompt as a subject drawn out of a file, or as the words in front of (S1). With neither, the compiled prompt is byte-for-byte what it would be with no card here at all.",
           mute: "A voice is an instruction about how somebody sounds, and with no line it instructs nothing. The words themselves belong to a shot, not to a person -- one card can speak in four of them.",
           ok: "A subject is drawn out of a file. Without one there is nothing for the prompt to point at, so this card supplies a voice and nothing else -- which is all a speaker with no picture needs.",
         }[mode];

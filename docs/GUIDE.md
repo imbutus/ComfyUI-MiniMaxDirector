@@ -518,9 +518,12 @@ A card holds:
   as well compiles as `<Subject 1> is the woman, whose appearance comes from <Picture 1>
   and whose motion comes from <Video 1>.` Shown once there is a video on the timeline.
 - **what it is** — for a card with a file; becomes its `subject_definitions` line
-- **how they sound** — age, gender, pitch, timbre, accent, on screen or off. H3 fixes the
-  voice from this, so an empty one is a voice nobody chose and the linter says so. For a
-  card with a file it is written onto that subject's `subject_definitions` line
+- **how they sound** — age, gender, pitch, timbre, accent, on screen or off, and the
+  speech switch as well: **a card speaks when this box has something in it**. H3 fixes the
+  voice from what the prompt says about the speaker, so a line from somebody nobody
+  described is a voice the model invents — and an invented one is worse than a line left
+  out, so the lines wait rather than compile. For a card with a file it is written onto
+  that subject's `subject_definitions` line
   (`… from <Picture 1>, and sounds like this: a man in his forties, warm and even.`),
   because the body names them by token; for a card with no file the body prints it before
   the `(Sn)` instead.
@@ -539,7 +542,7 @@ amber across it and the same line in `report`.
 
 | The card says | Because |
 |---|---|
-| this card compiles to nothing | no file and no voice: neither a subject nor a speaker. Muted, it asks for the file or the tick — a voice would not be compiled either way |
+| this card compiles to nothing | no file and no voice: neither a subject nor a speaker |
 | nothing is written about `<Picture 1>` yet | a file is picked, but with nothing said about it the card takes no number |
 | nobody speaks this card's lines | it has a voice, and no shot's dialogue row ticks its face |
 | no file: this card gives a voice and nothing else | fine, and deliberate — a speaker with no photograph |
@@ -547,25 +550,23 @@ amber across it and the same line in `report`.
 A green **`[Shot n]`** badge says where the card is heard, which is otherwise only visible
 from the TIMELINE tab.
 
-**speaks**, under each card's picture, is the only dialogue switch there is. Unticked, that
-card stops speaking and its words stay where they are: the lines sit on their blocks, out of
-the prompt, and one click puts them back. A line two cards share loses only the one that was
-silenced. Nothing else of that card is compiled either — how they sound goes with the lines,
-`voice from` included, because a timbre reference is an instruction about a voice and with
-nobody speaking it would tell the model a recording is the reference for a speaker it is
-never asked to voice.
+**There is no speech switch.** The voice box is the switch: a card that says how it sounds
+speaks, and a card that says nothing is a subject and nothing else — a prop, a coat, a
+place, and most people in most clips. Clear the box and that card stops speaking; its words
+stay exactly where they are, on the blocks, out of the prompt, and typing a voice back
+compiles all of them again. A line two cards share loses only the one that went quiet. The
+recording in `voice from` counts as saying how they sound, and goes quiet with it — a timbre
+reference for a speaker the model is never asked to voice is a statement about nothing.
 
-The voice row stays on screen and locks: dimmed, dashed, not typeable. Taking it away
-changed the height of the card under the pointer and moved every card below it, and a panel
-that jumps when you press something is one you stop trusting. `S2` is hollowed out for the
-same reason — the number is still theirs the moment the box is ticked again — and so is the
-`S1…Sn` line of the legend, once nobody is left speaking.
+Silence is never silent about itself: **`report` counts the lines that were left out**, by
+card and by number, so words never leave the prompt without a sentence saying they did.
 
-Untick every card and nobody speaks: the dialogue rows leave the blocks and every `<d>`
-leaves the prompt. There is no separate box for that any more. One that said `they speak`
-sat under the list and set all of them at once; it said the same thing as the cards in the
-other direction, and two controls for one fact is one too many. A document that stored the
-old clip-wide `off` is read as every card muted, which is what it meant.
+An empty box is drawn switched off — dimmed and dashed, with `S2` hollowed beside it — and
+lights up the moment the caret lands in it, because typing in it is how a card starts
+speaking. Leave it empty and it goes back. Nothing is hidden: taking the row away changed
+the height of the card under the pointer and moved every card below it, and a panel that
+jumps when you press something is one you stop trusting. With nobody left speaking, the
+`S1…Sn` line of the legend fades too.
 
 **Add** adds a card.
 
@@ -761,12 +762,12 @@ never a refusal:
 - a line marked **carries over** with nothing after it, which compiles as `<cutoff>`
 - a **guessed word** in a reused line — the guide wants `[unclear]`, never a guess
 - a **subject card that compiles to nothing**: no file, so it is not a `<Subject n>`,
-  and no voice, so it is never heard. The card is a filled-in row either way. A muted card
-  with a voice lands here too, and is asked for a file or its speech back
+  and no voice, so it is never heard. The card is a filled-in row either way
+- **written lines that are not compiled**: the card they belong to describes no voice, so
+  it does not speak, and the report says how many words are waiting on that box
 - the reverse: a card with a **voice nobody speaks with** — no line names its `S`, so
   the voice instructs nothing, and a `voice from` recording is named as the timbre
-  reference for a speaker the model is never asked to voice. Not said about a muted card:
-  there, silence is what the box was ticked for
+  reference for a speaker the model is never asked to voice
 
 ---
 

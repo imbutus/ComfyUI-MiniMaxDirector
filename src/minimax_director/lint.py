@@ -512,10 +512,10 @@ def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
     nothing -- while `voice_from` goes further and tells the model an attached recording
     is the timbre reference for a speaker it is never asked to voice.
 
-    A muted card is a third case. Its voice is not compiled, so the first half fires --
-    the card really does reach the prompt as nothing -- and says which two switches end
-    that, while the second half cannot fire at all: with the lines silenced on purpose, an
-    unused voice is a control left as it was found.
+    A third check is the one that costs an author words: a card with no voice does not
+    speak, so `cast.merge` takes its lines out of the document, and lines that leave
+    without a word about it are how a scene goes missing. The count rides back on the
+    speaker and is said out loud here.
 
     The first half is deliberately *not* guarded on `speech`: that flag is derived --
     `cast.merge` sets it false precisely when no card has a voice -- so reading it there
@@ -535,24 +535,28 @@ def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
               for _, entry in entries}
 
     for speaker in timeline.speakers:
-        # A muted card has no voice as far as the prompt is concerned: nothing of theirs is
-        # compiled, so a description of how they sound is not what is missing -- and it is
-        # not what would fix the card either.
-        voiced = speaker.speaks and bool(
-            str(speaker.voice).strip() or str(speaker.voice_from).strip())
+        voiced = bool(str(speaker.voice).strip() or str(speaker.voice_from).strip())
         described = bound.get(speaker.id) is not None or speaker.uid in folded
         name = str(speaker.name).strip() or f"S{speaker.id}"
 
+        if speaker.muted_lines:
+            # Said before anything else about this card: the other warnings are about a
+            # prompt that could be better, this one is about words that are gone.
+            count = speaker.muted_lines
+            yield Issue(
+                "warning",
+                f"{name} has {count} written line{'' if count == 1 else 's'} that "
+                f"{'is' if count == 1 else 'are'} not compiled: the card describes no "
+                f"voice, so it does not speak. Say how they sound to bring the words "
+                f"back, or untick their face on the dialogue rows.",
+            )
+
         if not voiced and not described:
-            silent = ("and speaks is off, so nothing it says or sounds like is compiled. "
-                      "Point its from at a file, or tick speaks."
-                      if not speaker.speaks else
-                      "and it describes no voice, so it is not heard. Point its from at a "
-                      "file, or say how it sounds.")
             yield Issue(
                 "warning",
                 f"The subject card {name} compiles to nothing: it names no file, so it is "
-                f"not a <Subject n>, {silent}",
+                f"not a <Subject n>, and it describes no voice, so it is not heard. Point "
+                f"its from at a file, or say how it sounds.",
             )
         elif voiced and timeline.speech and speaker.id not in spoken:
             # A voice is an instruction about how somebody sounds, and with no line it is

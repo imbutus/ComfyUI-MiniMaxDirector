@@ -290,13 +290,6 @@ const CSS = `
   border:1px solid #3a4150; border-radius:8px; padding:8px; }
 .mmd-card-body { flex:1 1 auto; display:flex; flex-direction:column; gap:5px;
   min-width:0; }
-/* The face and the card's own speech box are one column: the box belongs to the person
-   above it, and read as a row it looked like another field of the form. */
-.mmd-card-face { flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
-  gap:4px; }
-.mmd-card-speaks { display:flex; align-items:center; gap:4px; color:#8b95a5;
-  font-size:10px; cursor:pointer; user-select:none; }
-.mmd-card-speaks input { margin:0; }
 .mmd-card-top { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .mmd-card input, .mmd-card select { background:#15181e; color:#e5e7eb;
   border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit;
@@ -309,19 +302,26 @@ const CSS = `
    are two answers to the same question, and stacked they read as two unrelated fields. */
 .mmd-card-voice-row { display:flex; align-items:center; gap:9px; min-width:0; }
 .mmd-card-voice-row .mmd-card-voice { flex:1 1 auto; }
-/* A muted card, on its own switch or on the clip-wide one. Nothing of it is compiled, so
-   the voice row and the Sn badge are controls with no effect -- and they keep their place
-   all the same. Taking them out changed the height of the card under the pointer, which
-   moved every card below it while the tick was still under the cursor; a panel that jumps
-   when you press something is a panel you stop trusting. So this is the dead form the rest
-   of the editor uses -- dimmed, dashed, not clickable -- and the reason is on the row,
-   where a disabled input cannot carry a title of its own. */
-.mmd-card.mmd-mute .mmd-card-voice-row { opacity:.45; }
+/* A card with nothing in its voice box does not speak, and the box is where that is said:
+   dimmed and dashed, the shape everything switched off in this editor takes, with the Sn
+   badge hollowed beside it. There is no separate switch to find, and none to explain.
+
+   Typeable all the same, because typing in it is how a card starts speaking: the caret
+   landing lights the row and the badge, and leaving it empty puts both back. And never
+   hidden -- taking the row out changed the height of the card under the pointer, which
+   moved every card below it while the cursor was still on it. */
+.mmd-card.mmd-mute .mmd-card-voice-row { opacity:.5; }
 .mmd-card.mmd-mute .mmd-card-voice-row input,
 .mmd-card.mmd-mute .mmd-card-voice-row select {
-  background:transparent; border-style:dashed; cursor:not-allowed; }
+  background:transparent; border-style:dashed; }
 .mmd-card.mmd-mute .mmd-card-sid { background:transparent; color:#6b7280;
   border:1px dashed #3a4150; padding:1px 5px; }
+.mmd-card.mmd-mute .mmd-card-voice-row:focus-within { opacity:1; }
+.mmd-card.mmd-mute .mmd-card-voice-row:focus-within input,
+.mmd-card.mmd-mute .mmd-card-voice-row:focus-within select {
+  background:#15181e; border-style:solid; }
+.mmd-card.mmd-mute:has(.mmd-card-voice-row:focus-within) .mmd-card-sid {
+  background:#2f6d8f; color:#eaf2f6; border:0; padding:2px 6px; }
 /* Where the description ends up. Grey and one size down: it is the answer to a question
    the card raises, not another thing to fill in. Empty when it has nothing to say, and
    the rule collapses the gap so nothing moves. */

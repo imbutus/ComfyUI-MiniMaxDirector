@@ -67,14 +67,19 @@ def _files(timeline: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return found
 
 
-def _silence(timeline: dict[str, Any], number: int) -> None:
+def _silence(timeline: dict[str, Any], number: int) -> int:
     """Take one speaker's lines out of the document the cast was merged into.
 
     Done here rather than in the compiler because a mute is a fact about the cast, and the
     merge is where the cast meets the timeline. A line spoken by this card *and* somebody
     else keeps the somebody else: only the silenced speaker leaves its `ids`.
+
+    Returns how many lines named this speaker. Words dropped without a word about it is
+    how an author loses a scene, so the count rides back on the speaker and the linter
+    turns it into a sentence.
     """
     wanted = f"S{number}"
+    named = 0
     for shot in timeline.get("shots") or []:
         if not isinstance(shot, dict) or not isinstance(shot.get("lines"), list):
             continue
@@ -86,12 +91,15 @@ def _silence(timeline: dict[str, Any], number: int) -> None:
             if wanted not in ids:
                 kept.append(line)
                 continue
+            if str(line.get("text", "")).strip():
+                named += 1
             rest = [one for one in ids if one != wanted]
             if not rest:
                 continue
             line["ids"] = ",".join(rest)
             kept.append(line)
         shot["lines"] = kept
+    return named
 
 
 def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any]:
@@ -142,19 +150,20 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
         # compiler can tell "nothing was said about this file" from "this file is a
         # timbre reference" without going back through the cast.
         #
-        # Dropped entirely when nobody speaks: a timbre reference is an instruction about
-        # a voice, and with the dialogue switch off there is no voice to instruct. The
-        # prompt used to say a recording was the timbre reference for a speaker it never
-        # asked the model to voice.
-        # A card can be silenced on its own, and its words are kept: the lines stay written
-        # on their blocks and simply stop compiling, so a take without one character's
-        # speech is one click away and one click back. The clip-wide switch is the same
-        # thing applied to everybody.
-        speaks = card.get("speaks", True) is not False
-        if not speaks:
-            _silence(merged, number)
-        voice_from = (str(card.get("voice_from", "")).strip()
-                      if document["speech"] and speaks else "")
+        # Whether this person speaks is not a switch and is not stored: a card speaks when
+        # it says how it sounds. Filled in, they are a speaker; empty, they are a subject
+        # and nothing else, and their lines stay written on their blocks and stop
+        # compiling -- so a take without one character's speech is a box cleared and one
+        # box typed back. `voice_from` says how they sound more precisely than prose does,
+        # so it counts as saying it.
+        #
+        # The words are kept for the same reason the mute exists: dialogue nobody described
+        # is a voice the model invents, and inventing one is worse than leaving the line
+        # out. The count comes back so the linter can say which lines went.
+        speaks = bool(str(card.get("voice", "")).strip()
+                      or str(card.get("voice_from", "")).strip())
+        muted = 0 if speaks else _silence(merged, number)
+        voice_from = str(card.get("voice_from", "")).strip()
         heard = files.get(voice_from)
         if heard is not None:
             listeners = heard.setdefault("voices", [])
@@ -163,7 +172,7 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
 
         speakers.append({
             "id": number,
-            "speaks": speaks,
+            **({"muted_lines": muted} if muted else {}),
             "voice": str(card.get("voice", "")),
             "name": str(card.get("name", "")),
             "subject": 0,
@@ -172,9 +181,11 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
         })
 
     merged["speakers"] = speakers
+    # Derived, never read off the document: the cards are the only place speech is
+    # authored now, so a stored flag could only disagree with them.
     # A card whose voice is an audio reference has described its voice as fully as one
     # with a paragraph of prose -- more so -- so it counts as somebody who can speak.
-    merged["speech"] = document["speech"] and any(
+    merged["speech"] = any(
         str(card.get("voice", "")).strip() or str(card.get("voice_from", "")).strip()
         for card in document["cards"])
     return merged

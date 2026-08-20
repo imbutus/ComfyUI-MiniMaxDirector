@@ -437,8 +437,10 @@ def test_a_voice_with_a_line_is_not_flagged():
     assert not any("says nothing" in note for note in messages(Timeline.from_dict(merged)))
 
 
-def test_a_timbre_reference_goes_away_when_nobody_speaks():
-    """`they speak` off compiles no dialogue, so a voice reference instructs nothing."""
+def test_a_timbre_reference_is_a_way_of_saying_how_somebody_sounds():
+    """A card with `voice from` and nothing typed still speaks: the recording is the
+    description, and a more precise one than prose. Nothing said either way and there is
+    no speaker to be the reference for."""
     document = clip(cues=[
         {"start": 0, "length": 24, "prompt": "Crowd.",
          "media": {"kind": "audio", "filename": "voice.mp3", "role": "reference",
@@ -448,11 +450,11 @@ def test_a_timbre_reference_goes_away_when_nobody_speaks():
             "keep": "fully_preserved", "voice": "", "voice_from": "voice.mp3"}
 
     quiet = compile_timeline(Timeline.from_dict(
-        cast.merge(document, {"speech": False, "cards": [card]}))).prompt
+        cast.merge(document, {"cards": [{**card, "voice_from": ""}]}))).prompt
     assert "voice-timbre reference" not in quiet
 
     talking = compile_timeline(Timeline.from_dict(
-        cast.merge(document, {"speech": True, "cards": [card]}))).prompt
+        cast.merge(document, {"cards": [card]}))).prompt
     assert "voice-timbre reference" in talking
 
 
@@ -648,9 +650,10 @@ def _two_speakers(**mute):
 
 
 def test_a_muted_card_keeps_its_words_and_stops_speaking():
-    """One card silenced, everybody else still talking — and the line they shared keeps the
-    speaker who was not muted."""
-    prompt = compile_timeline(Timeline.from_dict(_two_speakers(speaks=False))).prompt
+    """A card with no voice does not speak, and everybody else still does — the line they
+    shared keeps the speaker who was left with a voice. The words stay in the document:
+    typing a voice back compiles all three again."""
+    prompt = compile_timeline(Timeline.from_dict(_two_speakers(voice=""))).prompt
     assert "Hello." not in prompt
     assert "Goodbye." in prompt
     assert "Together." in prompt
@@ -663,12 +666,10 @@ def test_an_unmuted_cast_is_unchanged():
         assert words in prompt
 
 
-def test_a_muted_card_takes_its_voice_out_of_its_subject():
-    """Nothing of a muted card is compiled -- including how they sound.
-
-    The mute took the lines out and left `, and sounds like this: ...` in the subject's
-    definition, which is an instruction about a voice the prompt never asks for.
-    """
+def test_a_voice_reaches_the_subject_it_belongs_to():
+    """A card with a file is `<Subject n>` in the body, so its voice has to be written into
+    that definition or it reaches the model nowhere at all. Cleared, the definition says
+    nothing about how they sound, because they no longer speak."""
     document = clip(shots=[
         {"start": 0, "length": 24, "prompt": "A woman at the window.",
          "media": {"kind": "image", "filename": "w.png", "role": "reference",
@@ -679,27 +680,24 @@ def test_a_muted_card_takes_its_voice_out_of_its_subject():
             "voice": "low, smoky, forty"}
 
     quiet = compile_timeline(Timeline.from_dict(
-        cast.merge(document, {"speech": True, "cards": [{**card, "speaks": False}]}))).prompt
+        cast.merge(document, {"cards": [{**card, "voice": ""}]}))).prompt
     assert "sounds like this" not in quiet
     assert "a woman in a red coat" in quiet
 
     talking = compile_timeline(Timeline.from_dict(
-        cast.merge(document, {"speech": True, "cards": [card]}))).prompt
+        cast.merge(document, {"cards": [card]}))).prompt
     assert "sounds like this: low, smoky, forty" in talking
 
 
-def test_a_muted_card_is_not_asked_for_a_voice():
-    """The two warnings a mute must not produce, and the one it must.
+def test_written_lines_that_are_not_compiled_are_counted_out_loud():
+    """Words leaving the prompt without a word about it is how a scene goes missing.
 
-    A muted card with a voice is not "a voice nobody speaks with" -- the switch says so on
-    purpose. A muted card with no file reaches the prompt as nothing all the same, and the
-    way out of that is a file or the switch, not a description of how they sound.
+    Two of ANNA's three lines are hers alone; the third she shares, and a shared line is
+    not lost -- it keeps the other speaker -- so the warning counts the lines that named
+    her, which is what she would have said.
     """
-    spoken = cast.merge(clip().to_dict(), {"speech": True, "cards": [
-        {"id": 1, "uid": "a", "name": "ANNA", "file": "", "description": "",
-         "keep": "fully_preserved", "voice": "a warm, even voice", "speaks": False},
-    ]})
-    said = messages(Timeline.from_dict(spoken))
-    assert not any("says nothing" in note for note in said)
-    assert any("tick speaks" in note for note in said)
-    assert not any("say how it sounds" in note for note in said)
+    said = messages(Timeline.from_dict(_two_speakers(voice="")))
+    assert any("ANNA has 2 written lines that are not compiled" in note for note in said)
+
+    quiet = messages(Timeline.from_dict(_two_speakers()))
+    assert not any("not compiled" in note for note in quiet)
