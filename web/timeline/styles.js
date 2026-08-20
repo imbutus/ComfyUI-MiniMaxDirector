@@ -294,6 +294,13 @@ const CSS = `
   border:1px solid #3a4150; border-radius:8px; padding:8px; }
 .mmd-card-body { flex:1 1 auto; display:flex; flex-direction:column; gap:5px;
   min-width:0; }
+/* The face and the card's own speech box are one column: the box belongs to the person
+   above it, and read as a row it looked like another field of the form. */
+.mmd-card-face { flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
+  gap:4px; }
+.mmd-card-speaks { display:flex; align-items:center; gap:4px; color:#8b95a5;
+  font-size:10px; cursor:pointer; user-select:none; }
+.mmd-card-speaks input { margin:0; }
 .mmd-card-top { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .mmd-card input, .mmd-card select { background:#15181e; color:#e5e7eb;
   border:1px solid #333a45; border-radius:5px; padding:4px 7px; font:inherit;
@@ -306,6 +313,14 @@ const CSS = `
    are two answers to the same question, and stacked they read as two unrelated fields. */
 .mmd-card-voice-row { display:flex; align-items:center; gap:9px; min-width:0; }
 .mmd-card-voice-row .mmd-card-voice { flex:1 1 auto; }
+/* One card muted: the clip-wide argument applied to one person. Nothing of theirs is
+   compiled, so the voice box goes the way it goes with the switch off, and Sn -- the
+   number a card is called by when it says something -- stops being stated as a fact. The
+   badge is hollowed rather than hidden: a gap in S1, S3 reads as renumbering, and the
+   number is still theirs the moment the box is ticked again. */
+.mmd-card.mmd-mute .mmd-card-voice-row { display:none; }
+.mmd-card.mmd-mute .mmd-card-sid { background:transparent; color:#6b7280;
+  border:1px dashed #3a4150; padding:1px 5px; }
 /* Where the description ends up. Grey and one size down: it is the answer to a question
    the card raises, not another thing to fill in. Empty when it has nothing to say, and
    the rule collapses the gap so nothing moves. */
@@ -937,9 +952,16 @@ const CSS = `
 .mmd-prompt-view { width:100%; height:100%; overflow:hidden; box-sizing:border-box;
   display:flex; flex-direction:column; gap:4px; padding:2px;
   font:12px/1.45 system-ui,sans-serif; }
-.mmd-prompt-view > label { flex:0 0 auto; font-size:9px; letter-spacing:.09em;
-  color:#8b93a1; }
-.mmd-prompt-view > label .mmd-hint { letter-spacing:0; color:#6b7280; }
+.mmd-prompt-head { flex:0 0 auto; display:flex; align-items:baseline; gap:8px; }
+.mmd-prompt-head > label { flex:1 1 auto; min-width:0; }
+.mmd-prompt-copy { flex:0 0 auto; background:#232833; color:#9aa3b2;
+  border:1px solid #3a4150; border-radius:5px; padding:2px 8px; font:inherit;
+  font-size:10px; cursor:pointer; }
+.mmd-prompt-copy:hover { background:#2b3140; color:#e5e7eb; }
+.mmd-prompt-view > label, .mmd-prompt-head > label { flex:0 0 auto; font-size:9px;
+  letter-spacing:.09em; color:#8b93a1; }
+.mmd-prompt-head > label { flex:1 1 auto; }
+.mmd-prompt-view label .mmd-hint { letter-spacing:0; color:#6b7280; }
 .mmd-prompt-text { flex:1 1 auto; margin:0; overflow:auto; white-space:pre-wrap;
   word-break:break-word; color:#cdd3dd; background:#15181e; border:1px solid #2c313c;
   border-radius:6px; padding:7px 9px; outline:none; font:inherit; user-select:text;

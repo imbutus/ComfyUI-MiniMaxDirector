@@ -232,6 +232,17 @@ through `editor.onAddCard`.
   `_check_speakers` says so and the card draws the same sentence on screen. That half of
   the check must **not** read `timeline.speech`: `cast.merge` derives that flag as "some
   card has a voice", which is false in exactly the case it exists for.
+- `speaks` on a card (new field, absent means true) is a per-card mute. `cast.merge` calls
+  `_silence`, which strips that speaker's `Sn` from every line's `ids` and drops a line left
+  with nobody — so the words stay in the document and stop compiling. The clip-wide
+  `they speak` box now sets every card's `speaks` rather than being a mode of its own.
+- The mute reaches everything a voice touches, not only the lines: `Speaker.speaks` carries
+  it into the compiler, where `_spoken_by` skips the card so its subject stops saying
+  `, and sounds like this: …`; `_check_speakers` reads a muted card as unvoiced, so it is
+  told to point `from` at a file or tick `speaks` and is never told it "has a voice but says
+  nothing"; and `cast.paint` puts `mmd-mute` on the row, which hides the voice row and
+  hollows the `Sn` badge. Wiring the mute into `_silence` alone left a voice compiled for
+  somebody with no lines and a card asking on screen for a voice it would not use.
 - `voice_from` is dropped by `cast.merge` when `they speak` is off, and the editor hides
   the whole voice row with it. A timbre reference is an instruction about a voice; with no
   dialogue compiled the prompt was saying a recording was the reference for a speaker it

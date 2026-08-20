@@ -191,6 +191,27 @@ def _check_continuity(timeline: Timeline) -> Iterator[Issue]:
                 )
 
 
+def _cited_inside_a_subject(timeline: Timeline) -> set[str]:
+    """Tokens that reach the prose inside a subject's definition rather than on their own.
+
+    The picture a card is drawn from, and the video a card takes its motion from: the
+    compiler writes both into that subject's sentence and gives neither an entry of its
+    own, so a rule asking for them to be described or named elsewhere is asking for
+    something the prompt does not have room for.
+    """
+    found: set[str] = set()
+    for subject in attachments.subjects(timeline):
+        found.add(subject.source)
+        motion = str(subject.record.get("motion_file", "")).strip()
+        if not motion:
+            continue
+        for item in attachments.collect(timeline):
+            if (str(item.record.get("filename", "")).strip() == motion
+                    and item.kind != "audio"):
+                found.add(item.token)
+    return found
+
+
 def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
     """An attached file with nothing said about it.
 
@@ -199,8 +220,17 @@ def _check_subjects(timeline: Timeline) -> Iterator[Issue]:
     back to the filename -- valid, but it tells the model nothing about what has to stay
     the same, which is the entire reason the section exists.
     """
+    cited = _cited_inside_a_subject(timeline)
     for item in attachments.collect(timeline):
         if str(item.record.get("description", "")).strip():
+            continue
+        # Nothing to describe on a token the prompt does not carry. A reference video's
+        # soundtrack is left out entirely unless the author names it, and a file a card
+        # draws on -- the picture, or the video a subject's motion comes from -- is cited
+        # inside that subject's own sentence rather than given a line to fill in.
+        if item.kind == "audio" and item.record.get("kind") == "video":
+            continue
+        if item.token in cited:
             continue
         name = str(item.record.get("filename", "")) or item.kind
         yield Issue(
@@ -225,7 +255,7 @@ def _check_sources(timeline: Timeline) -> Iterator[Issue]:
         for kind, index in TOKEN.findall(text or ""):
             named.add(f"<{kind.capitalize()} {index}>")
 
-    defines = {subject.source for subject in attachments.subjects(timeline)}
+    defines = _cited_inside_a_subject(timeline)
     # A file whose card is carried onto somebody is named inside *their* definition, which
     # is the prose pointing at it -- exactly what this check is asking for.
     defines |= {token for entries in attachments.carried(timeline).values()
@@ -482,6 +512,11 @@ def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
     nothing -- while `voice_from` goes further and tells the model an attached recording
     is the timbre reference for a speaker it is never asked to voice.
 
+    A muted card is a third case. Its voice is not compiled, so the first half fires --
+    the card really does reach the prompt as nothing -- and says which two switches end
+    that, while the second half cannot fire at all: with the lines silenced on purpose, an
+    unused voice is a control left as it was found.
+
     The first half is deliberately *not* guarded on `speech`: that flag is derived --
     `cast.merge` sets it false precisely when no card has a voice -- so reading it there
     would silence the check in the one case it exists for. The second half is guarded,
@@ -500,16 +535,24 @@ def _check_speakers(timeline: Timeline) -> Iterator[Issue]:
               for _, entry in entries}
 
     for speaker in timeline.speakers:
-        voiced = bool(str(speaker.voice).strip() or str(speaker.voice_from).strip())
+        # A muted card has no voice as far as the prompt is concerned: nothing of theirs is
+        # compiled, so a description of how they sound is not what is missing -- and it is
+        # not what would fix the card either.
+        voiced = speaker.speaks and bool(
+            str(speaker.voice).strip() or str(speaker.voice_from).strip())
         described = bound.get(speaker.id) is not None or speaker.uid in folded
         name = str(speaker.name).strip() or f"S{speaker.id}"
 
         if not voiced and not described:
+            silent = ("and speaks is off, so nothing it says or sounds like is compiled. "
+                      "Point its from at a file, or tick speaks."
+                      if not speaker.speaks else
+                      "and it describes no voice, so it is not heard. Point its from at a "
+                      "file, or say how it sounds.")
             yield Issue(
                 "warning",
                 f"The subject card {name} compiles to nothing: it names no file, so it is "
-                f"not a <Subject n>, and it describes no voice, so it is not heard. Point "
-                f"its from at a file, or say how it sounds.",
+                f"not a <Subject n>, {silent}",
             )
         elif voiced and timeline.speech and speaker.id not in spoken:
             # A voice is an instruction about how somebody sounds, and with no line it is

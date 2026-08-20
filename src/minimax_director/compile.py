@@ -263,13 +263,16 @@ def _spoken_by(timeline: Timeline) -> dict[str, str]:
     token there, not prose, so a voice typed on a card with a file used to reach the model
     nowhere at all. A card with no file is unaffected: its voice *is* its description, and
     the body still prints it before the `(Sn)`.
+
+    A muted card is skipped. With no line of theirs compiled, how they sound is an
+    instruction about nothing -- the same reason their timbre reference is dropped.
     """
     if timeline.voices() is None:
         return {}
     said: dict[str, str] = {}
     for number, subject in attachments.bound(timeline).items():
         voice = next((speaker.voice.strip() for speaker in timeline.speakers
-                      if speaker.id == number), "")
+                      if speaker.id == number and speaker.speaks), "")
         if voice:
             said[subject.token] = f", and sounds like this: {voice.rstrip('.')}"
     return said

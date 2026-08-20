@@ -67,6 +67,33 @@ def _files(timeline: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return found
 
 
+def _silence(timeline: dict[str, Any], number: int) -> None:
+    """Take one speaker's lines out of the document the cast was merged into.
+
+    Done here rather than in the compiler because a mute is a fact about the cast, and the
+    merge is where the cast meets the timeline. A line spoken by this card *and* somebody
+    else keeps the somebody else: only the silenced speaker leaves its `ids`.
+    """
+    wanted = f"S{number}"
+    for shot in timeline.get("shots") or []:
+        if not isinstance(shot, dict) or not isinstance(shot.get("lines"), list):
+            continue
+        kept = []
+        for line in shot["lines"]:
+            if not isinstance(line, dict):
+                continue
+            ids = [one.strip() for one in str(line.get("ids", "S1")).split(",") if one.strip()]
+            if wanted not in ids:
+                kept.append(line)
+                continue
+            rest = [one for one in ids if one != wanted]
+            if not rest:
+                continue
+            line["ids"] = ",".join(rest)
+            kept.append(line)
+        shot["lines"] = kept
+
+
 def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any]:
     """Fold a cast document into a timeline document, returning a new one.
 
@@ -119,7 +146,15 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
         # a voice, and with the dialogue switch off there is no voice to instruct. The
         # prompt used to say a recording was the timbre reference for a speaker it never
         # asked the model to voice.
-        voice_from = str(card.get("voice_from", "")).strip() if document["speech"] else ""
+        # A card can be silenced on its own, and its words are kept: the lines stay written
+        # on their blocks and simply stop compiling, so a take without one character's
+        # speech is one click away and one click back. The clip-wide switch is the same
+        # thing applied to everybody.
+        speaks = card.get("speaks", True) is not False
+        if not speaks:
+            _silence(merged, number)
+        voice_from = (str(card.get("voice_from", "")).strip()
+                      if document["speech"] and speaks else "")
         heard = files.get(voice_from)
         if heard is not None:
             listeners = heard.setdefault("voices", [])
@@ -128,6 +163,7 @@ def merge(timeline: dict[str, Any], payload: str | dict | None) -> dict[str, Any
 
         speakers.append({
             "id": number,
+            "speaks": speaks,
             "voice": str(card.get("voice", "")),
             "name": str(card.get("name", "")),
             "subject": 0,

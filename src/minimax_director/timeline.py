@@ -297,6 +297,7 @@ def _speakers(data: dict[str, Any]) -> list["Speaker"]:
                     id=number, voice=flat(item.get("voice", "")),
                     name=flat(item.get("name", "")), uid=str(item.get("uid", "")),
                     subject=max(0, subject),
+                    speaks=item.get("speaks", True) is not False,
                     voice_from=str(item.get("voice_from", ""))))
         if found:
             return sorted(found, key=lambda speaker: speaker.id)
@@ -403,6 +404,13 @@ class Speaker:
 
     Zero means unbound. The number is the subject's index, not the picture's: a photograph
     is not who is talking, the person lifted out of it is."""
+    speaks: bool = True
+    """Whether anything of this person's is compiled.
+
+    Off is a mute, not a deletion: the words stay written on their blocks and the voice
+    stays on the card, and nothing of theirs reaches the prompt -- no line, no timbre
+    reference, and no `sounds like this` on their subject. A take without one character's
+    speech is one click away and one click back."""
     voice_from: str = ""
     """Filename of an attached audio this person's timbre is taken from.
 

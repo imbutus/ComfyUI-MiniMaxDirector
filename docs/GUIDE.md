@@ -539,7 +539,7 @@ amber across it and the same line in `report`.
 
 | The card says | Because |
 |---|---|
-| this card compiles to nothing | no file and no voice: neither a subject nor a speaker |
+| this card compiles to nothing | no file and no voice: neither a subject nor a speaker. Muted, it asks for the file or the tick — a voice would not be compiled either way |
 | nothing is written about `<Picture 1>` yet | a file is picked, but with nothing said about it the card takes no number |
 | nobody speaks this card's lines | it has a voice, and no shot's dialogue row ticks its face |
 | no file: this card gives a voice and nothing else | fine, and deliberate — a speaker with no photograph |
@@ -547,7 +547,18 @@ amber across it and the same line in `report`.
 A green **`[Shot n]`** badge says where the card is heard, which is otherwise only visible
 from the TIMELINE tab.
 
-**Add** adds a card. **they speak** switches dialogue off for the whole clip: the rows and
+**Each card has its own speech box**, under its picture. Unticked, that card stops speaking
+and its words stay where they are: the lines sit on their blocks, out of the prompt, and one
+click puts them back. A line two cards share loses only the one that was silenced. The
+whole voice row goes with it — the description as well as `voice from` — for the reason the
+clip-wide switch takes it away: with nothing of that card compiled, how they sound is an
+instruction about nothing, and the prompt stops carrying it. `S2` is hollowed out rather
+than hidden, because the number is still theirs the moment the box is ticked again.
+
+**Add** adds a card. **they speak** is that box for all of them at once — one press silences
+the whole cast, another gives it back, and the per-card boxes show which way it went.
+Historically it was a switch of its own; it now sets the cards. Dialogue off for the clip: the
+rows and
 every `<d>` go at once, and the cards stay — a character can be in a clip without saying
 anything. The voice row goes with them, `voice from` included: a timbre reference is an
 instruction about a voice, and with nobody speaking the compiler drops it rather than
@@ -747,10 +758,12 @@ never a refusal:
 - a line marked **carries over** with nothing after it, which compiles as `<cutoff>`
 - a **guessed word** in a reused line — the guide wants `[unclear]`, never a guess
 - a **subject card that compiles to nothing**: no file, so it is not a `<Subject n>`,
-  and no voice, so it is never heard. The card is a filled-in row either way
+  and no voice, so it is never heard. The card is a filled-in row either way. A muted card
+  with a voice lands here too, and is asked for a file or its speech back
 - the reverse: a card with a **voice nobody speaks with** — no line names its `S`, so
   the voice instructs nothing, and a `voice from` recording is named as the timbre
-  reference for a speaker the model is never asked to voice
+  reference for a speaker the model is never asked to voice. Not said about a muted card:
+  there, silence is what the box was ticked for
 
 ---
 
@@ -761,6 +774,11 @@ and the linter's findings while you write, without running anything. Both are al
 the shipped workflow. They exist rather than a generic preview node for one reason: a
 preview fills from a *run*, and a warning that arrives after the render arrives after the
 cost.
+
+Each carries a **copy** button in its top right, which puts the whole panel on the clipboard
+— the prompt to file with a render or paste into a conversation, the report to send with a
+question. It falls back to the old copy command on a pod reached over plain `http`, where the
+browser gives a page no clipboard API at all.
 
 That is the whole pack: three nodes, all three in the shipped workflow. Earlier releases
 also carried a **Compile** node (the compile step with no model attached) and a **Length**

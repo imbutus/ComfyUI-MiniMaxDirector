@@ -506,7 +506,39 @@ function attachPromptView(node, field = "prompt") {
 
   const root = document.createElement("div");
   root.className = "mmd-prompt-view";
-  root.innerHTML = `${heading}<pre class="mmd-prompt-text" tabindex="0"></pre>`;
+  // A copy button, because this text is read somewhere else -- pasted into a chat, filed
+  // with a render, sent to somebody. Selecting a panel this long by hand across a zoomed
+  // canvas is a drag that ends wherever the pointer left the node.
+  root.innerHTML = `<div class="mmd-prompt-head">${heading}`
+    + `<button type="button" class="mmd-prompt-copy" title="Copy this text to the clipboard">copy</button>`
+    + `</div><pre class="mmd-prompt-text" tabindex="0"></pre>`;
+
+  const copy = root.querySelector(".mmd-prompt-copy");
+  copy.addEventListener("pointerdown", (event) => event.stopPropagation());
+  copy.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const text = root.querySelector(".mmd-prompt-text")?.textContent ?? "";
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // A page served over plain http has no clipboard API at all -- which is every pod
+      // reached by ip:port. The old way still works there and is silent when it does.
+      const box = document.createElement("textarea");
+      box.value = text;
+      box.style.cssText = "position:fixed;top:-1000px;opacity:0";
+      document.body.appendChild(box);
+      box.select();
+      try { document.execCommand("copy"); } catch { /* nothing else to try */ }
+      box.remove();
+    }
+    // The button says what happened: a copy that looks like nothing is a copy you press
+    // twice, and there is no other signal that the clipboard changed.
+    copy.textContent = "copied";
+    clearTimeout(copy.timer);
+    copy.timer = setTimeout(() => { copy.textContent = "copy"; }, 1200);
+  });
 
   const view = node.addDOMWidget(PROMPT_VIEW, "minimax_director_prompt", root, {
     getMinHeight: () => 120,

@@ -613,3 +613,93 @@ def test_a_motion_source_is_cited_inside_the_subject_not_given_its_own_entry():
     assert "whose motion comes from <Video 1>" in prompt
     assert "<Video 1> is the video in walk.mp4." not in prompt
     assert "<Video 1>: fully_preserved" not in prompt
+
+
+def test_the_linter_is_quiet_about_what_the_prompt_leaves_out():
+    """Three warnings fired on take 3 asking the author to describe or name tokens the
+    compiler had deliberately stopped writing: a style video's soundtrack, and the video a
+    subject's motion comes from."""
+    timeline = Timeline.from_dict({
+        "duration": 64,
+        "shots": [{"start": 0, "length": 64, "prompt": "A raccoon at the fence.",
+                   "media": {"kind": "image", "filename": "raccoon.png", "role": "reference",
+                             "description": "the raccoon",
+                             "subjects": [{"name": "the raccoon: a ringed tail",
+                                           "retention": "partially_preserved",
+                                           "motion_file": "walk.mp4"}]}}],
+        "sources": [{"kind": "video", "filename": "walk.mp4"}],
+    })
+    said = " ".join(issue.message for issue in lint(timeline))
+    assert "walk.mp4" not in said
+
+
+def _two_speakers(**mute):
+    return cast.merge({
+        "duration": 124,
+        "shots": [{"start": 0, "length": 124, "prompt": "A press room.", "lines": [
+            {"text": "Hello.", "ids": "S1"},
+            {"text": "Goodbye.", "ids": "S2"},
+            {"text": "Together.", "ids": "S1,S2"},
+        ]}],
+    }, {"speech": True, "cards": [
+        {"id": 1, "uid": "a", "name": "ANNA", "voice": "a warm, even voice", **mute},
+        {"id": 2, "uid": "b", "name": "BEN", "voice": "a low, dry voice"},
+    ]})
+
+
+def test_a_muted_card_keeps_its_words_and_stops_speaking():
+    """One card silenced, everybody else still talking — and the line they shared keeps the
+    speaker who was not muted."""
+    prompt = compile_timeline(Timeline.from_dict(_two_speakers(speaks=False))).prompt
+    assert "Hello." not in prompt
+    assert "Goodbye." in prompt
+    assert "Together." in prompt
+    assert "(S1,S2)" not in prompt
+
+
+def test_an_unmuted_cast_is_unchanged():
+    prompt = compile_timeline(Timeline.from_dict(_two_speakers())).prompt
+    for words in ("Hello.", "Goodbye.", "Together."):
+        assert words in prompt
+
+
+def test_a_muted_card_takes_its_voice_out_of_its_subject():
+    """Nothing of a muted card is compiled -- including how they sound.
+
+    The mute took the lines out and left `, and sounds like this: ...` in the subject's
+    definition, which is an instruction about a voice the prompt never asks for.
+    """
+    document = clip(shots=[
+        {"start": 0, "length": 24, "prompt": "A woman at the window.",
+         "media": {"kind": "image", "filename": "w.png", "role": "reference",
+                   "retention": "fully_preserved"}},
+    ]).to_dict()
+    card = {"id": 1, "uid": "a", "name": "WOMAN", "file": "w.png",
+            "description": "a woman in a red coat", "keep": "fully_preserved",
+            "voice": "low, smoky, forty"}
+
+    quiet = compile_timeline(Timeline.from_dict(
+        cast.merge(document, {"speech": True, "cards": [{**card, "speaks": False}]}))).prompt
+    assert "sounds like this" not in quiet
+    assert "a woman in a red coat" in quiet
+
+    talking = compile_timeline(Timeline.from_dict(
+        cast.merge(document, {"speech": True, "cards": [card]}))).prompt
+    assert "sounds like this: low, smoky, forty" in talking
+
+
+def test_a_muted_card_is_not_asked_for_a_voice():
+    """The two warnings a mute must not produce, and the one it must.
+
+    A muted card with a voice is not "a voice nobody speaks with" -- the switch says so on
+    purpose. A muted card with no file reaches the prompt as nothing all the same, and the
+    way out of that is a file or the switch, not a description of how they sound.
+    """
+    spoken = cast.merge(clip().to_dict(), {"speech": True, "cards": [
+        {"id": 1, "uid": "a", "name": "ANNA", "file": "", "description": "",
+         "keep": "fully_preserved", "voice": "a warm, even voice", "speaks": False},
+    ]})
+    said = messages(Timeline.from_dict(spoken))
+    assert not any("says nothing" in note for note in said)
+    assert any("tick speaks" in note for note in said)
+    assert not any("say how it sounds" in note for note in said)
