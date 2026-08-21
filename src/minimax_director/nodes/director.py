@@ -16,6 +16,7 @@ from ..cast import EMPTY as CAST_EMPTY
 from ..cast import merge_json as cast_merge
 from ..compile import compile_timeline
 from ..lint import Issue, lint
+from ..preview import missing_files
 from ..timeline import SIZINGS, Timeline
 
 CATEGORY = "MiniMaxDirector"
@@ -234,6 +235,23 @@ class MiniMaxDirector(io.ComfyNode):
                 io.String.Output(display_name="report"),
             ],
         )
+
+    @classmethod
+    def validate_inputs(cls, timeline="", cast=None):
+        """Refuse the run while a file the clip names is not on this machine.
+
+        The editor marks a missing file and locks itself down, but that is a browser
+        drawing a warning: a queue from another tab, from the API, or from a workflow
+        loaded a minute after somebody moved a folder never sees it. This is the check that
+        holds, and it costs nothing -- validation runs before a single frame is sampled,
+        where a loader failing halfway through would have cost a model load.
+
+        A message rather than an exception, because ComfyUI shows a returned string on the
+        node itself; a traceback would say `FileNotFoundError` and leave the author to work
+        out which of eleven files it meant.
+        """
+        gone = missing_files(timeline, cast or "")
+        return attachments.missing_sentence(gone) if gone else True
 
     @classmethod
     def execute(cls, clip, vae, timeline, width, height, ref_image_size="match",

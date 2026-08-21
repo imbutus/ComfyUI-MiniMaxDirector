@@ -53,7 +53,29 @@ def boot():
     # exactly what a custom node pack is not allowed to do.
     comfy_nodes.NODE_CLASS_MAPPINGS.update(ours)
     comfy_nodes.NODE_CLASS_MAPPINGS.update(stubs.REPLACEMENTS)
+
+    # The loaders are stubbed, so a file named by a test graph is never opened -- and the
+    # director refuses to run while a file it names is not in the input folder. That check
+    # is about the real world; in here the input folder is as fictional as the weights, so
+    # it is answered the same way everything else in this harness is. A name containing
+    # `missing` is the one file this pretend folder does not have, which is what lets the
+    # refusal itself be tested.
+    import folder_paths
+
+    folder_paths.exists_annotated_filepath = lambda name: "missing" not in str(name)
     return comfy_nodes
+
+
+def rejection(prompt: dict) -> str:
+    """Why ComfyUI refuses this graph, as one string. Empty when it does not."""
+    boot()
+
+    import execution
+
+    valid = _await(execution.validate_prompt(str(uuid.uuid4()), prompt, None))
+    if valid[0]:
+        return ""
+    return str(valid[1]) + str(valid[3] if len(valid) > 3 else "")
 
 
 class _Server:

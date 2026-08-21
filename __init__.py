@@ -32,13 +32,17 @@ def _register_routes():
     except ImportError:
         return
 
-    from minimax_director.preview import compile_preview
+    from minimax_director.preview import compile_preview, missing_files
 
     @PromptServer.instance.routes.post("/minimax_director/compile")
     async def compile_route(request):
         payload = await request.json()
+        timeline = payload.get("timeline", "")
+        cast = payload.get("cast", "")
+        # Asked here rather than inside the compiler: this process is the one holding the
+        # input folder, and it is the same answer the run itself is refused on.
         return web.json_response(compile_preview(
-            payload.get("timeline", ""), payload.get("cast", "")))
+            timeline, cast, missing=missing_files(timeline, cast)))
 
 
 _register_routes()

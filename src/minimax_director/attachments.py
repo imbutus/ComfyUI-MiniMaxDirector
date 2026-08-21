@@ -291,3 +291,42 @@ def of_kind(timeline: Timeline, kind: str) -> list[Attachment]:
         item for item in collect(timeline)
         if item.kind == wanted and item.record.get("kind") == kind
     ]
+
+
+def named_files(timeline: Timeline) -> list[str]:
+    """Every file the document names, once each, as ComfyUI's loaders address it.
+
+    A reference video is two attachments -- its pictures and its soundtrack -- and one
+    file, so the list is deduplicated: whoever asks this is asking about files on disk,
+    and a name reported twice is a file somebody goes looking for twice.
+
+    Pure, so it can be tested without ComfyUI: whether any of these is actually there is
+    a question about a folder, which is the node's business.
+    """
+    found: list[str] = []
+    for item in collect(timeline):
+        name = str(item.record.get("filename", "")).strip()
+        if not name:
+            continue
+        subfolder = str(item.record.get("subfolder") or "").strip("/")
+        path = f"{subfolder}/{name}" if subfolder else name
+        if path not in found:
+            found.append(path)
+    return found
+
+
+def missing_sentence(paths: list[str]) -> str:
+    """What to say about files the clip names and the machine does not have.
+
+    One wording, said in three places -- the run refused before it starts, the report the
+    editor shows while writing, and the panel that repairs it -- because three phrasings of
+    one problem read as three problems.
+    """
+    one = len(paths) == 1
+    listed = ", ".join(paths[:6]) + (", …" if len(paths) > 6 else "")
+    return (
+        f"{len(paths)} file{'' if one else 's'} this clip names "
+        f"{'is' if one else 'are'} not in ComfyUI's input folder: {listed}. "
+        f"Open IMPORT / EXPORT on the director and re-upload {'it' if one else 'them'}, "
+        f"or take whatever names {'it' if one else 'them'} off the clip."
+    )

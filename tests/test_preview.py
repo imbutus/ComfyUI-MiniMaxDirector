@@ -46,3 +46,24 @@ def test_structurally_wrong_payload_answers_instead_of_raising():
 
 def test_report_carries_lint_issues_as_text():
     assert isinstance(compile_preview(json.dumps(TIMELINE))["report"], str)
+
+
+def test_the_report_says_first_which_files_are_not_on_disk():
+    """Nothing else in the report can be acted on while a named file is missing."""
+    result = compile_preview(json.dumps(TIMELINE), missing=["face.png"])
+
+    assert result["ok"] is True
+    first = result["report"].splitlines()[0]
+    assert "face.png" in first
+    assert "not in ComfyUI's input folder" in first
+
+
+def test_a_document_with_every_file_in_place_says_nothing_about_files():
+    assert "input folder" not in compile_preview(json.dumps(TIMELINE))["report"]
+
+
+def test_missing_files_answers_nothing_outside_comfyui():
+    """No input folder to ask about, so no file is reported as gone."""
+    from minimax_director.preview import missing_files
+
+    assert missing_files(json.dumps(TIMELINE)) == []

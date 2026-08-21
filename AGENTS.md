@@ -359,6 +359,27 @@ back: that is what keeps the document true either way. Only a real 404 counts as
 a network error reported as "everything is gone" sends somebody hunting for files that are
 sitting right there.
 
+**A missing file is red, and red means broken.** Amber is "incomplete, and still yours to
+finish"; red is "nothing downstream of this can run", and the palette is the Delete
+button's so nothing new was invented for it. The editor keeps the set in `editor.absent`
+and everything that draws a file reads it -- the block, the chip, the Files row, and the
+cast, which borrows the set through `absentOf` because it never asks the server anything.
+
+**Three answers, one sentence.** `attachments.missing_sentence` is the only wording, used
+by the refused run, by the report the editor shows while writing, and quoted by the panel
+that repairs it. Three phrasings of one problem read as three problems.
+
+**The lock is a courtesy; validation is the guard.** `mmd-locked` dims the panels and takes
+their pointer events while a file is missing, leaving exactly three things live: the Files
+list (each missing row has a `re-upload` button), Delete, and Clear -- the two ways out are
+"put the file back" and "take what names it off the clip", and without the second a block
+pointing at a file you no longer own could not be removed. That is a browser drawing a
+warning, though: a queue from another tab or from the API never sees it. `validate_inputs`
+on the director is what holds, refusing the prompt before a frame is sampled. Its disk
+question lives in `preview.missing_files`, which returns `[]` outside ComfyUI -- a file list
+is not evidence about a folder that is not there -- while the names it checks come from
+`attachments.named_files`, which is pure and tested.
+
 ## What the compiler emits
 
 Two formats, chosen by whether anything is attached -- never by a widget. Nothing attached

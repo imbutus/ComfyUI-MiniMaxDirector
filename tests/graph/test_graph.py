@@ -285,3 +285,26 @@ def test_stretch_hands_the_picture_over_untouched():
 
     loaded = torch.zeros(1, 1024, 1024, 3)
     assert _fit(loaded, 1280, 832, "stretch") is loaded  # core squashes it, as asked
+
+
+# --- a file the clip names and the machine does not have ---------------------
+
+def test_a_clip_naming_a_file_that_is_not_there_is_refused_before_it_runs():
+    """The editor's lock is a browser drawing a warning; this is the one that holds.
+
+    A queue from another tab, from the API, or from a workflow opened a minute after
+    somebody moved a folder never sees the panel. Refused in validation, so it costs no
+    model load and the message says which file and what to do about it.
+    """
+    graph = base_graph(f"minimax-director-gone-{int(time.time())}")
+    graph["5"]["inputs"]["timeline"] = json.dumps({
+        "global_prompt": "Neon-lit alley after rain.",
+        "shots": [{"start": 0, "length": 24, "prompt": "The alley",
+                   "media": {"kind": "image", "filename": "missing.png", "subfolder": ""}}],
+    })
+
+    why = harness.rejection(graph)
+
+    assert "missing.png" in why
+    assert "not in ComfyUI's input folder" in why
+    assert "IMPORT / EXPORT" in why

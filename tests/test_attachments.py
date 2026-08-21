@@ -1,7 +1,8 @@
 """Files on the timeline decide their own reference numbers."""
 
 from minimax_director import Timeline, compile_timeline
-from minimax_director.attachments import carried, collect, of_kind, subjects, tokens_by_segment
+from minimax_director.attachments import (
+    carried, collect, missing_sentence, named_files, of_kind, subjects, tokens_by_segment)
 
 
 def image(name):
@@ -210,3 +211,35 @@ def test_a_subject_onto_nobody_is_named_only_where_its_own_file_is():
             {"name": "the face", "retention": "attribute_transfer"}]}],
     })
     assert tokens_by_segment(timeline)[("shots", 0)] == ["<Subject 1>"]
+
+
+def test_a_file_used_twice_is_named_once_in_the_file_list():
+    """A reference video is two attachments and one file, and this list is about files."""
+    timeline = Timeline.from_dict({
+        "shots": [
+            {"start": 0, "length": 24, "prompt": "She turns.",
+             "media": {"kind": "video", "filename": "walk.mp4", "subfolder": ""}},
+            {"start": 24, "length": 24, "prompt": "The same room.",
+             "media": image("room.png")},
+        ],
+        "sources": [audio("hum.wav")],
+    })
+    assert named_files(timeline) == ["room.png", "walk.mp4", "hum.wav"]
+
+
+def test_a_file_in_a_subfolder_is_named_the_way_the_loaders_address_it():
+    timeline = Timeline.from_dict({
+        "shots": [{"start": 0, "length": 24, "prompt": "A face.",
+                   "media": {"kind": "image", "filename": "face.png", "subfolder": "faces"}}],
+    })
+    assert named_files(timeline) == ["faces/face.png"]
+
+
+def test_the_missing_sentence_counts_and_names_what_is_gone():
+    one = missing_sentence(["face.png"])
+    assert "1 file this clip names is not in ComfyUI's input folder: face.png." in one
+    assert "re-upload it" in one
+
+    two = missing_sentence(["face.png", "walk.mp4"])
+    assert "2 files this clip names are not in ComfyUI's input folder" in two
+    assert "re-upload them" in two
