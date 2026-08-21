@@ -638,6 +638,13 @@ export class TimelineEditor {
       this.nag();
     }, true);
 
+    // The one control a block can carry that is not about the block: the file it names is
+    // not on this machine. Delegated, because every render rebuilds the blocks.
+    this.canvas.addEventListener("click", (event) => {
+      const back = event.target.closest("[data-refile]");
+      if (back) this.replaceFile(back.dataset.refile);
+    });
+
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     this.canvas.addEventListener("change", (event) => {
@@ -2283,6 +2290,10 @@ export class TimelineEditor {
     // treating it as the start of a drag makes the move impossible to pick.
     if (event.target.closest(".mmd-inline, .mmd-cam-pick, .mmd-keep-pick")) return;
 
+    // The repair button on a block whose file is gone. A click there is aimed at the
+    // button, and reading it as the start of a drag makes it impossible to press.
+    if (event.target.closest("[data-refile]")) return;
+
     // The playhead's head is a handle, not part of the tracks. Dragging it scrubs; letting
     // it fall through would start a marquee over the blocks underneath instead.
     if (event.target.closest(".mmd-head-grip")) {
@@ -3085,6 +3096,18 @@ export class TimelineEditor {
     // whose picture is missing. The red border is the difference.
     if (item.media && this.absent.has(String(item.media.filename || ""))) {
       node.classList.add("mmd-gone");
+      // The repair, on the block itself. A picture, a clip or a recording that is gone
+      // leaves an empty rectangle exactly where somebody is already looking, so that is
+      // where the way out belongs -- rather than in a list they have to know to open.
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "mmd-seg-refile";
+      back.dataset.refile = item.media.filename;
+      back.title = `${item.media.filename} is not in ComfyUI's input folder. `
+        + "Pick it from disk -- any name will do -- and every block, token and card "
+        + "naming it points at the copy you upload.";
+      back.innerHTML = `${ICON.load}<span>re-upload</span>`;
+      node.appendChild(back);
     }
 
     const caption = document.createElement("span");

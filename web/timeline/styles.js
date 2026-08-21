@@ -188,6 +188,20 @@ const CSS = `
    empty rectangle, which reads as a block nobody filled in; the border is the difference
    between "unwritten" and "broken". */
 .mmd-seg.mmd-gone { border-color:#8a4238; box-shadow:inset 0 0 0 1px #8a4238; }
+/* The repair, in the middle of the empty rectangle the missing file leaves. Centred rather
+   than tucked in a corner: on a block with nothing drawn in it there is nothing else to
+   look at, and it must be as findable on a two-second recording as on a long shot -- so it
+   shrinks to the icon alone rather than spilling over the edges. */
+.mmd-seg-refile { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+  display:inline-flex; align-items:center; gap:5px; max-width:calc(100% - 10px);
+  overflow:hidden; white-space:nowrap; background:#3a2422; color:#ffd9d2;
+  border:1px solid #8a4238; border-radius:5px; padding:3px 9px; font:inherit;
+  font-size:10.5px; cursor:pointer; z-index:3; }
+.mmd-seg-refile:hover { background:#5a3029; border-color:#b45848; color:#fff; }
+.mmd-seg-refile .mmd-icon { width:12px; height:12px; flex:0 0 auto; }
+/* A block narrower than the words keeps the icon and loses the rest to an ellipsis, which
+   is what the title on the button is for. */
+.mmd-seg-refile span { overflow:hidden; text-overflow:ellipsis; }
 .mmd-f-subj.mmd-gone { border-color:#8a4238; color:#e07b6a; background:#241715; }
 .mmd-card.mmd-card-gone .mmd-face { box-shadow:inset 0 0 0 1px #8a4238; }
 select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
@@ -263,10 +277,18 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    file back from the Files list, or take what names it off the clip with Delete or Clear --
    and IMPORT / EXPORT, which is where the file gets uploaded, stays whole. Without those a
    block pointing at a file you no longer own would be impossible to remove. */
-.mmd-locked .mmd-panel[data-panel="timeline"] > *,
+.mmd-locked .mmd-panel[data-panel="timeline"] > *:not(.mmd-stage),
 .mmd-locked .mmd-panel[data-panel="cast"] > *,
 .mmd-locked .mmd-panel[data-panel="global"] > *,
 .mmd-locked .mmd-settings { opacity:.4; pointer-events:none; user-select:none; }
+/* The tracks are dimmed a block at a time rather than as a whole, because the one block
+   that must not fade is the broken one -- it is the thing being pointed at -- and opacity
+   on an ancestor cannot be taken back by a child. Its button re-enables pointer events for
+   itself alone: everything else on the stage stays inert. */
+.mmd-locked .mmd-stage { pointer-events:none; }
+.mmd-locked .mmd-stage .mmd-seg:not(.mmd-gone),
+.mmd-locked .mmd-labels, .mmd-locked .mmd-ruler { opacity:.4; }
+.mmd-locked .mmd-seg-refile { pointer-events:auto; }
 .mmd-locked .mmd-files-bar, .mmd-locked .mmd-files {
   opacity:1; pointer-events:auto; user-select:auto; }
 .mmd-locked .mmd-bar button:not(.mmd-danger):not([data-reset]) {

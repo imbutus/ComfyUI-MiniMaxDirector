@@ -251,11 +251,13 @@ loads, not only after an import.
 
 While a file is missing the editor locks: the panels dim and stop taking clicks, and
 clicking one blinks the count three times and opens IMPORT / EXPORT. Three things stay
-live, because they are the ways out — the **Files** list, where each missing row carries a
-**re-upload** button; and **Delete** and **Clear**, for when the answer is that the block
-should go. Pick any file off disk for a re-upload: renamed on disk is the ordinary reason
-one goes missing, so the name you pick need not match. Every block, token and card that
-named it is re-pointed at the copy you upload.
+live, because they are the ways out — **re-upload**, on the block itself and on the file's
+row in **Files**; and **Delete** and **Clear**, for when the answer is that the block should
+go. The button sits in the middle of the block, where the picture would be: a missing
+picture, clip or recording leaves an empty rectangle exactly where you are already looking.
+Pick any file off disk for it — renamed on disk is the ordinary reason one goes missing, so
+the name you pick need not match — and every block, token and card that named the old one
+is re-pointed at the copy you upload.
 
 The run itself is refused too, and that is the check that actually holds: the editor's lock
 is a browser drawing a warning, while a queue from another tab or from the API never sees
