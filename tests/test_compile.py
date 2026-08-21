@@ -82,6 +82,21 @@ def test_camera_becomes_prose_not_an_enum():
     assert "dolly_in" not in compiled.prompt
 
 
+def test_a_move_with_no_verb_is_its_note_and_nothing_else():
+    """The `— in words` option: the guide's twenty words do not cover every camera.
+
+    `static` beside a described move would compile to a contradiction -- "The camera holds
+    a static shot. The camera drifts along the tabletop" -- so no verb writes no sentence
+    and the note is the whole camera line.
+    """
+    timeline = build(moves=[{"start": 0, "length": 24, "camera": "",
+                             "prompt": "The camera drifts along the tabletop."}])
+    body = compile_timeline(timeline).prompt.split("overall_soundscape:")[0]
+
+    assert "The camera drifts along the tabletop." in body
+    assert "holds a static shot" not in body
+
+
 def test_unknown_camera_passes_through_untouched():
     timeline = build(
         shots=[{"start": 0, "length": 24, "prompt": "A face.", "camera": "vertigo pull"}]

@@ -195,7 +195,11 @@ export function parse(text) {
     // that does nothing. Documents written before the empty value was dropped are read as
     // `static` -- the move they were already describing by holding still.
     for (const move of Array.isArray(timeline.moves) ? timeline.moves : []) {
-      if (!move.camera) move.camera = "static";
+      // An empty camera means "the note says it" -- the `— in words` option -- so it is
+      // only read as `static` when there is no note either. That case is the one this
+      // rewrite was written for: a block from before the empty value was dropped, saying
+      // nothing at all, which is a block that does nothing.
+      if (!move.camera && !String(move.prompt || "").trim()) move.camera = "static";
       // Absent is a document from before amplitude and speed were fields, and its camera
       // value carried both of them inside its sentence. Empty is an author saying medium
       // and normal out loud, so only the absent case is filled in.

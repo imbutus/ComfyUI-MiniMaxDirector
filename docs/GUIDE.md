@@ -727,6 +727,7 @@ and **speed**. H3 reads prose, not enum values, so the three become one sentence
 
 | Motion | Sentence sent |
 |---|---|
+| `— in words` | *nothing* — the note is the whole camera line |
 | `static` | The camera holds a static shot. |
 | `zoom_in` / `zoom_out` | The camera zooms in / out. |
 | `dolly_in` / `dolly_out` | The camera pushes in / pulls out. |
@@ -753,6 +754,13 @@ writes by leaving them out — so those options add nothing, on purpose.
 A note typed into the block is appended after the sentence: `dolly_in` + *"closing on the
 apple"* becomes *"The camera pushes in. closing on the apple"* — write it as a
 continuation, not as a sentence of its own.
+
+Twenty words do not cover every camera, and the first option in the list — **`— in
+words`** — is for the ones they miss: it writes no sentence at all, so the note becomes the
+whole camera line, in your words. `static` is not that option; picked beside a described
+move it compiles to a contradiction — *"The camera holds a static shot. The camera drifts
+along the tabletop."* Amplitude and speed are not offered with `— in words`, for the same
+reason they are not offered with `static`: there is no verb for them to qualify.
 
 Documents from before amplitude and speed were fields are read as what they meant:
 `dolly_in` was always *small, slow* and the retired `crash_zoom` always *large, fast*, so both keep

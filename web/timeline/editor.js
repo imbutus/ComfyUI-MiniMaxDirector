@@ -47,9 +47,17 @@ const text = (value) => String(value ?? "")
  * `static`.
  */
 const cameraOptions = (current) => {
-  const value = current || "static";
-  const names = CAMERAS.includes(value) ? CAMERAS : [value, ...CAMERAS];
-  return names
+  const value = String(current ?? "");
+  const known = value === "" || CAMERAS.includes(value);
+  const names = known ? CAMERAS : [value, ...CAMERAS];
+  // No verb at all: the note beside it is the whole camera sentence. The guide's vocabulary
+  // is twenty words and a camera does more than twenty things -- and every one of these
+  // options writes a sentence, so `static` beside a described move compiled to "The camera
+  // holds a static shot. The camera drifts along the tabletop", which is a contradiction
+  // the model has to resolve for us. The compiler already passed an empty value through
+  // untouched; this is the option that lets somebody say it.
+  const words = `<option value=""${value === "" ? " selected" : ""}>— in words</option>`;
+  return words + names
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
     .join("");
 };
@@ -3509,7 +3517,10 @@ export class TimelineEditor {
     // selection late.
     const first = track === "shots"
       && items(timeline, "shots").every((other) => other.start >= item.start);
-    const still = item.camera === "static" ? 1 : 0;
+    // Nothing travels while the camera holds still -- and nothing this editor knows about
+    // travels when the move is written in words, where the note is the whole sentence and
+    // the two scales have no verb to qualify.
+    const still = item.camera === "static" || !item.camera ? 1 : 0;
 
     // Who, if anybody, has taken this file over. Computed here rather than beside the
     // markup because the two shape strings below have to know: a card written while this
@@ -3557,10 +3568,10 @@ export class TimelineEditor {
     // could be written in two places -- inline on the shot's line, or in the Camera:
     // block -- with nothing on screen to say which you were getting.
     const cameras = track !== "moves" ? "" : `
-      <label>camera
+      <label title="The guide's camera vocabulary, each word compiling to a sentence of its own. — in words writes no sentence at all: the note beside it becomes the whole camera line, for a move none of these twenty words describes.">camera
         <select class="mmd-f-camera">${cameraOptions(item.camera)}</select>
       </label>
-      ${item.camera === "static" ? "" : `
+      ${still ? "" : `
       <label title="How far the framing travels. The guide leaves medium unwritten, so that option contributes nothing to the sentence -- which is what medium means.">amplitude
         <select class="mmd-f-amplitude">${
           scaleOptions(AMPLITUDES, item.amplitude, "medium")}</select>
