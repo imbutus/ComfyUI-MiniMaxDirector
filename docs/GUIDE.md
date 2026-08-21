@@ -250,7 +250,8 @@ so it is visible from whichever panel you are working in, and it is checked when
 loads, not only after an import.
 
 While a file is missing the editor locks: the panels dim and stop taking clicks, and
-clicking one blinks the count three times and opens IMPORT / EXPORT. Three things stay
+clicking one flashes the blocks whose file is gone three times, on TIMELINE — they are both
+the reason nothing is answering and where the repair is. Three things stay
 live, because they are the ways out — **re-upload**, on the block itself and on the file's
 row in **Files**; and **Delete** and **Clear**, for when the answer is that the block should
 go. The button sits in the middle of the block, where the picture would be: a missing

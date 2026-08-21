@@ -633,6 +633,10 @@ export class TimelineEditor {
     // what is in the way: the count blinks and the tab that explains it opens.
     this.root.addEventListener("click", (event) => {
       if (!this.absent.size) return;
+      // The repair button on a block is the one live control out here, and it is the
+      // answer to what the nag would say -- sending somebody to the tab that explains the
+      // problem, at the moment they pressed the thing that fixes it, is an interruption.
+      if (event.target.closest("[data-refile]")) return;
       if (event.target.closest(".mmd-io, .mmd-files, .mmd-files-bar, .mmd-tabrow")) return;
       if (event.target.closest(".mmd-bar button.mmd-danger, .mmd-bar button[data-reset]")) return;
       this.nag();
@@ -1344,23 +1348,27 @@ export class TimelineEditor {
   /**
    * Say what is in the way, for somebody who just clicked something that will not answer.
    *
-   * Three blinks on the count and the tab that explains it -- not an alert, which would
-   * have to be dismissed before the thing it is about can be fixed.
+   * Three blinks on the blocks whose file is gone, on the tab the tracks are on -- they are
+   * both the reason nothing is answering and where the repair is, so pointing anywhere else
+   * would be one more step away from it. Not an alert, which would have to be dismissed
+   * before the thing it is about could be fixed.
    */
   nag() {
-    if (this.tab !== "io") this.showTab("io");
-    const marks = [
-      this.tabs.querySelector(".mmd-tab-missing"),
-      this.io.querySelector(".mmd-io-missing"),
-    ];
-    for (const mark of marks) {
-      if (!mark) continue;
-      mark.classList.remove("mmd-blink");
-      // Reading the layout between the two, or the class re-added in the same frame never
-      // restarts the animation and the second click does nothing at all.
-      void mark.offsetWidth;
-      mark.classList.add("mmd-blink");
-    }
+    const blink = () => {
+      for (const block of this.canvas.querySelectorAll(".mmd-seg.mmd-gone")) {
+        block.classList.remove("mmd-blink");
+        // Reading the layout between the two: the class re-added in the same frame never
+        // restarts the animation, and the second click would do nothing at all.
+        void block.offsetWidth;
+        block.classList.add("mmd-blink");
+      }
+    };
+
+    if (this.tab === "timeline") return blink();
+    this.showTab("timeline");
+    // Two frames: `showTab` re-renders the tracks on the way in, and blocks blinked before
+    // that render are thrown away by it.
+    requestAnimationFrame(() => requestAnimationFrame(blink));
   }
 
   /** One sentence under the buttons, amber when it is bad news. */

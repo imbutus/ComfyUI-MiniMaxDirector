@@ -298,6 +298,14 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    fixed; this points at the answer and gets out of the way. */
 @keyframes mmd-blink { 0%, 100% { opacity:1; } 50% { opacity:.12; } }
 .mmd-blink { animation:mmd-blink .26s ease-in-out 3; }
+/* On a block it is a flash of its own red rather than a fade: the block is an empty
+   rectangle to begin with, and something already close to invisible losing opacity is not
+   a signal anybody notices from the other side of the node. */
+@keyframes mmd-seg-blink {
+  0%, 100% { background-color:transparent; box-shadow:inset 0 0 0 1px #8a4238; }
+  50% { background-color:#6a2b24; box-shadow:inset 0 0 0 2px #e07b6a; }
+}
+.mmd-seg.mmd-gone.mmd-blink { animation:mmd-seg-blink .3s ease-in-out 3; }
 /* Content-sized, like everything else in this column. A panel that stretched to fill the
    node fed the resize observer that grows the node, and the two chased each other. */
 .mmd-panel { display:flex; flex-direction:column; gap:7px; flex:0 0 auto; }
