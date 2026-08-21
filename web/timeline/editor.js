@@ -4033,7 +4033,11 @@ export class TimelineEditor {
     put(".mmd-f-start", item.start);
     put(".mmd-f-end", item.start + item.length);
     put(".mmd-f-len", item.length);
-    put(".mmd-f-camera", item.camera || "static");
+    // Not `|| "static"`. The two camera selects -- this one and the one on the block --
+    // are the same value drawn twice, and a fallback in one of them is how they came to
+    // disagree: the block read `— in words` while the panel wrote `static` back over it on
+    // the next repaint. Empty is a value here, so it is painted as one.
+    put(".mmd-f-camera", item.camera || "");
     put(".mmd-f-amplitude", item.amplitude || "");
     put(".mmd-f-speed", item.speed || "");
     put(".mmd-f-transition", item.transition || "cut");
