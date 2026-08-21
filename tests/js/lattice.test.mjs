@@ -73,14 +73,15 @@ const chosen = parse(JSON.stringify(
   { moves: [{ start: 0, length: 24, camera: "dolly_in", amplitude: "", speed: "" }] }));
 check("medium said out loud is left alone", chosen.moves[0].amplitude, "");
 
-// No verb and a note: the `— in words` option, where the note is the whole camera
-// sentence. No verb and nothing written is the old do-nothing block, still read as static.
+// No verb is the `— in words` option, where the note is the whole camera sentence. It is
+// kept exactly as written: reading it as `static` put the verb back the instant somebody
+// picked the option, before there was a note to justify it.
 const words = parse(JSON.stringify({ moves: [
   { start: 0, length: 24, camera: "", prompt: "The camera drifts along the tabletop." },
   { start: 24, length: 24, camera: "" },
 ] }));
 check("a described move keeps no verb", words.moves[0].camera, "");
-check("a silent move is still static", words.moves[1].camera, "static");
+check("an empty one is not given one either", words.moves[1].camera, "");
 
 check("audio is graded in its own words", retentionsFor("audio")[0], AUDIO_RETENTIONS[0]);
 check("everything visible keeps the other set", retentionsFor("image")[0], RETENTIONS[0]);

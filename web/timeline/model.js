@@ -191,15 +191,13 @@ export function parse(text) {
   if (!text || !text.trim()) return emptyTimeline();
   try {
     const timeline = { ...emptyTimeline(), ...JSON.parse(text) };
-    // A camera block with no move contributes no camera sentence, which makes it a block
-    // that does nothing. Documents written before the empty value was dropped are read as
-    // `static` -- the move they were already describing by holding still.
     for (const move of Array.isArray(timeline.moves) ? timeline.moves : []) {
-      // An empty camera means "the note says it" -- the `— in words` option -- so it is
-      // only read as `static` when there is no note either. That case is the one this
-      // rewrite was written for: a block from before the empty value was dropped, saying
-      // nothing at all, which is a block that does nothing.
-      if (!move.camera && !String(move.prompt || "").trim()) move.camera = "static";
+      // No rewrite of an empty camera. It used to be read as `static`, on the grounds that
+      // a block with no move does nothing -- but empty is a value somebody can choose now,
+      // `— in words`, and the rewrite put `static` back the instant it was picked, before
+      // there was a note to justify it. Python never did this either: an empty camera has
+      // always compiled to no sentence at all. A move with neither verb nor note is a
+      // block that says nothing, and the linter says so rather than guessing for it.
       // Absent is a document from before amplitude and speed were fields, and its camera
       // value carried both of them inside its sentence. Empty is an author saying medium
       // and normal out loud, so only the absent case is filled in.
