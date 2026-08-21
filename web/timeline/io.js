@@ -87,9 +87,43 @@ export function filename(now = new Date()) {
     + `-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
 }
 
-/** Hand the text to the browser as a download. */
-export function save(text, name = filename()) {
+/**
+ * Write the text to a file the author picks, and answer with the name it was given.
+ *
+ * A plain download is the fallback, not the intent: Chrome takes it straight to whatever
+ * folder it was last told to use, with no dialog, no choice of name and nothing on screen
+ * -- which reads exactly like a button that did nothing. Where the browser has a save
+ * picker, that is what this uses. Firefox and Safari do not, and fall through.
+ *
+ * `null` means the picker was dismissed, which is an answer, not a failure.
+ */
+export async function save(text, name = filename()) {
   const blob = new Blob([text], { type: "application/json" });
+
+  if (window.showSaveFilePicker) {
+    let handle = null;
+    try {
+      handle = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{
+          description: "MiniMax Director piece",
+          accept: { "application/json": [".json"] },
+        }],
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") return null;
+      // Anything else -- a context the picker refuses to open in, a permission withheld --
+      // is not worth an error message when a download does the same job.
+      handle = null;
+    }
+    if (handle) {
+      const stream = await handle.createWritable();
+      await stream.write(blob);
+      await stream.close();
+      return handle.name;
+    }
+  }
+
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = name;
@@ -97,6 +131,7 @@ export function save(text, name = filename()) {
   // Not in the same tick: revoking the URL before the browser has read it cancels the
   // download, and the failure looks exactly like a button that does nothing.
   setTimeout(() => URL.revokeObjectURL(link.href), 20000);
+  return name;
 }
 
 /** A chosen `.json`, read as text, or null when the picker was dismissed. */
@@ -153,11 +188,10 @@ export async function copy(text) {
   }
 }
 
-/** What the clipboard holds. Throws when the browser will not say, which it may. */
-export async function paste() {
-  const text = await navigator.clipboard.readText();
-  return text;
-}
+// There is no `paste()` here on purpose. Reading the clipboard from a page is a permission
+// -- Chrome grants it silently, Firefox puts its own popup in front of it -- while pasting
+// into a box needs none, because the paste *is* the permission. The Paste button opens a
+// box and loads what lands in it.
 
 /** Every media record in a timeline, as live references so they can be re-pointed. */
 export function mediaOf(timeline) {
@@ -187,7 +221,10 @@ export async function missing(records) {
     const url = media.url(record);
     if (!url) return Promise.resolve(true);
     if (!asked.has(url)) {
-      asked.set(url, fetch(url, { method: "HEAD" })
+      // `no-store`, and it matters: the same URL was fetched to draw the thumbnail, so a
+      // cached 200 would answer for a file that has since been deleted -- the one case
+      // this exists to catch.
+      asked.set(url, fetch(url, { method: "HEAD", cache: "no-store" })
         .then((response) => response.status !== 404)
         .catch(() => true));
     }
@@ -212,24 +249,60 @@ export async function missing(records) {
 export async function restore(records, files) {
   const wanted = new Map();
   for (const record of records) {
-    const key = String(record.filename || "").toLowerCase();
+    const key = String(record.filename || "");
     if (!wanted.has(key)) wanted.set(key, []);
     wanted.get(key).push(record);
   }
+  const keyed = new Map([...wanted.keys()].map((name) => [name.toLowerCase(), name]));
 
   const placed = [];
+  const renamed = [];
+  const spare = [];
   for (const file of files) {
-    const group = wanted.get(file.name.toLowerCase());
-    if (!group) continue;
-    const uploaded = await media.upload(
-      group[0].kind || media.kindOf(file) || "image", file);
-    for (const record of group) {
-      record.filename = uploaded.filename;
-      record.subfolder = uploaded.subfolder;
+    const key = keyed.get(file.name.toLowerCase());
+    if (!key) {
+      spare.push(file);
+      continue;
     }
-    wanted.delete(file.name.toLowerCase());
+    const { to } = await put(wanted.get(key), file);
+    if (to !== key) renamed.push({ from: key, to });
+    wanted.delete(key);
+    keyed.delete(file.name.toLowerCase());
     placed.push(file.name);
   }
 
-  return { placed, left: [...wanted.values()].map((group) => group[0].filename) };
+  // One file still missing and one file offered that answers to no name: it is that file.
+  // Renamed on disk is the ordinary reason a file goes missing, so insisting on the old
+  // name here would refuse the very case somebody is trying to repair -- and with one of
+  // each there is nothing to guess at. Two of each is a guess, and a wrong guess points a
+  // block at somebody else's photograph, so those are left for the per-row button, where
+  // the row says which file it is asking about.
+  if (wanted.size === 1 && spare.length === 1) {
+    const key = [...wanted.keys()][0];
+    const { to } = await put(wanted.get(key), spare[0]);
+    if (to !== key) renamed.push({ from: key, to });
+    wanted.delete(key);
+    placed.push(spare[0].name);
+  }
+
+  return { placed, left: [...wanted.keys()], renamed };
+}
+
+/**
+ * One chosen file for one named file, whatever the chosen one is called.
+ *
+ * The row already says which file is missing, so the pick answers that row -- matching by
+ * name here would refuse the obvious case, which is a file that was renamed on disk and is
+ * exactly why the row is asking. Answers with both names: a card points at a file by name
+ * too, and the caller has to carry the new one over.
+ */
+export async function put(records, file) {
+  const from = String(records[0]?.filename || "");
+  const uploaded = await media.upload(
+    records[0]?.kind || media.kindOf(file) || "image", file);
+  for (const record of records) {
+    record.filename = uploaded.filename;
+    record.subfolder = uploaded.subfolder;
+  }
+  return { from, to: uploaded.filename };
 }

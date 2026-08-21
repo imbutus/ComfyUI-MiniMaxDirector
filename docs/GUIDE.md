@@ -204,10 +204,13 @@ right-hand end of the row rather than in the run of panels.
 The tab holds the whole piece as one JSON — the timeline, the cards on WHO & WHAT and the
 clip's own `width`, `height` and default resize — and four buttons:
 
-- **Save file** — writes it to `minimax-director-<date>.json`
+- **Save file** — opens the browser's own save dialog, so the folder and the name are
+  yours to choose; it suggests `minimax-director-<date>.json`. Firefox and Safari have no
+  such dialog and download the file to wherever the browser normally puts one — the line
+  beside the buttons names what was written either way
 - **Load file** — reads one back
 - **Copy** — the same JSON onto the clipboard, to paste into a message or another director
-- **Paste** — reads the clipboard and loads whatever piece is on it
+- **Paste** — opens a box: press ⌘V / Ctrl+V in it and the piece loads as it lands
 
 A load replaces the node — the timeline, the cards and the settings — and asks first when
 there is anything to lose. Cmd/Ctrl+Z puts the timeline back; the cards are a document of
@@ -219,14 +222,45 @@ The document names the files, it does not carry them: a picture's filename, neve
 pixels. Base64 is not an alternative here — a reference video is tens of megabytes, and a
 third larger again as text. So a load ends by asking ComfyUI which of the named files it
 actually has, and lists the ones it does not, with an **Upload** button: pick them from
-disk and every block pointing at each name is re-pointed at the uploaded copy. ComfyUI
+disk and every block pointing at each name is re-pointed at the uploaded copy. Files are
+paired by name, so a folder full of them can be answered in one go — and when exactly one
+file is missing and exactly one is picked, the name need not match, because a file renamed
+on disk is the ordinary reason one goes missing. Several of each with no names in common is
+a guess, so those are left to each row's own **re-upload**, which names the file it wants.
+ComfyUI
 renames a collision rather than overwriting a file another workflow is using, which is why
 the document is re-pointed rather than trusted to keep the name. The same check runs
 whenever the tab is opened, so a workflow somebody sent you says what it is missing without
 being imported at all.
 
-Reading the clipboard needs a permission the browser may simply refuse. When it does, a box
-appears to paste into by hand, with an **Apply** button beside it.
+**Paste** never reads the clipboard itself. Reading it from a page is a permission —
+Chrome grants it silently, Firefox answers with a popup of its own that has to be clicked
+first — while pasting into a box needs none, because the paste *is* the permission. So the
+button opens the box and loads whatever lands in it, with nothing further to press. The
+**Apply** button beside it is for a document typed or edited there by hand.
+
+### A file that is not there
+
+Red means one thing in this editor: broken, and nothing downstream of it can run. (Amber
+stays what it always was — incomplete, and still yours to finish.) A file the clip names
+and this ComfyUI does not have is marked in red everywhere it appears: the block on the
+timeline, the `<Picture 1> …` chip under the prompt, its row in **Files**, and the card's
+face and `from` on WHO & WHAT. The count rides on the tab — `IMPORT / EXPORT · 1 missing` —
+so it is visible from whichever panel you are working in, and it is checked when the node
+loads, not only after an import.
+
+While a file is missing the editor locks: the panels dim and stop taking clicks, and
+clicking one blinks the count three times and opens IMPORT / EXPORT. Three things stay
+live, because they are the ways out — the **Files** list, where each missing row carries a
+**re-upload** button; and **Delete** and **Clear**, for when the answer is that the block
+should go. Pick any file off disk for a re-upload: renamed on disk is the ordinary reason
+one goes missing, so the name you pick need not match. Every block, token and card that
+named it is re-pointed at the copy you upload.
+
+The run itself is refused too, and that is the check that actually holds: the editor's lock
+is a browser drawing a warning, while a queue from another tab or from the API never sees
+it. The director fails validation before a single frame is sampled, naming the files and
+what to do about them, and the report says the same thing while you write.
 
 ### Editing a block
 

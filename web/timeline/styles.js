@@ -164,6 +164,33 @@ const CSS = `
 .mmd-file-loose { border-style:dashed; }
 .mmd-file-lifting { opacity:.45; }
 .mmd-file-placed { opacity:.75; }
+/* A file the clip names and ComfyUI does not have.
+   Red, and red means exactly one thing in this editor: broken, nothing downstream of it can
+   run. Amber stays what it has always been -- incomplete, and still yours to finish. The
+   same border is drawn on every element that names the file, so the block, the chip, this
+   row and the card all say the same thing in the same colour. The palette is the Delete
+   button's, so nothing new had to be invented for it.
+   A placed row is dimmed to .75, and a missing file is the one row that must not recede:
+   the opacity is taken back here. The row wraps rather than growing, because the chip has a
+   width limit and the repair button was landing outside its own border. */
+.mmd-file.mmd-gone { border-color:#8a4238; background:#241715; opacity:1; flex-wrap:wrap; }
+.mmd-file.mmd-gone:hover { border-color:#b45848; }
+.mmd-file.mmd-gone .mmd-file-name, .mmd-file.mmd-gone .mmd-file-token { color:#e07b6a; }
+.mmd-file.mmd-gone .mmd-file-thumb { opacity:.4; }
+.mmd-file-find { background:#3a2422; color:#ffd9d2; border:1px solid #5c332d;
+  border-radius:4px; padding:2px 7px; font:inherit; font-size:9.5px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:4px;
+  white-space:nowrap; flex:1 0 100%; margin-top:1px; }
+.mmd-file-find:hover { background:#5a3029; border-color:#8a4238; color:#fff; }
+.mmd-file-find .mmd-icon { width:11px; height:11px; }
+
+/* The same red wherever else the file is named. A block whose picture is gone draws an
+   empty rectangle, which reads as a block nobody filled in; the border is the difference
+   between "unwritten" and "broken". */
+.mmd-seg.mmd-gone { border-color:#8a4238; box-shadow:inset 0 0 0 1px #8a4238; }
+.mmd-f-subj.mmd-gone { border-color:#8a4238; color:#e07b6a; background:#241715; }
+.mmd-card.mmd-card-gone .mmd-face { box-shadow:inset 0 0 0 1px #8a4238; }
+select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 .mmd-file-token { color:#c8cfda; white-space:nowrap; }
 .mmd-file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mmd-file-thumb { width:22px; height:22px; border-radius:3px; flex:0 0 auto;
@@ -223,6 +250,32 @@ const CSS = `
 .mmd-tab:hover { color:#cdd3dd; background:#232833; }
 .mmd-tab.mmd-on { color:#e5e7eb; background:#2f6d8f; }
 .mmd-tab-count { opacity:.75; letter-spacing:0; }
+/* Files the piece names and this ComfyUI does not have, counted on the tab. It is the one
+   thing about a loaded piece that cannot be seen from the panel somebody is reading it on,
+   which is why it is the alarm -- and it is red, because the clip cannot render like this.
+   The tab it sits on stays live while everything else is locked. */
+.mmd-tab-missing { color:#e07b6a; letter-spacing:0; }
+.mmd-tab-missing:empty { display:none; }
+.mmd-tab.mmd-on .mmd-tab-missing { color:#ffd9d2; }
+
+/* Locked: a file the document names is not on this machine, so nothing written about it
+   can mean anything until it is back. Two ways out are deliberately left open -- put the
+   file back from the Files list, or take what names it off the clip with Delete or Clear --
+   and IMPORT / EXPORT, which is where the file gets uploaded, stays whole. Without those a
+   block pointing at a file you no longer own would be impossible to remove. */
+.mmd-locked .mmd-panel[data-panel="timeline"] > *,
+.mmd-locked .mmd-panel[data-panel="cast"] > *,
+.mmd-locked .mmd-panel[data-panel="global"] > *,
+.mmd-locked .mmd-settings { opacity:.4; pointer-events:none; user-select:none; }
+.mmd-locked .mmd-files-bar, .mmd-locked .mmd-files {
+  opacity:1; pointer-events:auto; user-select:auto; }
+.mmd-locked .mmd-bar button:not(.mmd-danger):not([data-reset]) {
+  opacity:.4; pointer-events:none; }
+
+/* Three blinks. An alert would have to be dismissed before the thing it is about could be
+   fixed; this points at the answer and gets out of the way. */
+@keyframes mmd-blink { 0%, 100% { opacity:1; } 50% { opacity:.12; } }
+.mmd-blink { animation:mmd-blink .26s ease-in-out 3; }
 /* Content-sized, like everything else in this column. A panel that stretched to fill the
    node fed the resize observer that grows the node, and the two chased each other. */
 .mmd-panel { display:flex; flex-direction:column; gap:7px; flex:0 0 auto; }

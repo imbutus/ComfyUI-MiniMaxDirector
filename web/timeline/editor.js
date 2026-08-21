@@ -194,6 +194,10 @@ export class TimelineEditor {
     this.dragTracks = [];
     /** Frame the drop preview is currently drawn at, so it is redrawn only when it moves. */
     this.ghostFrame = null;
+    /** Filenames the document names that ComfyUI does not have, as of the last check.
+     *  Everything that draws a file reads this, so a file that is gone says so wherever
+     *  it appears rather than only on the tab that noticed. */
+    this.absent = new Set();
 
     // Undo state. Snapshots are JSON strings of the whole document -- small, trivially
     // comparable, and immune to any aliasing bug a structural copy could introduce.
@@ -230,7 +234,7 @@ export class TimelineEditor {
         <button class="mmd-tab" data-tab="global">GLOBAL</button>
       </div>
       <div class="mmd-tabs mmd-tabs-end">
-        <button class="mmd-tab" data-tab="io" title="The piece as one JSON -- the timeline, the cards and the clip's settings -- to a file or the clipboard, and back. The files themselves are named, not carried: an import says which ones this ComfyUI does not have and offers to upload them.">IMPORT / EXPORT</button>
+        <button class="mmd-tab" data-tab="io" title="The piece as one JSON -- the timeline, the cards and the clip's settings -- to a file or the clipboard, and back. The files themselves are named, not carried: an import says which ones this ComfyUI does not have and offers to upload them.">IMPORT / EXPORT <span class="mmd-tab-missing"></span></button>
       </div>
       </div>
 
@@ -311,15 +315,15 @@ export class TimelineEditor {
           <button data-io="load" title="Read a piece back from a .json file. It replaces everything on this node.">${ICON.load} Load file</button>
           <span class="mmd-io-gap"></span>
           <button data-io="copy" title="The same JSON onto the clipboard, to paste into a message or another director">${ICON.copy} Copy</button>
-          <button data-io="paste" title="Read the clipboard and load whatever piece is on it. It replaces everything on this node.">${ICON.paste} Paste</button>
+          <button data-io="paste" title="Open a box to paste a piece into with Cmd/Ctrl+V. It loads as it lands, and replaces everything on this node.">${ICON.paste} Paste</button>
           <span class="mmd-grow"></span>
           <span class="mmd-io-say"></span>
         </div>
         <div class="mmd-io-note">Files are named, not carried — the JSON holds a picture's filename, never its pixels. Loading a piece on another machine finds every block in place and says which files to upload.</div>
         <div class="mmd-io-missing mmd-hide"></div>
         <div class="mmd-io-manual mmd-hide">
-          <textarea class="mmd-io-box" placeholder="Paste the JSON here, then press Apply"></textarea>
-          <div class="mmd-io-row"><button data-io="apply">Apply</button><span class="mmd-hint">your browser would not hand over the clipboard, so this box asks for it instead</span></div>
+          <textarea class="mmd-io-box" placeholder="⌘V / Ctrl+V here — the piece loads as it lands"></textarea>
+          <div class="mmd-io-row"><button data-io="apply">Apply</button><span class="mmd-hint">a pasted piece loads by itself; Apply is for one typed or edited here</span></div>
         </div>
       </div>
       </div>
@@ -613,6 +617,27 @@ export class TimelineEditor {
       if (button) this.transfer(button.dataset.io);
     });
 
+    // What lands in the box is loaded on the spot. A button to press afterwards would be a
+    // second action for a gesture that already said what it meant, and the box is only
+    // ever opened by Paste -- Apply stays for a document typed or edited by hand.
+    this.io.querySelector(".mmd-io-box").addEventListener("paste", (event) => {
+      const dropped = event.clipboardData?.getData("text/plain");
+      if (!dropped) return;
+      event.preventDefault();
+      event.target.value = dropped;
+      this.absorb(dropped, "the clipboard");
+    });
+
+    // A click on the locked half of the editor. The locked elements take no pointer events,
+    // so it arrives here on the panel underneath, and the only useful answer is to show
+    // what is in the way: the count blinks and the tab that explains it opens.
+    this.root.addEventListener("click", (event) => {
+      if (!this.absent.size) return;
+      if (event.target.closest(".mmd-io, .mmd-files, .mmd-files-bar, .mmd-tabrow")) return;
+      if (event.target.closest(".mmd-bar button.mmd-danger, .mmd-bar button[data-reset]")) return;
+      this.nag();
+    }, true);
+
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     this.canvas.addEventListener("change", (event) => {
@@ -678,6 +703,10 @@ export class TimelineEditor {
     this.snapshot();
     this.write(timeline);
     this.render();
+    // A missing file can leave the document as well as arrive in it -- the block deleted,
+    // Clear, a re-upload -- and the lock has to lift with it. Only while something is
+    // missing, so an ordinary edit still costs nothing.
+    if (this.absent.size) this.checkMedia();
   }
 
   /**
@@ -856,7 +885,8 @@ export class TimelineEditor {
       // The paperclip says "file" at a glance, which is the one thing these chips and the
       // subject chips beside them have to differ on: a square corner and a monospace name
       // are a difference you notice only once somebody points them out.
-      return `<button type="button" class="mmd-f-subj mmd-f-file" data-token="${text(entry.token)}"
+      return `<button type="button" class="mmd-f-subj mmd-f-file${
+        this.absent.has(name) ? " mmd-gone" : ""}" data-token="${text(entry.token)}"
         title="Write this file's token into the text, at the caret. It is how the prompt points at the file."
         ><span class="mmd-clipped">${face}<span class="mmd-clip">${ICON.clip}</span></span><span>${
           text(entry.token).replace("<", "&lt;")}${name ? ` ${text(name)}` : ""}</span></button>`;
@@ -1269,8 +1299,11 @@ export class TimelineEditor {
   /** Every button on IMPORT / EXPORT, which are four verbs and no state. */
   async transfer(action) {
     if (action === "save") {
-      io.save(this.pieceText());
-      return this.say("saved");
+      const written = await io.save(this.pieceText());
+      // The name it was actually given, because the picker lets it be renamed -- and where
+      // there is no picker the browser downloads silently, so this line is the only sign
+      // anything happened at all.
+      return this.say(written ? `saved as ${written}` : "");
     }
     if (action === "copy") {
       const done = await io.copy(this.pieceText());
@@ -1284,25 +1317,43 @@ export class TimelineEditor {
       return;
     }
     if (action === "paste") {
-      // Not `text`: that is the module's escape helper, and a local of the same name has
-      // shadowed it here once already.
-      let held;
-      try {
-        held = await io.paste();
-      } catch {
-        // Reading the clipboard needs a permission the browser may simply refuse, and
-        // there is no arguing with it -- so the box below asks the keyboard for the same
-        // thing, which is a permission nobody can withhold.
-        this.io.querySelector(".mmd-io-manual").classList.remove("mmd-hide");
-        this.io.querySelector(".mmd-io-box").focus();
-        return this.say("the browser will not hand over the clipboard — paste below", true);
-      }
-      return this.absorb(held, "the clipboard");
+      // The box, not `navigator.clipboard.readText()`. Reading the clipboard from a page
+      // is a permission: Chrome grants it silently, Firefox answers with a popup of its own
+      // that has to be clicked before anything happens. Cmd/Ctrl+V is the same one action
+      // with nothing in the way, and it needs no permission at all -- pasting *is* the
+      // permission. The box loads what lands in it, so there is nothing further to press.
+      this.io.querySelector(".mmd-io-manual").classList.remove("mmd-hide");
+      const box = this.io.querySelector(".mmd-io-box");
+      box.value = "";
+      box.focus();
+      return this.say("paste into the box with ⌘V / Ctrl+V — it loads as it lands");
     }
     if (action === "apply") {
       return this.absorb(this.io.querySelector(".mmd-io-box").value, "the box");
     }
     if (action === "upload") return this.uploadMissing();
+  }
+
+  /**
+   * Say what is in the way, for somebody who just clicked something that will not answer.
+   *
+   * Three blinks on the count and the tab that explains it -- not an alert, which would
+   * have to be dismissed before the thing it is about can be fixed.
+   */
+  nag() {
+    if (this.tab !== "io") this.showTab("io");
+    const marks = [
+      this.tabs.querySelector(".mmd-tab-missing"),
+      this.io.querySelector(".mmd-io-missing"),
+    ];
+    for (const mark of marks) {
+      if (!mark) continue;
+      mark.classList.remove("mmd-blink");
+      // Reading the layout between the two, or the class re-added in the same frame never
+      // restarts the animation and the second click does nothing at all.
+      void mark.offsetWidth;
+      mark.classList.add("mmd-blink");
+    }
   }
 
   /** One sentence under the buttons, amber when it is bad news. */
@@ -1397,6 +1448,31 @@ export class TimelineEditor {
     const row = this.io.querySelector(".mmd-io-missing");
     const absent = await io.missing(io.mediaOf(this.read()));
     const names = [...new Set(absent.map((record) => record.filename))];
+    // On the tab itself, in amber, because the answer is no use on a panel nobody is
+    // looking at: a piece loaded from somewhere else is read on TIMELINE, and the blocks
+    // are all there -- a file that is not is the one thing you cannot see from there.
+    const badge = this.tabs.querySelector(".mmd-tab-missing");
+    if (badge) {
+      badge.textContent = names.length ? `· ${names.length} missing` : "";
+    }
+    // The Files list marks the rows and offers each one a re-upload, so it is repainted
+    // whenever the answer changes. Only that list: laying the timeline out from another
+    // tab measures a hidden stage and collapses every track to the floor width.
+    const before = [...this.absent].sort().join("|");
+    this.absent = new Set(names);
+    // Nothing can be written about a file that is not there, so while one is missing the
+    // editor is locked down to the two ways out: put the file back, or take the thing that
+    // names it off the clip. The classes do the work; `nag` answers a click on the rest.
+    this.root.classList.toggle("mmd-locked", names.length > 0);
+    if (before !== [...names].sort().join("|")) {
+      this.paintFiles(this.read());
+      // The blocks and the chips carry the mark too, and the cards live in another editor.
+      // Only from the tab the tracks are on: laying them out while the panel is hidden
+      // measures a stage of zero width and squeezes the whole clip into a corner. The way
+      // back in re-renders anyway.
+      if (this.tab === "timeline") this.render();
+      this.onAbsent?.();
+    }
     if (!names.length) {
       row.classList.add("mmd-hide");
       row.innerHTML = "";
@@ -1422,17 +1498,72 @@ export class TimelineEditor {
     const next = this.read();
     const absent = await io.missing(io.mediaOf(next));
     let placed = [];
+    let renamed = [];
     try {
-      ({ placed } = await io.restore(absent, chosen));
+      ({ placed, renamed } = await io.restore(absent, chosen));
     } catch (error) {
       return this.say(`upload failed: ${error.message}`, true);
     }
 
     if (placed.length) this.commit(next);
+    for (const { from, to } of renamed) this.renameInCast(from, to);
     this.say(placed.length
       ? `uploaded ${placed.length} file${placed.length === 1 ? "" : "s"}`
-      : "none of those is a file the piece is missing", !placed.length);
+      // Several missing and several offered, none of them named alike: which is which is a
+      // guess, and the row that names one file is where it can be answered without one.
+      : "none of those matches a missing name — use re-upload on the file's own row, "
+        + "in Files, where the row says which file it is asking for", !placed.length);
     this.checkMedia();
+  }
+
+  /**
+   * One missing file, answered with one file off disk.
+   *
+   * The row names which file it is asking about, so whatever is picked is that file --
+   * renamed on disk is the ordinary reason a file goes missing, and refusing a different
+   * name would refuse the case this is here for.
+   */
+  async replaceFile(name) {
+    const next = this.read();
+    const records = io.mediaOf(next).filter((record) => record.filename === name);
+    if (!records.length) return;
+
+    const chosen = await media.pick(records[0].kind || "any");
+    if (!chosen) return;
+
+    let moved;
+    try {
+      moved = await io.put(records, chosen);
+    } catch (error) {
+      return this.say(`upload failed: ${error.message}`, true);
+    }
+    this.commit(next);
+    this.renameInCast(moved.from, moved.to);
+    this.checkMedia();
+  }
+
+  /**
+   * Carry a new filename over to the cards that point at the old one.
+   *
+   * A card names its file as a string, on purpose -- `<Picture 2>` moves when a block does
+   * and a filename does not -- so a file that comes back under a different name would
+   * silently leave every card that described it pointing at nothing. ComfyUI renames a
+   * collision rather than overwriting, so a different name is not the rare case.
+   */
+  renameInCast(from, to) {
+    if (!from || !to || from === to) return;
+    const cast = this.castOf?.();
+    if (!cast || !this.onImportCast) return;
+    let touched = false;
+    for (const card of cast.cards || []) {
+      for (const key of ["file", "motion_from", "voice_from"]) {
+        if (card[key] === from) {
+          card[key] = to;
+          touched = true;
+        }
+      }
+    }
+    if (touched) this.onImportCast(cast);
   }
 
   /**
@@ -1710,7 +1841,12 @@ export class TimelineEditor {
     this.fileEntries = [...loose, ...placed];
     const chip = ({ record, tokens, at }, index) => {
       const name = String(record?.filename || "").trim();
-      return `<span class="mmd-file ${at === null ? "mmd-file-placed" : "mmd-file-loose"}"
+      // A file the document names and ComfyUI does not have. It is still a file of this
+      // clip -- the blocks, the tokens and the cards all still mean it -- so the row stays
+      // where it is and says what is wrong, with the one button that fixes it.
+      const gone = this.absent.has(name);
+      return `<span class="mmd-file ${at === null ? "mmd-file-placed" : "mmd-file-loose"}${
+        gone ? " mmd-gone" : ""}"
         draggable="true" data-file="${index}"
         title="${at === null
           ? "On the timeline. Drag it onto a track to use it in a second block as well."
@@ -1722,6 +1858,8 @@ export class TimelineEditor {
         <select class="mmd-file-resize" data-file="${index}"
           title="How large this picture is sent to the model. A picture becomes tokens the model re-reads at every sampling step, so this is detail against time: match scales it to about the clip's pixel count, max allows 2048px on its short side and is what keeps a face the same face. It belongs to the file, so it is the same wherever the file sits. Left as default, the settings row answers."
           >${sizeOptions(record.resize, "resize: ")}</select>`}
+        ${gone ? `<button class="mmd-file-find" data-refile="${value(name)}"
+          title="This file is not in ComfyUI's input folder. Pick it from disk and every block, token and card naming it points at the copy you upload.">${ICON.load} re-upload</button>` : ""}
         ${at === null ? "" : `<button data-dropfile="${value(name)}" title="Take this file off the clip">&times;</button>`}
       </span>`;
     };
@@ -1753,6 +1891,8 @@ export class TimelineEditor {
    */
   bindFiles() {
     this.filesList.addEventListener("click", (event) => {
+      const back = event.target.closest("[data-refile]");
+      if (back) return this.replaceFile(back.dataset.refile);
       const drop = event.target.closest("[data-dropfile]");
       if (drop) return this.dropSource(drop.dataset.dropfile);
     });
@@ -2940,6 +3080,12 @@ export class TimelineEditor {
     node.style.width = `${Math.max(item.length * scale, 14)}px`;
 
     if (item.media) media.decorate(node, item.media, { sound: track === "cues" });
+    // The block draws nothing at all when its file is gone -- an empty rectangle where a
+    // filmstrip was, which reads as a block somebody forgot to fill in rather than one
+    // whose picture is missing. The red border is the difference.
+    if (item.media && this.absent.has(String(item.media.filename || ""))) {
+      node.classList.add("mmd-gone");
+    }
 
     const caption = document.createElement("span");
     caption.className = "mmd-cap";

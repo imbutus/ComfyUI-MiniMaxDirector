@@ -338,6 +338,11 @@ function attach(node) {
     // preview all hear about it exactly as they do for a card typed by hand. Parsed on the
     // way in, because a document written by an older build is normalised there.
     editor.onImportCast = (loaded) => inside.commit(parseCast(JSON.stringify(loaded)));
+    // A card names its files by name, so it is the other half of the document that can
+    // point at a file that is gone -- and it is drawn by an editor that never asks the
+    // server anything. One answer, borrowed from the half that does the asking.
+    inside.absentOf = () => editor.absent;
+    editor.onAbsent = () => inside.render();
     // `edit` beside a subject on the FILE row lands on that card's name box. A frame
     // later, because the tab it lives on was hidden until the click that got here.
     editor.onEditCard = (at) => requestAnimationFrame(() => {
@@ -432,6 +437,11 @@ function attach(node) {
   // The first render needs a laid-out element to measure, so wait one frame.
   requestAnimationFrame(() => {
     editor.render();
+    // Whether every file this piece names is actually on this machine, asked once on the
+    // way in. A workflow that arrived from somewhere else is the common case for a missing
+    // file, and it has no import to notice one -- the count lands on the IMPORT / EXPORT
+    // tab, which is visible from whichever panel is open.
+    editor.checkMedia();
     // Twice: the first pass resizes the node, and the widget's own height only follows
     // on the frame after that, so the second pass settles the remainder.
     fitPulled(PULLED.get(widget) ?? { node, editor }, widget);

@@ -28,6 +28,9 @@ export const EMPTY = { version: 1, speech: true, cards: [] };
  *  10 so the last card is clear of the edge and no rounding brings the scrollbar back. */
 const SLACK = 16;
 
+/** Nothing is missing, which is the usual answer and needs no allocation to say. */
+const EMPTY_SET = new Set();
+
 /** User text into markup. The tokens this editor prints are literally `<Picture 1>`. */
 const text = (value) => String(value ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -221,6 +224,9 @@ export class CastEditor {
 
   /** Called by the host after every write, so the director recompiles its preview. */
   onChange = null;
+  /** Which filenames ComfyUI does not have, asked of the host: a card names its files by
+   *  name, so it is the other half of the document that can point at a file that is gone. */
+  absentOf = null;
   /** Called after every render, so the node can shrink to the cast it now holds. */
   onResize = null;
 
@@ -553,6 +559,20 @@ export class CastEditor {
       // below it. Written on every keystroke, since typing repaints without rebuilding.
       const speaks = hasVoice(card);
       row.classList.toggle("mmd-mute", !speaks);
+
+      // Files this card names that ComfyUI does not have. Marked here rather than in the
+      // markup because the answer arrives from the server after the list is built, and
+      // it changes without anything about the card changing.
+      const gone = this.absentOf?.() || EMPTY_SET;
+      const mark = (selector, name) => {
+        const box = row.querySelector(selector);
+        if (box) box.classList.toggle("mmd-gone", !!(name && gone.has(name)));
+      };
+      mark(".mmd-card-file", card.file);
+      mark(".mmd-card-motion", card.motion_from);
+      mark(".mmd-card-voice-from", card.voice_from);
+      row.classList.toggle("mmd-card-gone",
+        [card.file, card.motion_from, card.voice_from].some((name) => name && gone.has(name)));
       const badge = row.querySelector(".mmd-card-subject");
       if (badge) {
         badge.textContent = `<Subject ${index}>`;
