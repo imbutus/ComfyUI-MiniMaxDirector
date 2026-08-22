@@ -5,6 +5,10 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
+![The timeline, with the block under the playhead opened below it](docs/img/minimax-director-tl.webp)
+
+![The WHO & WHAT tab: one card per thing the prompt names](docs/img/minimax-director-ww.webp)
+
 H3 makes the picture and the voices in one pass, so the editor has a **WHO & WHAT** tab: one
 card per thing the prompt has to name, holding its face, its voice, how much of it survives
 from a reference, and — for a face swap — who the face is carried onto, which folds the
