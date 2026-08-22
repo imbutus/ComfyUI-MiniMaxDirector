@@ -243,6 +243,15 @@ def _subject_definitions(timeline: Timeline) -> str:
                 f"{item.token} is a storyboard reference{f' for {covers}' if covers else ''}, "
                 f"defining viewpoint, subject placement, and shot order.")
             continue
+        anchor = _anchor_clause(timeline, item)
+        if anchor:
+            # §2.2: a picture standing in as a concrete frame is defined by the frame it
+            # is, not by what it is a picture of -- "<Picture 2> is the first frame of
+            # [Shot 1], showing a woman seated beside a cafe window". Without the first
+            # half the model was told a filename where the guide asks for a position in
+            # the video, and the role survived only in `retention_analysis`.
+            lines.append(anchor)
+            continue
         described = _described(item)
         voiced = _voice_clause(timeline, item)
         lines.append(f"{item.token} is {described}{voiced}.")
@@ -253,6 +262,27 @@ def _subject_definitions(timeline: Timeline) -> str:
         lines.append(f"{subject.token} is {subject.name.rstrip('.')}"
                      f"{_sources(timeline, subject)}{spoken.get(subject.token, '')}.")
     return "\n".join(lines)
+
+
+def _anchor_clause(timeline: Timeline, item) -> str:
+    """The definition line for a picture used as a concrete frame, or "" for anything else.
+
+    The guide's own example (§2.2) names the frame and the shot before saying what is in
+    the picture, and the second half is optional: an anchor nobody described still says
+    where it sits, which is the part `<Picture 1> is the picture in apple.png` was missing.
+    """
+    role = str(item.record.get("role", "")).strip()
+    if role not in FRAME_ROLES or not item.origin or item.origin[0] != "shots":
+        return ""
+    number = next((at for at, shot in enumerate(timeline.ordered_shots(), start=1)
+                   if shot.start == item.origin[1]), 0)
+    if not number:
+        return ""
+    # The authored sentence only. The filename fallback `_described` ends in reads as
+    # "showing the picture in apple.png", which says less than saying nothing.
+    described = str(item.record.get("description", "")).strip().rstrip(".")
+    showing = f", showing {described}" if described else ""
+    return f"{item.token} is the {role} of [Shot {number}]{showing}."
 
 
 def _spoken_by(timeline: Timeline) -> dict[str, str]:

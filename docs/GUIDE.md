@@ -376,6 +376,10 @@ is sent as the keyframe rather than as a reference beside one, so a transformati
 two stills is two blocks — the opening image used as `first frame`, the closing one as
 `last frame`. There is nothing to wire; the node has no sockets for them.
 
+All three define themselves by the frame they are rather than by what they are a picture
+of, which is the shape MiniMax's guide asks for: *"<Picture 1> is the first frame of
+[Shot 1]."* `retention_analysis` names the role a second time, beside the marker.
+
 `keyframe` is the third of that group and the one with no input behind it. MiniMax's own
 guide counts it as a frame anchor — `keyframe completion` is for *"an image [that] serves
 as the target video's first frame, keyframe, last frame, edited keyframe, or another

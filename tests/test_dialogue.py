@@ -116,8 +116,11 @@ def test_task_types_combine_without_repeating():
                        "retention": "fully_preserved", "role": "last frame"}},
         ],
     })
-    prefix = compile_timeline(timeline).prompt
-    prefix = prefix[prefix.index("["):prefix.index("]") + 1]
+    # From the summary line rather than the first bracket in the document: a frame anchor
+    # names its shot in `subject_definitions` now, so the first `[` in the prompt is that
+    # `[Shot n]` and not the task type this test is about.
+    summary = compile_timeline(timeline).prompt.split("summary:\n", 1)[1]
+    prefix = summary[summary.index("["):summary.index("]") + 1]
     assert prefix == "[keyframe completion + video continuation + audio reuse]"
 
 
