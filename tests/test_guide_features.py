@@ -356,6 +356,22 @@ def test_a_voice_reference_asked_to_be_copied_is_a_contradiction():
                for note in messages(timeline))
 
 
+def test_a_videos_soundtrack_is_not_asked_about_its_own_keep():
+    """The video and its soundtrack are one record, so the `keep` on it belongs to the
+    picture. Warning about it asked for a value the editor has no control for, and the
+    only way to clear it was to weaken the face that same record defines."""
+    timeline = Timeline.from_dict(cast.merge(
+        {"global_prompt": "Live-action.",
+         "shots": [{"start": 0, "length": 24, "prompt": "A woman speaks.",
+                    "media": {"kind": "video", "filename": "her.mp4",
+                              "retention": "fully_preserved"}}]},
+        {"version": 1, "speech": True, "cards": [
+            {"id": 1, "uid": "c1", "name": "WOMAN", "file": "her.mp4",
+             "description": "the woman", "keep": "fully_preserved", "voice": "",
+             "voice_from": "her.mp4"}]}))
+    assert not any("voice reference but its keep" in note for note in messages(timeline))
+
+
 def test_a_line_carrying_over_the_end_of_the_clip_is_reported():
     timeline = clip(
         speech=True,

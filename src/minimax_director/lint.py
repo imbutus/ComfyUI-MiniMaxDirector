@@ -158,6 +158,14 @@ def _check_voice_references(timeline: Timeline) -> Iterator[Issue]:
         name = str(item.record.get("filename", "")).strip()
         if name not in bound:
             continue
+        # A reference video and its soundtrack are one record: `collect` hands the same
+        # `media` dict out twice, once as the audio and once as the video. So the `keep`
+        # on it is the one the author set for the *picture*, and there is no second
+        # control to set for the sound. Reading it as the audio's marker asked for a
+        # value the editor cannot express, and the only way to clear the warning was to
+        # weaken the face the same record defines.
+        if str(item.record.get("kind", "")).strip() == "video":
+            continue
         marker = str(item.record.get("retention", "")).strip()
         if marker in ("fully_copy", "partially_copy", "fully_preserved"):
             yield Issue(

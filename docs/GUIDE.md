@@ -850,7 +850,9 @@ never a refusal:
   asks for a camera move rather than a cut when only the distance changes
 - an empty AUDIO track, because `overall_soundscape: N/A` tells H3 the clip is
   **completely silent**, which is a stronger claim than "nobody wrote anything yet"
-- a **voice reference** whose `keep file` asks for the recording to be copied
+- a **standalone voice reference** whose `keep file` asks for the recording to be copied.
+  A reference video's own soundtrack is not checked: the video and its sound are one file
+  row, so that `keep` is the picture's and there is nothing separate to set for the sound
 - a line marked **carries over** with nothing after it, which compiles as `<cutoff>`
 - a **guessed word** in a reused line — the guide wants `[unclear]`, never a guess
 - a **subject card that compiles to nothing**: no file, so it is not a `<Subject n>`,
