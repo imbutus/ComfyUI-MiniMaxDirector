@@ -3648,7 +3648,7 @@ export class TimelineEditor {
                     title="Open this card on the WHO &amp; WHAT tab">edit</button>
           </span>`).join("") : `
           <span class="mmd-f-claim mmd-f-claim-none">${
-            orphaned ? text(orphaned) : "nothing describes this file yet"}</span>`}
+            orphaned && !anchored ? text(orphaned) : "nothing describes this file yet"}</span>`}
           <button type="button" class="mmd-f-addcard" title="Another card pointed at this same file. One photograph can hold several people, or a person and their coat and the room behind them, and each takes a &lt;Subject n&gt; and a retention marker of its own.">${
             claimed.length ? "+ another card" : "add a card"}</button>
         </div>
