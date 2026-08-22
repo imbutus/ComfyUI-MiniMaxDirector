@@ -823,9 +823,12 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    prompt down onto the filename's row, which read as the file name being replaced by the
    prompt rather than the two being different things. */
 
-.mmd-track[data-track="shots"] .mmd-seg { background:#2f6d8f; }
-.mmd-track[data-track="moves"] .mmd-seg { background:#414958; }
-.mmd-track[data-track="cues"]  .mmd-seg { background:#5d4a22; }
+/* One tone, three hues. The three were already equal in HSL lightness, but blue reads far
+   darker than green at the same number, so the tracks looked unevenly weighted. These are
+   matched on perceived luminance instead -- 14%, 5.5:1 against the white caption on each. */
+.mmd-track[data-track="shots"] .mmd-seg { background:#26765f; }
+.mmd-track[data-track="moves"] .mmd-seg { background:#4961c4; }
+.mmd-track[data-track="cues"]  .mmd-seg { background:#2f7090; }
 .mmd-track .mmd-seg.mmd-has-media { background:#0d1014; }
 
 .mmd-seg .mmd-inline { position:absolute; inset:2px; z-index:6; resize:none;
