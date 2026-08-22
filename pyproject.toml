@@ -5,7 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "minimax-director"
 version = "0.16.0"
-description = "Timeline director for the MiniMax H3 video model in ComfyUI"
+description = """\
+Direct MiniMax H3 on a timeline instead of cramming everything into one prompt box. Lay \
+shots, camera moves and audio cues out on tracks, give every person, prop, place and look \
+a card holding its reference picture, its description and its voice, and the node compiles \
+the whole piece into the single structured prompt H3 actually reads -- the six-section \
+reference format, task types, dialogue in the model's exact <d> form, frame anchors and \
+on-screen text -- then hands the sampler its conditioning and a clip length it will \
+accept. Ships as a complete workflow with a live compiled-prompt view and a linter.\
+"""
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
