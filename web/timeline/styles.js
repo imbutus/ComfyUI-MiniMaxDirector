@@ -114,7 +114,7 @@ const CSS = `
    bare row under the tracks it read as loose furniture belonging to whatever was nearest --
    the list is its own thing, and it says so the way everything else on this node does. */
 .mmd-files { flex:0 0 auto; display:flex; flex-direction:column; gap:6px;
-  border:1px solid #2c313c; border-radius:6px; padding:6px 8px; background:#15181e; }
+  border:1px solid #3a4150; border-radius:6px; padding:6px 8px; background:#0f211e; }
 .mmd-files.mmd-hide { display:none; }
 .mmd-files > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
 .mmd-files > label .mmd-hint { letter-spacing:0; color:#6b7280; }
@@ -881,7 +881,7 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 
 /* prompt boxes ----------------------------------------------------------- */
 .mmd-prompt { flex:0 0 auto; display:flex; flex-direction:column; gap:3px;
-  border:1px solid #2c313c; border-radius:6px; padding:6px 8px; background:#15181e; }
+  border:1px solid #3a4150; border-radius:6px; padding:6px 8px; background:#191324; }
 .mmd-prompt > label { font-size:9px; letter-spacing:.09em; color:#8b93a1; }
 .mmd-prompt > label .mmd-hint { letter-spacing:0; color:#6b7280; }
 .mmd-prompt textarea { min-height:44px; resize:vertical; background:transparent;
