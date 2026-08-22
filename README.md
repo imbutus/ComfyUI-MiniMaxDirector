@@ -9,6 +9,8 @@ its conditioning and a clip length the sampler will accept.
 
 ![The WHO & WHAT tab: one card per thing the prompt names](docs/img/minimax-director-ww.webp)
 
+**A video tutorial is on the way** — a few days, a week at the outside.
+
 H3 makes the picture and the voices in one pass, so the editor has a **WHO & WHAT** tab: one
 card per thing the prompt has to name, holding its face, its voice, how much of it survives
 from a reference, and — for a face swap — who the face is carried onto, which folds the

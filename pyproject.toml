@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "minimax-director"
-version = "0.16.0"
+version = "0.16.1"
 description = """\
 Direct MiniMax H3 on a timeline instead of cramming everything into one prompt box. Lay \
 shots, camera moves and audio cues out on tracks, give every person, prop, place and look \
