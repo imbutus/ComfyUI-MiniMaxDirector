@@ -7,7 +7,7 @@
  * instead of something to argue about.
  */
 
-export const BUILD = "2026-08-22·04:40";
+export const BUILD = "2026-08-22·06:00";
 
 /**
  * Which release this is.

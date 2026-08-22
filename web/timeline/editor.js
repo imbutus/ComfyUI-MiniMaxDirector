@@ -15,7 +15,8 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import * as io from "./io.js";
 import {
-  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, ROLES, SIZINGS, SPEEDS, TRANSITIONS, TRACKS,
+  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, FRAME_ROLES, ROLES, SIZINGS, SPEEDS,
+  TRANSITIONS, TRACKS,
   TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds, clamp,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
   items, length, neighbours, retentionsFor,
@@ -3535,6 +3536,10 @@ export class TimelineEditor {
     // reads. There is no box for it any more -- one file, one description, written on a
     // subject card -- so it is shown for what it is rather than left invisible.
     const orphaned = item.media ? String(item.media.description || "").trim() : "";
+    // A frame anchor describes itself: it is a frame of the video rather than a picture
+    // of somebody, so its sentence belongs on the block and not on a subject card.
+    const anchored = !!item.media
+      && FRAME_ROLES.includes(String(item.media.role || "").trim());
     const claimTag = claimed
       .map(({ card, index }) => `${index}${card.uid || card.id}`).join("/")
       + (orphaned ? "!" : "");
@@ -3627,6 +3632,11 @@ export class TimelineEditor {
         <button class="mmd-f-size" title="Set the clip's width and height from this picture: its own resolution, scaled down to a size H3 renders and rounded to multiples of 32. Nothing else changes them -- and a frame anchor keeps all of itself only when its proportions and the clip's agree.">set width &amp; height</button>`}
         <button class="mmd-f-unlink">detach media</button>
       </div>
+      ${!anchored ? "" : `
+      <label class="mmd-f-wide" title="What is in this frame. A frame anchor is not a picture of something the model has to find -- it is a real frame of the video -- so it is defined by the frame it is, and this is the half that says what you would see in it. Compiled as the words after &#39;showing&#39;: “&lt;Picture 1&gt; is the first frame of [Shot 1], showing a red apple on a white sweep.” The same sentence answers for it in retention_analysis, where a file nobody has described falls back to its own filename.">shows
+        <input class="mmd-f-shows" type="text" placeholder="what you would see in this frame"
+               value="${text(String(item.media.description || ""))}">
+      </label>`}
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
         <div class="mmd-f-claims">${claimed.length ? claimed.map(({ card, at, index }) => `
@@ -3642,7 +3652,7 @@ export class TimelineEditor {
           <button type="button" class="mmd-f-addcard" title="Another card pointed at this same file. One photograph can hold several people, or a person and their coat and the room behind them, and each takes a &lt;Subject n&gt; and a retention marker of its own.">${
             claimed.length ? "+ another card" : "add a card"}</button>
         </div>
-        ${!orphaned ? "" : (this.silences(item, claimed) ? `
+        ${!orphaned || anchored ? "" : (this.silences(item, claimed) ? `
         <div class="mmd-f-note">“${text(orphaned)}” is no longer compiled: the subject card
           above describes this file instead.</div>` : `
         <div class="mmd-f-note">Typed on the block itself, before subjects were the one
@@ -3993,6 +4003,11 @@ export class TimelineEditor {
           // back; the panel itself is not rebuilt, because its shape has not changed.
           this.render();
         });
+      this.segFields.querySelector(".mmd-f-shows")
+        ?.addEventListener("input", (e) => {
+          this.snapshotTyping();
+          patchMedia({ description: e.target.value });
+        });
       this.segFields.querySelector(".mmd-f-retention")
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")
@@ -4046,6 +4061,7 @@ export class TimelineEditor {
     put(".mmd-f-speed", item.speed || "");
     put(".mmd-f-transition", item.transition || "cut");
     put(".mmd-f-screen", item.screen_text || "");
+    put(".mmd-f-shows", item.media?.description || "");
     // Silence means `crop`, the same reading the node gives a document that predates this.
     put(".mmd-f-fit", item.media?.fit || FITS[0]);
     // Blank is a real value here -- the file deferring to the clip -- so it is written as

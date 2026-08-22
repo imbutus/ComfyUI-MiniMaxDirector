@@ -346,6 +346,15 @@ not on screen — and the TIMELINE tab shows:
   Text typed on the block by an older build still compiles and is shown greyed, with the
   card's sentence taking over the moment there is one.
 
+  A **frame anchor is the exception** — `first frame`, `keyframe` or `last frame`. That
+  block is not a picture of somebody to be lifted out; it *is* a frame of the video, so it
+  carries a **`shows`** box of its own beside `keep file`. What you type there is compiled
+  after *showing* in the definition — *"<Picture 1> is the first frame of [Shot 1], showing
+  a red apple on a white sweep."* — and stands as the description in `retention_analysis`,
+  which falls back to the filename when the box is empty. Cards still work on an anchor:
+  somebody lifted out of that frame gets a `<Subject n>` as usual, and the frame keeps its
+  own entry either way.
+
 **Several blocks selected** turns the panel into a selection panel, offering only what
 applies to all of them: `camera` / `amplitude` / `speed` when they are all camera moves,
 `enter with` when they are all shots, `used as` and `keep file` when they all carry a file

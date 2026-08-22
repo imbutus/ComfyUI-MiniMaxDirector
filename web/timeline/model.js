@@ -84,6 +84,12 @@ export const ROLES = [
  *  `ANCHOR_ROLES` in `timeline.py`. */
 export const ANCHOR_ROLES = ["first frame", "last frame"];
 
+/** Every role that makes the picture a real frame of the target video rather than a
+ *  reference beside one. `keyframe` joins the two above here: it has no input on the node,
+ *  but the prompt calls it a frame anchor all the same, so it is defined by the frame it is
+ *  and takes the same description box. Kept in step with `FRAME_ROLES` in `timeline.py`. */
+export const FRAME_ROLES = ["first frame", "keyframe", "last frame"];
+
 /** How a keyframe is brought to the clip's shape when the two disagree. `crop` keeps the
  *  picture's proportions and loses its edges; `stretch` is what ComfyUI's core node does
  *  on its own -- the whole picture, squashed. Kept in step with `FITS` in `timeline.py`. */
