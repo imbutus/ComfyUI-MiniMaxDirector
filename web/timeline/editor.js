@@ -868,8 +868,12 @@ export class TimelineEditor {
         const token = `<Subject ${index}>`;
         // The same face the card and the dialogue chips draw, videos included: a subject
         // taken out of a clip is still a face you should recognise, and a hollow `?`
-        // beside a name said only that this strip had been written twice.
-        const face = this.face(fileOf(card));
+        // beside a name said only that this strip had been written twice. With no file at
+        // all it wears its initial, which is what the card and the deck already show.
+        const carried = fileOf(card);
+        const initial = String(card.name || "").trim().charAt(0).toUpperCase();
+        const face = carried ? this.face(carried)
+          : `<span class="mmd-face mmd-face-none">${text(initial || "?")}</span>`;
         const name = String(card.name || "").trim();
         return `<button type="button" class="mmd-f-subj" data-token="${text(token)}"
           title="Write this subject into the shot's text, at the caret."

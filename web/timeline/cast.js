@@ -347,7 +347,13 @@ export class CastEditor {
   /** A person's face: the file they were drawn from, at thumbnail size. */
   face(card, file) {
     const src = file ? media.url(file.media) : null;
-    if (!src) return `<span class="mmd-face mmd-face-none">?</span>`;
+    // A card with no file wears its own initial, the way it does on the deck. A column of
+    // identical question marks named nobody, and the initial is the one part of a name
+    // there is room for at this size.
+    if (!src) {
+      const initial = String(card?.name || "").trim().charAt(0).toUpperCase();
+      return `<span class="mmd-face mmd-face-none">${text(initial || "?")}</span>`;
+    }
     if (file.media.kind === "video") {
       return `<video class="mmd-face" src="${src}#t=0.6" muted preload="metadata"></video>`;
     }
