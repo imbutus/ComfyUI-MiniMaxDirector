@@ -56,11 +56,63 @@ export async function upload(kind, file) {
   if (!response.ok) throw new Error(`upload failed: ${response.status}`);
 
   const result = await response.json();
-  return {
+  const record = {
     kind,
     filename: result.name ?? file.name,
     subfolder: result.subfolder ?? "",
   };
+
+  // A picture's own pixels, written down once, here. H3 refuses an image outside
+  // 256-5760px or outside a 0.4-2.5 aspect ratio, and the live report lints the document
+  // rather than the files -- so a dimension nobody recorded is a dimension nobody can
+  // warn about until the run. Read the same way a clip's length is, and left absent when
+  // the browser will not say.
+  if (kind === "image") {
+    const size = await dimensions(record);
+    if (size?.width && size?.height) {
+      record.width = size.width;
+      record.height = size.height;
+    }
+  }
+  return record;
+}
+
+/** What H3 refuses outright, from the platform API's own table. */
+export const SHAPE = { min: 256, max: 5760, thinnest: 0.4, widest: 2.5 };
+export const CLIP_SECONDS = { least: 2, most: 15 };
+
+/**
+ * Why this file cannot be used, or "" when it can.
+ *
+ * These are properties of the file itself, settled the moment it is picked, so the answer
+ * never changes later -- which is what makes refusing here complete rather than a guess.
+ * The counts are not in this list: those depend on `used as`, so a file legal on its own
+ * can still be one too many, and the linter is what says so.
+ *
+ * Anything unmeasured passes. An unread size is not a wrong one, and refusing a file the
+ * browser merely would not describe is refusing work that was fine.
+ */
+export function unusable(record, seconds = null) {
+  if (record?.kind === "image") {
+    const { width: wide, height: tall } = record;
+    if (!wide || !tall) return "";
+    if (wide < SHAPE.min || tall < SHAPE.min || wide > SHAPE.max || tall > SHAPE.max) {
+      return `${record.filename} is ${wide}x${tall}. H3 takes pictures between `
+        + `${SHAPE.min} and ${SHAPE.max} pixels on each side.`;
+    }
+    const ratio = wide / tall;
+    if (ratio < SHAPE.thinnest || ratio > SHAPE.widest) {
+      return `${record.filename} is ${wide}x${tall}, a ratio of ${ratio.toFixed(2)}. `
+        + `H3 takes pictures between ${SHAPE.thinnest} and ${SHAPE.widest} wide-to-tall.`;
+    }
+    return "";
+  }
+  if (typeof seconds !== "number" || !(seconds > 0)) return "";
+  if (seconds < CLIP_SECONDS.least || seconds > CLIP_SECONDS.most) {
+    return `${record.filename} runs ${seconds}s. H3 takes reference clips of `
+      + `${CLIP_SECONDS.least}-${CLIP_SECONDS.most} seconds.`;
+  }
+  return "";
 }
 
 /** URL ComfyUI serves the file from. */

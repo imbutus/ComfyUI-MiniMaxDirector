@@ -307,15 +307,20 @@ class MiniMaxDirector(io.ComfyNode):
             last_frame=last_frame is not None)
         issues = lint(document)
 
-        # The core reference node has no `first_frame`, so a timeline holding both would
-        # silently drop the keyframe rather than fail.
-        if first_frame is not None and (
-            _present(pictures) or _present(videos) or _present(audios)):
+        # Frame anchors and references are two modes, and MiniMax documents them as
+        # mutually exclusive: "if any reference_image / reference_video / reference_audio
+        # role appears in content, then first_frame / last_frame must not appear (and vice
+        # versa)". Core has no `first_frame` on its reference node either, so a timeline
+        # holding both would silently drop the keyframe rather than fail.
+        anchored = [name for image, name in
+                    ((first_frame, "first frame"), (last_frame, "last frame"))
+                    if image is not None]
+        if anchored and (_present(pictures) or _present(videos) or _present(audios)):
             issues.insert(0, Issue(
                 "error",
-                "a block used as first frame is ignored while the timeline also carries "
-                "references: MiniMax H3 has no reference-plus-keyframe path. Use one or "
-                "the other.",
+                f"a block used as {' and '.join(anchored)} is ignored while the timeline "
+                "also carries references: MiniMax H3 has no reference-plus-keyframe path. "
+                "Use one or the other.",
             ))
 
         # Both keyframes arrive at the clip's shape, cover-cropped rather than stretched:

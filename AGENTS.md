@@ -48,7 +48,9 @@ These are the model's, not design choices. Verified in
 | Frame rate | fixed **24 fps** (`FPS = 24`) | no rate to expose; Wan2GP raises on anything else |
 | Clip length | `length % 17 == 5` | 5, 22, 39, 56, 73, 90, 107, 124 … only 8s, 25s, 42s are whole seconds |
 | Trained range | ~124–362 frames (5.2–15.1s) | the node accepts up to 3600, untested there |
-| Reference caps | 9 images, 3 videos, 3 video-soundtracks, 3 audios | the core node's own autogrow templates; the director has no reference sockets and sends what its timeline holds |
+| Reference caps | 9 images, 3 videos, 3 audios; 15s of video and of audio in total; 12 files across all three | model card (H3-Base-Ref2VA row) and `platform.minimax.io/docs/api-reference/video-generation-v2-create`. A video's soundtrack is not a file of its own. `lint._check_reference_counts` warns; frame anchors are counted apart |
+| Picture shape | 256–5760 px each side, 0.4–2.5 wide-to-tall | same API page, for every `image_url`. Recorded by `media.upload` at attach time and checked by `lint._check_image_shape` |
+| Modes | reference and frame anchor are mutually exclusive | the API refuses a request carrying both; `director.execute` raises the same error for `first frame` and `last frame` |
 | Guidance | CFG-free | official graphs use `BasicGuider`, never a negative prompt |
 
 The 17 comes from the video VAE's time axis: the latent is a row of slots, 17 frames pack
@@ -585,9 +587,10 @@ the links in already-saved graphs -- do it at a version bump and re-save `exampl
     `_skewed` first, whose tolerance is 2% of the clip's ratio: a picture already of the
     clip's shape is passed through as loaded -- one resize instead of two -- and nothing is
     said. Reference images are untouched by all of this: their sizing is `ref_image_size`,
-    both of whose options keep the ratio and only ever shrink, which is why that control
-    goes dead when the timeline holds no reference image — a reference *video* is sized by
-    `adapt_canvas` and never reads it. What it trades is token count: a reference is encoded
+    both of whose options keep the ratio and only ever shrink. That control stays live
+    whatever the timeline holds -- it used to grey itself out with no reference image on the
+    clip, which made the reader work out a rule the tooltip already states. A reference
+    *video* is sized by `adapt_canvas` and never reads it. What it trades is token count: a reference is encoded
     into tokens that ride through every sampling step, so `match` (the clip's own pixel
     area) is fast and coarse where `max` (2048 px short edge) is slow and keeps identity.
     A picture may answer for itself: `media.resize` (`SIZINGS` in `timeline.py`, mirrored

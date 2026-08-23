@@ -1705,6 +1705,12 @@ export class TimelineEditor {
     const measured = kind === "image" ? null : await media.seconds(record);
     if (measured !== null) record.seconds = Math.round(measured * 10) / 10;
 
+    // Refused before it is placed, not after. Shape and length belong to the file and
+    // never change, so this is the last moment at which nothing has been built on it --
+    // once there is a block, a card and a token, taking it back is the author's work.
+    const refused = media.unusable(record, record.seconds ?? null);
+    if (refused) return this.say(refused, true);
+
     const timeline = this.read();
 
     // A selected block on the right track with nothing attached takes the file; anything
@@ -1795,6 +1801,9 @@ export class TimelineEditor {
       const measured = await media.seconds(record);
       if (measured !== null) record.seconds = Math.round(measured * 10) / 10;
     }
+
+    const refused = media.unusable(record, record.seconds ?? null);
+    if (refused) return this.say(refused, true);
 
     const timeline = this.read();
     if (!Array.isArray(timeline.sources)) timeline.sources = [];
@@ -2825,6 +2834,55 @@ export class TimelineEditor {
     requestAnimationFrame(restore);
   }
 
+  /**
+   * Dim the media buttons whose bucket is full.
+   *
+   * H3 takes nine pictures, three videos and three audio files, and refuses the request
+   * over any of them. Counted permissively on purpose: the linter is the guard that has
+   * to be right, and a button that refuses work which would in fact have run is worse
+   * than one that lets a tenth picture through for the report to catch.
+   */
+  renderCapacity(timeline) {
+    const held = { image: 0, video: 0, audio: 0 };
+    const claimed = new Set();
+    const count = (record, track) => {
+      const kind = String(record?.kind || "");
+      if (!kind) return;
+      if (kind === "image") {
+        const role = String(record.role || "");
+        if ((role === "first frame" || role === "last frame") && !claimed.has(role)) {
+          claimed.add(role);
+          return;
+        }
+        held.image += 1;
+      } else if (kind === "video") {
+        // On AUDIO a clip is handed over as its soundtrack alone, so it spends an audio
+        // slot rather than a video one -- the same split the compiler makes.
+        held[track === "cues" ? "audio" : "video"] += 1;
+      } else if (kind === "audio") {
+        held.audio += 1;
+      }
+    };
+    for (const { key } of TRACKS) {
+      for (const item of items(timeline, key)) if (item.media) count(item.media, key);
+    }
+    for (const source of timeline.sources || []) count(source, null);
+
+    const full = { image: held.image >= 9, video: held.video >= 3, audio: held.audio >= 3 };
+    const ceiling = { image: 9, video: 3, audio: 3 };
+    const noun = { image: "pictures", video: "videos", audio: "audio files" };
+    for (const kind of ["image", "video", "audio"]) {
+      const button = this.root.querySelector(`[data-media="${kind}"]`);
+      if (!button) continue;
+      button.disabled = full[kind];
+      button.classList.toggle("mmd-dead", full[kind]);
+      button.title = full[kind]
+        ? `${held[kind]} ${noun[kind]} already. H3 takes ${ceiling[kind]}, and refuses the `
+          + "whole request over that. Take one off the clip to add another."
+        : "";
+    }
+  }
+
   render() {
     if (!this.rendering) {
       this.rendering = true;
@@ -2848,6 +2906,7 @@ export class TimelineEditor {
     }
 
     this.renderPlayhead(extent);
+    this.renderCapacity(timeline);
     this.renderPanel(timeline);
     this.renderSettings(timeline);
     this.paintFiles(timeline);
@@ -2923,39 +2982,6 @@ export class TimelineEditor {
     set(".s-width", widget("width") ?? 1344);
     set(".s-height", widget("height") ?? 768);
     set(".s-ref", widget("ref_image_size") ?? "match");
-
-    // `resize` governs reference *images* and nothing else. Core reads `ref_image_size`
-    // inside its `ref_images` loop alone; a reference video is sized by `adapt_canvas` and
-    // a keyframe by its own `fit`, so neither is affected by either option. It goes dead in
-    // the house form rather than disappearing -- the row's shape is how the settings read,
-    // and a control that comes and goes is a control you look for.
-    // Sources count as well: a picture in the Files list is handed to the model in the
-    // same `ref_images` loop as one on a block, so it is sized by this control -- and a
-    // clip whose only pictures are unplaced files had the control dead while it was
-    // quietly governing every one of them.
-    const governs = [
-      ...(timeline.shots || []), ...(timeline.cues || []),
-      ...(timeline.sources || []).map((media) => ({ media })),
-    ].some((item) => {
-      const media = item?.media;
-      return media && media.kind === "image"
-        && !ANCHOR_ROLES.includes(String(media.role || "reference"));
-    });
-    const label = this.settings.querySelector(".s-ref-label");
-    const picker = this.settings.querySelector(".s-ref");
-    if (label && picker) {
-      label.classList.toggle("mmd-dead", !governs);
-      picker.disabled = !governs;
-      picker.title = governs
-        ? "How large a reference picture is sent to the model, for every picture that does "
-          + "not answer for itself. match scales it to about the clip's pixel count: fast, "
-          + "enough for a scene or a mood. max allows 2048px on its short side: slower, and "
-          + "what keeps a face the same face. A picture block's FILE row has a resize of "
-          + "its own and that wins; a picture in the Files list has no row, so this answers "
-          + "for it."
-        : "Nothing on the timeline is sized by this: it fits reference images, and this "
-          + "clip has none. A first or last frame is fitted by its own `fit` control.";
-    }
 
     // The lattice appears here and nowhere else. A typed duration is left alone; this
     // says what will actually be generated, which is where the 17-frame grid bites.
@@ -3624,7 +3650,8 @@ export class TimelineEditor {
         <label title="How large this picture reaches the model. match scales it to about the clip's pixel count: cheap, and enough for a scene or a mood. max allows 2048px on its short side: slower, and what keeps a face the same face. Left as the clip's, the settings row answers. A frame anchor is sized by fit instead.">resize
           <select class="mmd-f-size-rule">${sizeOptions(item.media.resize)}</select>
         </label>`}
-        ${!ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
+        ${item.media.kind !== "image"
+          || !ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
         <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
           <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
         </label>`}

@@ -40,6 +40,11 @@ const CSS = `
   background:#232833; border-color:#4b5563; }
 .mmd-bar button.mmd-danger:hover { background:#5a3029; border-color:#8a4238; color:#ffe7e3; }
 .mmd-bar button.mmd-danger:active { background:#3a2422; }
+
+/* a full bucket -- the house form for a control that has nothing left to do:
+   dim, dashed, and it says why on hover rather than going quiet. */
+.mmd-bar button.mmd-dead { opacity:.45; cursor:default; border-style:dashed; }
+.mmd-bar button.mmd-dead:hover { background:#2c313c; border-color:#3a4150; color:#e5e7eb; }
 .mmd-seg-fields button:hover { background:#5a3029; border-color:#8a4238; }
 
 .mmd-settings input, .mmd-settings select,

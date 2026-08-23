@@ -39,6 +39,8 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_sources(timeline),
         *_check_dialogue(timeline),
         *_check_clip_lengths(timeline),
+        *_check_reference_counts(timeline),
+        *_check_image_shape(timeline),
         *_check_description_length(timeline),
         *_check_cut_worthiness(timeline),
         *_check_silence(timeline),
@@ -312,6 +314,115 @@ def _check_clip_lengths(timeline: Timeline) -> Iterator[Issue]:
             f"{name} runs {length:g}s. H3 takes reference clips of 2-15 seconds; "
             f"{'shorter' if length < 2 else 'longer'} ones are used only in part.",
         )
+
+
+def _check_reference_counts(timeline: Timeline) -> Iterator[Issue]:
+    """More reference material than H3 accepts.
+
+    The model card and the platform API reference give the same ceilings for Ref2VA: nine
+    reference images, three videos and three audio clips, fifteen seconds of video and of
+    audio in total, and twelve files across all three kinds. Over any of them the request
+    is rejected rather than trimmed, so the cost of finding out is a whole run.
+
+    Frame anchors are counted apart. They are handed to the keyframe inputs rather than to
+    the reference list, so they do not eat into the nine -- and the two modes cannot be
+    mixed at all, which `execute` refuses outright.
+
+    Buckets are built the way `execute` builds them, so the numbers warned about here are
+    the numbers the model is handed.
+    """
+    claimed: set[str] = set()
+    pictures = []
+    for item in attachments.of_kind(timeline, "image"):
+        role = str(item.record.get("role", "")).strip()
+        if role in ("first frame", "last frame") and role not in claimed:
+            claimed.add(role)
+            continue
+        pictures.append(item)
+    videos = attachments.of_kind(timeline, "video")
+    audios = [
+        item for item in attachments.collect(timeline)
+        if item.kind == "audio"
+        and item.origin is not None and item.origin[0] == "cues"
+    ]
+
+    for what, items, ceiling in (
+        ("reference images", pictures, 9),
+        ("reference videos", videos, 3),
+        ("reference audio files", audios, 3),
+    ):
+        if len(items) > ceiling:
+            yield Issue(
+                "warning",
+                f"{len(items)} {what}. H3 takes at most {ceiling}, and refuses the rest "
+                f"of the request with them.",
+            )
+
+    total = len(pictures) + len(videos) + len(audios)
+    if total > 12:
+        yield Issue(
+            "warning",
+            f"{total} reference files. H3 takes at most 12 across pictures, video and "
+            f"audio together.",
+        )
+
+    # Only what was actually measured. An unread duration is not a wrong one, and a sum
+    # built out of guesses would fire on documents that are perfectly legal.
+    for what, items in (("video", videos), ("audio", audios)):
+        seen: set[int] = set()
+        run = 0.0
+        for item in items:
+            if id(item.record) in seen:
+                continue
+            seen.add(id(item.record))
+            length = item.record.get("seconds")
+            if isinstance(length, (int, float)) and length > 0:
+                run += float(length)
+        if run > 15:
+            yield Issue(
+                "warning",
+                f"{run:g}s of reference {what}. H3 takes 15 seconds in total, however "
+                f"many clips it is split across.",
+            )
+
+
+def _check_image_shape(timeline: Timeline) -> Iterator[Issue]:
+    """A picture outside the shape H3 accepts.
+
+    The platform API gives every `image_url` the same two bounds: each side within
+    256-5760 px, and a width-to-height ratio within 0.4-2.5. A panorama or a tall strip is
+    refused rather than letter-boxed, and the editor takes it happily, so without this the
+    first news of it is a failed run.
+
+    The dimensions are the ones the browser read when the file was attached. A picture
+    from an older document carries none, and an unknown size is not a wrong one.
+    """
+    seen: set[str] = set()
+    for item in attachments.of_kind(timeline, "image"):
+        name = str(item.record.get("filename", ""))
+        if name in seen:
+            continue
+        seen.add(name)
+        wide = item.record.get("width")
+        tall = item.record.get("height")
+        if not isinstance(wide, (int, float)) or not isinstance(tall, (int, float)):
+            continue
+        if wide <= 0 or tall <= 0:
+            continue
+        label = name or "a picture"
+        if not (256 <= wide <= 5760 and 256 <= tall <= 5760):
+            yield Issue(
+                "warning",
+                f"{label} is {wide:g}x{tall:g}. H3 takes pictures between 256 and 5760 "
+                f"pixels on each side.",
+            )
+        ratio = wide / tall
+        if not 0.4 <= ratio <= 2.5:
+            yield Issue(
+                "warning",
+                f"{label} is {wide:g}x{tall:g}, a ratio of {ratio:.2f}. H3 takes pictures "
+                f"between 0.4 and 2.5 wide-to-tall.",
+            )
 
 
 def _carried_into(timeline: Timeline, subject) -> bool:

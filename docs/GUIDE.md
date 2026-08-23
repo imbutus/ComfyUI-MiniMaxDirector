@@ -420,10 +420,10 @@ outpainting, and it belongs before H3 sees the file.
 
 The settings row's **`default resize`** is the reference-side twin of this, and it sizes reference
 *pictures* only: core reads it in its `ref_images` loop alone, so a reference video is
-sized by its own canvas rule and a keyframe by `fit`. It goes dead — dimmed and dashed —
-on any clip that carries no reference picture: only frame anchors, only a video, only
-sound, or nothing at all. A picture in the **Files** list counts even before it is dragged
-onto a track: it is handed to the model in the same `ref_images` loop as one on a block,
+sized by its own canvas rule and a keyframe by `fit`. It stays live whatever the clip
+carries: a control that greys itself out is one you have to work out the rule for, and the
+rule here is already written on the control. A picture in the **Files** list counts even
+before it is dragged onto a track: it is handed to the model in the same `ref_images` loop as one on a block,
 so it is sized by this control too.
 
 What it trades is detail against time. A reference picture becomes tokens the model reads
@@ -721,7 +721,24 @@ So one video with sound plus one standalone clip gives `<Audio 1>` (the soundtra
 `<Video 1>`, `<Audio 2>`. Getting this wrong does not crash anything — it generates the
 wrong video, quietly. The `prompt` output shows the numbering that was actually used.
 
-Limits, from the model: **9 images, 3 videos, 3 video soundtracks, 3 standalone audio**.
+Limits, from the model card and the platform API: **9 reference images, 3 videos and 3
+audio files**, with **15 seconds** of video and of audio in total and **12 files**
+across all three. A video's own soundtrack is not a file of its own and does not count
+against the audio three. Frame anchors are counted apart, because they are handed to
+the keyframe inputs rather than to the reference list — and the two cannot be combined
+at all: MiniMax documents reference mode and first/last-frame mode as mutually
+exclusive, and the director refuses a timeline holding both. Each picture also has to sit
+within **256–5760 px** on both sides and a **0.4–2.5** width-to-tall ratio, which is why a
+panorama is refused rather than letter-boxed.
+
+Two of these are caught before the file lands. **Shape and clip length belong to the
+file** — they are settled when it is picked and never change — so a picture outside the
+bounds, or a recording outside 2–15 s, is refused at the moment it is chosen and says why
+beside the buttons; nothing is placed. Once a file has a block, a card and a token,
+taking it back is work. **The counts cannot be caught there**, because switching a
+`first frame` back to `reference` reaches ten pictures with no button pressed: the three
+media buttons go dim and dashed once their bucket is full, and `report` is the guard that
+actually holds.
 
 **A picture that only exists to define somebody gets no entry of its own.** MiniMax's
 guide is explicit: if an image is used only to establish a character, a scene, a costume
