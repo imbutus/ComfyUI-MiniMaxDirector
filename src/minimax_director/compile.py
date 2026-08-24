@@ -523,7 +523,7 @@ def _retention_analysis(timeline: Timeline) -> str:
             continue
         lines.append(
             f"{item.token}{where}: {marker} - "
-            f"{_copy_clause(item, marker) or _described(item)}.")
+            f"{_copy_clause(item, marker) or _described(item, timeline)}.")
     people = attachments.subjects(timeline)
     pairs = _receivers(timeline)
     written = {receiver.token: incoming
@@ -601,12 +601,19 @@ def _named_subject(timeline: Timeline, people: list, onto: str) -> str:
     return ""
 
 
-def _described(item) -> str:
+def _described(item, timeline: Timeline | None = None) -> str:
     """What the author said this reference is, or the filename as a last resort.
 
     A video's soundtrack shares the video's record, and a description written for the
     picture is not a description of the sound -- so it falls straight through to the
     filename rather than claiming the frames' words.
+
+    A frame anchor names the frame it is and stops there. The model is handed that picture
+    -- `clip.tokenize(prompt, images=...)` in core's `nodes_minimax_h3.py` gives it to the
+    vision encoder -- so a sentence about its contents tells it nothing it cannot see, and
+    every source for one is wrong somewhere: the filename says nothing, and the shot's own
+    prose is the motion across the shot, which a *last* frame does not contain. Saying
+    which frame it is stays true whatever the picture holds.
     """
     if item.kind == "audio" and str(item.record.get("kind", "")).strip() == "video":
         described = ""
@@ -614,8 +621,27 @@ def _described(item) -> str:
         described = str(item.record.get("description", "")).strip().rstrip(".")
     if described:
         return described
+    if timeline is not None:
+        shot = _anchor_shot(timeline, item)
+        if shot is not None:
+            role = str(item.record.get("role", "")).strip()
+            number = next((at for at, other in enumerate(timeline.ordered_shots(), start=1)
+                           if other.start == item.origin[1]), 0)
+            return f"the {role} of [Shot {number}]" if number else f"the {role}"
     name = str(item.record.get("filename", "")).strip()
     return f"the {item.kind} in {name}" if name else f"an unnamed {item.kind} reference"
+
+
+def _anchor_shot(timeline: Timeline, item):
+    """The shot a frame anchor sits on, or None when the item is not one.
+
+    Origins carry the block's start frame, which is what `_anchor_clause` matches on too.
+    """
+    role = str(item.record.get("role", "")).strip()
+    if role not in FRAME_ROLES or not item.origin or item.origin[0] != "shots":
+        return None
+    return next((shot for shot in timeline.ordered_shots() if shot.start == item.origin[1]),
+                None)
 
 
 #: What each audio marker asks the model to do, in the guide's own words (ref guide 4.2 and

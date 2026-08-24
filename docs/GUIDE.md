@@ -346,14 +346,15 @@ not on screen — and the TIMELINE tab shows:
   Text typed on the block by an older build still compiles and is shown greyed, with the
   card's sentence taking over the moment there is one.
 
-  A **frame anchor is the exception** — `first frame`, `keyframe` or `last frame`. That
-  block is not a picture of somebody to be lifted out; it *is* a frame of the video, so it
-  carries a **`shows`** box of its own beside `keep file`. What you type there is compiled
-  after *showing* in the definition — *"<Picture 1> is the first frame of [Shot 1], showing
-  a red apple on a white sweep."* — and stands as the description in `retention_analysis`,
-  which falls back to the filename when the box is empty. Cards still work on an anchor:
-  somebody lifted out of that frame gets a `<Subject n>` as usual, and the frame keeps its
-  own entry either way.
+  A **frame anchor** — `first frame`, `keyframe` or `last frame` — carries no description
+  box either. The picture is handed to the vision encoder along with the prompt
+  (`clip.tokenize(prompt, images=…)` in core's `nodes_minimax_h3.py`), so a sentence about
+  what is in it tells the model nothing it cannot see, and every source for one is wrong
+  somewhere: a filename says nothing, and the shot's own prose is the motion across the
+  shot, which a *last* frame does not contain. So an anchor names the frame it is —
+  *"<Picture 1> is the first frame of [Shot 1]."* — and `retention_analysis` says the same.
+  Cards still work on an anchor: somebody lifted out of that frame gets a `<Subject n>` as
+  usual, and the frame keeps its own entry either way.
 
 **Several blocks selected** turns the panel into a selection panel, offering only what
 applies to all of them: `camera` / `amplitude` / `speed` when they are all camera moves,
@@ -379,6 +380,16 @@ with: `reference` (guidance), `storyboard` (a plan of the framing rather than co
 it compiles as *"<Picture 3> is a storyboard reference for [Shot 1], defining viewpoint,
 subject placement, and shot order."*), `first frame` / `keyframe` / `last frame` (a real
 frame of the target video), `continue from`, `edit`.
+
+**The picker asks the file what it could be for.** All seven are legal to store — the
+compiler reads whatever the record says — but most mean nothing on most files: a video set
+to `first frame` has no input to go to and changes only the wording, and an audio file set
+to `storyboard` describes a frame that does not exist. So a picture is offered `reference`,
+`storyboard` and the three frame anchors; a video `reference`, `continue from` and `edit`;
+a recording `reference` alone — and with one option left there is nothing to pick, so on a
+recording the control is not drawn at all. A document already holding a combination no
+longer offered keeps it, and the picker comes back to show it until you change it — the
+same courtesy an audio file carrying a visual retention marker gets.
 
 `first frame` and `last frame` are the two the model has an input for: that block's image
 is sent as the keyframe rather than as a reference beside one, so a transformation between

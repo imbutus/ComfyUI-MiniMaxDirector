@@ -15,7 +15,7 @@ import { install } from "./styles.js";
 import * as media from "./media.js";
 import * as io from "./io.js";
 import {
-  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, FRAME_ROLES, ROLES, SIZINGS, SPEEDS,
+  AMPLITUDES, CAMERAS, ANCHOR_ROLES, FITS, FRAME_ROLES, ROLES, ROLES_FOR, SIZINGS, SPEEDS,
   TRANSITIONS, TRACKS,
   TRACK_FOR_MEDIA, TRACKS_FOR_MEDIA, add, bounds, clamp,
   emptyTimeline, extent as clipExtent, formatSeconds, speakerIds, speakerNumbers,
@@ -71,9 +71,20 @@ const cameraOptions = (current) => {
  * compiler falls back to `fully_preserved` for an unknown marker; the select does not
  * pretend that already happened.
  */
-const roleOptions = (current) => {
-  const value = ROLES.includes(current) ? current : ROLES[0];
-  return ROLES
+/** The roles this kind of file can sensibly be for, plus whatever it already says.
+ *
+ *  A document written before the picker narrowed keeps its value rather than being reset
+ *  to the first entry -- silently rewriting what somebody chose is worse than showing an
+ *  option the list would no longer offer. */
+const rolesFor = (kind, current = "") => {
+  const offered = ROLES_FOR[kind] ?? ROLES;
+  return offered.includes(current) || !current ? offered : [current, ...offered];
+};
+
+const roleOptions = (current, kind = "image") => {
+  const offered = rolesFor(kind, current);
+  const value = offered.includes(current) ? current : offered[0];
+  return offered
     .map((name) => `<option value="${name}"${name === value ? " selected" : ""}>${name}</option>`)
     .join("");
 };
@@ -3325,11 +3336,12 @@ export class TimelineEditor {
           </select>
         </label>`)
       + group("file", !files ? "" : `
+        ${rolesFor(files).length < 2 ? "" : `
         <label title="What every selected file is for.">used as
           <select class="mmd-b-role">${blank("leave as is")}
-            ${ROLES.map((v) => `<option value="${v}">${v}</option>`).join("")}
+            ${rolesFor(files).map((v) => `<option value="${v}">${v}</option>`).join("")}
           </select>
-        </label>
+        </label>`}
         <label title="How much of every selected file survives. The set follows the files' own kind.">keep file
           <select class="mmd-b-retention">${blank("leave as is")}
             ${retentionsFor(files).map((v) => `<option value="${v}">${v}</option>`).join("")}
@@ -3633,9 +3645,10 @@ export class TimelineEditor {
     // survive -- questions that have no meaning for a block with nothing attached.
     const subject = !item.media ? "" : `
       <div class="mmd-f-fileopts">
+        ${rolesFor(item.media.kind, item.media.role).length < 2 ? "" : `
         <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
-          <select class="mmd-f-role">${roleOptions(item.media.role)}</select>
-        </label>
+          <select class="mmd-f-role">${roleOptions(item.media.role, item.media.kind)}</select>
+        </label>`}
         <label class="${claimed.length && !ANCHOR_ROLES.includes(String(item.media.role || ""))
           && String(item.media.role || "reference") === "reference" ? "mmd-dead" : ""}"
           title="${claimed.length && String(item.media.role || "reference") === "reference"
@@ -3659,11 +3672,6 @@ export class TimelineEditor {
         <button class="mmd-f-size" title="Set the clip's width and height from this picture: its own resolution, scaled down to a size H3 renders and rounded to multiples of 32. Nothing else changes them -- and a frame anchor keeps all of itself only when its proportions and the clip's agree.">set width &amp; height</button>`}
         <button class="mmd-f-unlink">detach media</button>
       </div>
-      ${!anchored ? "" : `
-      <label class="mmd-f-wide" title="What is in this frame. A frame anchor is not a picture of something the model has to find -- it is a real frame of the video -- so it is defined by the frame it is, and this is the half that says what you would see in it. Compiled as the words after &#39;showing&#39;: “&lt;Picture 1&gt; is the first frame of [Shot 1], showing a red apple on a white sweep.” The same sentence answers for it in retention_analysis, where a file nobody has described falls back to its own filename.">shows
-        <input class="mmd-f-shows" type="text" placeholder="what you would see in this frame"
-               value="${text(String(item.media.description || ""))}">
-      </label>`}
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
         <div class="mmd-f-claims">${claimed.length ? claimed.map(({ card, at, index }) => `
@@ -4030,11 +4038,6 @@ export class TimelineEditor {
           // back; the panel itself is not rebuilt, because its shape has not changed.
           this.render();
         });
-      this.segFields.querySelector(".mmd-f-shows")
-        ?.addEventListener("input", (e) => {
-          this.snapshotTyping();
-          patchMedia({ description: e.target.value });
-        });
       this.segFields.querySelector(".mmd-f-retention")
         ?.addEventListener("change", (e) => patchMedia({ retention: e.target.value }));
       this.segFields.querySelector(".mmd-f-role")
@@ -4088,7 +4091,6 @@ export class TimelineEditor {
     put(".mmd-f-speed", item.speed || "");
     put(".mmd-f-transition", item.transition || "cut");
     put(".mmd-f-screen", item.screen_text || "");
-    put(".mmd-f-shows", item.media?.description || "");
     // Silence means `crop`, the same reading the node gives a document that predates this.
     put(".mmd-f-fit", item.media?.fit || FITS[0]);
     // Blank is a real value here -- the file deferring to the clip -- so it is written as

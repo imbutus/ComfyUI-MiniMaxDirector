@@ -79,6 +79,25 @@ export const ROLES = [
   "continue from", "edit",
 ];
 
+/**
+ * The roles worth offering for each kind of file.
+ *
+ * All seven are legal to store -- the compiler reads whatever the record says -- but most
+ * of them mean nothing on most files. A video set to `first frame` has no input to go to
+ * and changes only the wording; an audio file set to `storyboard` describes a frame that
+ * does not exist. Offering them invited exactly that, so the picker asks the file what it
+ * could sensibly be for.
+ *
+ * A document already holding a combination that is no longer offered keeps it: the value
+ * is shown in its own picker and left alone until the author changes it, the same way an
+ * audio file carrying a visual retention marker is translated rather than reset.
+ */
+export const ROLES_FOR = {
+  image: ["reference", "storyboard", "first frame", "keyframe", "last frame"],
+  video: ["reference", "continue from", "edit"],
+  audio: ["reference"],
+};
+
 /** The two roles the model has an input for: a block used as one of these *is* that frame
  *  of the clip, which is why it alone is fitted to the clip's shape. Kept in step with
  *  `ANCHOR_ROLES` in `timeline.py`. */

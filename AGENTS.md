@@ -50,6 +50,7 @@ These are the model's, not design choices. Verified in
 | Trained range | ~124–362 frames (5.2–15.1s) | the node accepts up to 3600, untested there |
 | Reference caps | 9 images, 3 videos, 3 audios; 15s of video and of audio in total; 12 files across all three | model card (H3-Base-Ref2VA row) and `platform.minimax.io/docs/api-reference/video-generation-v2-create`. A video's soundtrack is not a file of its own. `lint._check_reference_counts` warns; frame anchors are counted apart |
 | Picture shape | 256–5760 px each side, 0.4–2.5 wide-to-tall | same API page, for every `image_url`. Recorded by `media.upload` at attach time and checked by `lint._check_image_shape` |
+| `used as` per kind | image: reference, storyboard, the three anchors · video: reference, continue from, edit · audio: reference | `ROLES_FOR` in `model.js`; the picker narrows, the store does not. A value already saved outside its kind's list is kept and shown, never rewritten |
 | Modes | reference and frame anchor are mutually exclusive | the API refuses a request carrying both; `director.execute` raises the same error for `first frame` and `last frame` |
 | Guidance | CFG-free | official graphs use `BasicGuider`, never a negative prompt |
 
@@ -560,6 +561,15 @@ the links in already-saved graphs -- do it at a version bump and re-save `exampl
     role *does* keep it an entry is still described. `media["description"]` is still read
     by the compiler and still carried by older documents, which is why the panel shows it
     greyed rather than pretending it is not there.
+
+    A frame anchor kept a writer for that key longer than this item admitted: a `shows`
+    box, on the grounds that a frame describes itself. It is gone too. Core hands the
+    picture to the vision encoder with the prompt (`clip.tokenize(prompt, images=...)` in
+    `nodes_minimax_h3.py`), so a sentence about its contents tells the model nothing it
+    cannot see, and every source for one is wrong somewhere -- a filename says nothing,
+    and the shot's prose is the motion across the shot, which a *last* frame does not
+    contain. An anchor now names the frame it is, in `subject_definitions` and in
+    `retention_analysis` alike. No control writes `media["description"]` any more.
 16. **Never lay the timeline out while its tab is hidden.** Track widths come from
     `stage.clientWidth`, which is 0 under `.mmd-hide { display:none }`, and `width()`
     falls back to a 200px floor -- so a `render()` triggered from the WHO & WHAT tab (a card
