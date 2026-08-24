@@ -3314,7 +3314,7 @@ export class TimelineEditor {
 
     this.segFields.innerHTML =
       group("camera", !only("moves") ? "" : `
-        <label title="Set the move on every selected block.">camera
+        <label title="Set the move on every selected block.">motion
           <select class="mmd-b-camera">${blank("leave as is")}
             ${CAMERAS.map((v) => `<option value="${v}">${v}</option>`).join("")}
           </select>
@@ -3615,7 +3615,7 @@ export class TimelineEditor {
     // could be written in two places -- inline on the shot's line, or in the Camera:
     // block -- with nothing on screen to say which you were getting.
     const cameras = track !== "moves" ? "" : `
-      <label title="The guide's camera vocabulary, each word compiling to a sentence of its own. — in words writes no sentence at all: the note beside it becomes the whole camera line, for a move none of these twenty words describes.">camera
+      <label title="The guide's camera vocabulary, each word compiling to a sentence of its own. — in words writes no sentence at all: the note beside it becomes the whole camera line, for a move none of these twenty words describes.">motion
         <select class="mmd-f-camera">${cameraOptions(item.camera)}</select>
       </label>
       ${still ? "" : `

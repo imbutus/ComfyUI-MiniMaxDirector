@@ -357,7 +357,7 @@ not on screen — and the TIMELINE tab shows:
   usual, and the frame keeps its own entry either way.
 
 **Several blocks selected** turns the panel into a selection panel, offering only what
-applies to all of them: `camera` / `amplitude` / `speed` when they are all camera moves,
+applies to all of them: `motion` / `amplitude` / `speed` when they are all camera moves,
 `enter with` when they are all shots, `used as` and `keep file` when they all carry a file
 of one kind. Each picker starts on *leave as is* and writes nothing until you choose.
 
