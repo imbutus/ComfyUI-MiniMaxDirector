@@ -3319,7 +3319,7 @@ export class TimelineEditor {
             ${CAMERAS.map((v) => `<option value="${v}">${v}</option>`).join("")}
           </select>
         </label>
-        <label title="Set the amplitude on every selected block.">amplitude
+        <label title="Set the strength on every selected block.">strength
           <select class="mmd-b-amplitude">${blank("leave as is")}
             ${AMPLITUDES.map((v) => `<option value="${v}">${v || "medium"}</option>`).join("")}
           </select>
@@ -3619,7 +3619,7 @@ export class TimelineEditor {
         <select class="mmd-f-camera">${cameraOptions(item.camera)}</select>
       </label>
       ${still ? "" : `
-      <label title="How far the framing travels. The guide leaves medium unwritten, so that option contributes nothing to the sentence -- which is what medium means.">amplitude
+      <label title="How far the framing travels. MiniMax calls this amplitude and the compiled sentence uses that word; the picker says strength because that is what it does. The guide leaves medium unwritten, so that option contributes nothing to the sentence -- which is what medium means.">strength
         <select class="mmd-f-amplitude">${
           scaleOptions(AMPLITUDES, item.amplitude, "medium")}</select>
       </label>

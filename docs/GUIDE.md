@@ -315,7 +315,8 @@ not on screen — and the TIMELINE tab shows:
   files there is nothing to show and the strip is absent.
 - **CAMERA** — the move; CAMERA blocks only. A shot describes what is on screen, a
   camera block describes how it is filmed, and a move is free to straddle a cut.
-  `amplitude` and `speed` sit beside it: how far the framing travels and how fast. Both
+  `strength` and `speed` sit beside it: how far the framing travels and how fast — the
+  picker says `strength`, the compiled sentence keeps MiniMax's own word, amplitude. Both
   default to *medium* and *normal*, which the guide writes by saying nothing, so those
   options contribute no words. A static shot has neither, and the two pickers go away.
 - **DIALOGUE** — MAIN blocks only. One row per line: the `line` itself, the faces of who
@@ -357,7 +358,7 @@ not on screen — and the TIMELINE tab shows:
   usual, and the frame keeps its own entry either way.
 
 **Several blocks selected** turns the panel into a selection panel, offering only what
-applies to all of them: `motion` / `amplitude` / `speed` when they are all camera moves,
+applies to all of them: `motion` / `strength` / `speed` when they are all camera moves,
 `enter with` when they are all shots, `used as` and `keep file` when they all carry a file
 of one kind. Each picker starts on *leave as is* and writes nothing until you choose.
 
