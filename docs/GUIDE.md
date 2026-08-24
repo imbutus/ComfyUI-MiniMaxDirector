@@ -367,7 +367,9 @@ on every track: `same length` gives every selected block one length (each still 
 its own neighbours), and **close the gaps** butts them up against each other, track by
 track, leaving the first of each where it is.
 
-Two more actions, for shots:
+Two more actions, drawn only when the selection holds a shot — with none, they would be
+two buttons that could never light. With shots selected but not adjacent, or without
+dialogue, they stay disabled and say what to select instead:
 
 - **merge into one shot** — adjacent shots become one, prose joined, dialogue kept in the
   order it was heard. This is what MiniMax asks for when a cut only changes the distance

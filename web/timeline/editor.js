@@ -3357,11 +3357,17 @@ export class TimelineEditor {
             ? "Move the selected blocks up against the one before them, track by track, so there is no gap between them. The first of each track stays where it is."
             : "Select two or more blocks on the same track: a gap is the space between two blocks, and one block per track has none."}"
           >close the gaps</button>`)
+      // Both buttons below are about shots. With none selected there is nothing for them to
+      // be disabled *about*, so they are not drawn -- the same rule the `used as` picker
+      // follows on a recording. With shots selected but not adjacent, or without dialogue,
+      // the disabled button and its tooltip are what say how to qualify. The note is not
+      // theirs: it explains a mixed selection, which is exactly when there may be no shot.
       + group("do", `
         ${only("moves") || only("shots") || files ? "" : `
         <span class="mmd-f-note">These blocks are on different tracks, or do not all carry
         a file of one kind, so only timing is offered: a shot's transition means nothing to
         an audio cue.</span>`}
+        ${!tracks.has("shots") ? "" : `
         <button class="mmd-f-bulk mmd-b-merge"${joined ? "" : " disabled"}
           title="${joined
             ? "One shot instead of several. The prose is joined and the span is kept -- which is what MiniMax asks for when a cut only changes the distance or the angle."
@@ -3371,7 +3377,7 @@ export class TimelineEditor {
           title="${speaks
             ? "Mark the last spoken line of every selected shot but the last as carrying over, so the speech is written as one sentence crossing the cuts."
             : "Select two or more shots, with dialogue switched on."}"
-          >make the speech continuous</button>`);
+          >make the speech continuous</button>`}`);
 
     /** Write the same change onto every selected block, then let the picker go blank. */
     const all = (node, change) => {
