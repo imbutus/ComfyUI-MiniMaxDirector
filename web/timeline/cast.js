@@ -301,7 +301,6 @@ export class CastEditor {
    * themselves change.
    */
   growToFit() {
-    if (!this.box?.style.height) return;
     // A hidden tab measures zero, and zero read as "every card is below the fold": leaving
     // WHO & WHAT re-rendered the list while it was display:none and grew the stored height
     // to the whole cast, which is what came back when the tab was opened again.
@@ -314,12 +313,15 @@ export class CastEditor {
     const grew = cards > (this.lastCards ?? cards);
     this.lastCards = cards;
     if (!grew) return;
-    // The list's own gap on top of the overflow: exactly the hidden pixels leaves the new
-    // card flush against the bottom edge, which reads as a card that is still cut off --
-    // and one stray pixel of rounding puts the scrollbar back.
-    const hidden = this.list.scrollHeight - this.list.clientHeight + SLACK;
-    if (hidden <= SLACK) return;
-    this.onBoxHeight?.(Math.round(this.box.getBoundingClientRect().height + hidden));
+    // The whole list, not the overflow it happens to have right now. Adding the delta
+    // assumed the current height was otherwise right, and a card taller than the last one
+    // -- a voice row, a second source, a transfer -- left the box a row short again. Asking
+    // for the content height plus the chrome around it cannot be short by construction, and
+    // SLACK is the rounding margin that keeps the scrollbar from coming back for one pixel.
+    const chrome = this.box.getBoundingClientRect().height - this.list.clientHeight;
+    const wanted = Math.round(this.list.scrollHeight + chrome + SLACK);
+    if (wanted <= Math.round(this.box.getBoundingClientRect().height)) return;
+    this.onBoxHeight?.(wanted);
   }
 
   drop(position) {

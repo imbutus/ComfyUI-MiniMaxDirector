@@ -522,8 +522,8 @@ The list is as tall as the cards in it, and the node is as tall as whatever pane
 nothing here is a fixed height that clips. To give the list a height of its own, drag the
 grip in its bottom-right corner — the node's own corner does not do it, because the node is
 as tall as its content on every tab. The number is stored on the node and comes back with
-the workflow. A height like that still makes room for a card you add — the box grows by the
-row rather than hiding it below the fold.
+the workflow. A height like that still makes room for a card you add — the box is re-sized to the whole
+list, so a new card never arrives behind a scrollbar, whatever height was dragged.
 
 Two tokens appear on every card, and they are MiniMax's, not ours:
 
