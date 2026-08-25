@@ -676,9 +676,10 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 .mmd-f-addcard:hover, .mmd-seg-fields .mmd-f-addcard:hover,
 .mmd-f-editcard:hover, .mmd-seg-fields .mmd-f-editcard:hover { color:#cde3ef;
   background:none; border-color:transparent; }
-/* The edit link belongs to the line it sits on, so it follows the text rather than
-   lining up in a column of its own; add-another closes the list underneath. */
-.mmd-seg-fields .mmd-f-editcard { flex:0 0 auto; margin-left:2px; font-size:10px; }
+/* The edit link takes the right edge rather than trailing the sentence: against three
+   claims of unequal length, following the text put the same word at three different
+   places and the list read as ragged. Add-another closes the list underneath. */
+.mmd-seg-fields .mmd-f-editcard { flex:0 0 auto; margin-left:auto; font-size:10px; }
 .mmd-seg-fields .mmd-f-addcard { align-self:flex-start; margin-top:2px; }
 /* The claim is a reading, not a control: no border, or it reads as a select somebody
    should have been able to open. */
@@ -911,7 +912,9 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    does -- flat, unbordered, obviously not a field you type into. */
 .mmd-seg-fields .mmd-f-claimed { display:flex; align-items:flex-start; gap:8px;
   flex-wrap:wrap; color:#9ca3af; font-size:11px; }
-.mmd-seg-fields .mmd-f-claim-head { color:#9ca3af; padding-top:1px; }
+/* The head names the list, so it sits over it rather than beside it: at the left of three
+   wrapping claims it held a column of its own that was empty under the first line. */
+.mmd-seg-fields .mmd-f-claim-head { color:#9ca3af; flex-basis:100%; }
 /* One subject per line. A picture can hold as many as it holds -- three people, or a
    person and their coat and the room behind them -- and a row of them ran off the end of
    the panel at the second one. */
@@ -929,15 +932,25 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    real claim, drawn as the absence it is. */
 .mmd-seg-fields .mmd-f-claim-none { color:#6b7280; font-style:italic; }
 .mmd-seg-fields .mmd-f-claimed .mmd-f-note { flex-basis:100%; }
+/* The rule between the two sits at the middle of the group, which is the right column's
+   left edge less the gap -- not half of the controls, which put it right of centre by the
+   width of the word FILE. */
+.mmd-seg-fields .mmd-f-claimed.mmd-f-wide { flex:0 0 calc(50% - 9px); min-width:0;
+  box-sizing:border-box; }
 /* What the file is, and what the block does with it, are two different questions, and on
    one line they answered each other: a description long enough to wrap ran its "edit" link
    into "used as". They keep the line and take a rule between them instead -- the controls
    in a column of their own, sized to themselves, the sentence wrapping in what is left.
    Under a rule across the row they were correct and mostly empty: three short selects had
    a whole line to sit at the left of. */
-.mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:nowrap; align-items:center;
-  white-space:nowrap; gap:9px; flex:0 0 auto; align-self:stretch; padding-right:18px;
-  margin-right:9px; border-right:1px solid #262b34; }
+.mmd-seg-fields .mmd-f-fileopts { display:flex; flex-wrap:wrap; align-items:flex-start;
+  align-content:flex-start; white-space:nowrap; gap:9px;
+  flex:1 1 0; box-sizing:border-box;
+  align-self:stretch; padding-right:18px; border-right:1px solid #262b34; }
+/* Two lines: what the file is, then what to do with it. On one line the column was as wide
+   as everything it holds, and the sentences beside it wrapped in what little was left. */
+.mmd-seg-fields .mmd-f-fileacts { flex-basis:100%; display:flex; align-items:center;
+  gap:9px; }
 /* The tag names the group, so it sits beside the first row of it -- the same rule the
    dialogue group already follows, for the same reason. */
 .mmd-f-group:has(> .mmd-f-fileopts) { align-items:flex-start; }

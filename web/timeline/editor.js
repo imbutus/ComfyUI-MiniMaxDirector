@@ -3664,19 +3664,21 @@ export class TimelineEditor {
             && String(item.media.role || "reference") === "reference" ? " disabled" : ""}>${
             retentionOptions(item.media.retention, item.media.kind, track)}</select>
         </label>
-        ${item.media.kind !== "image"
-          || ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
-        <label title="How large this picture reaches the model. match scales it to about the clip's pixel count: cheap, and enough for a scene or a mood. max allows 2048px on its short side: slower, and what keeps a face the same face. Left as the clip's, the settings row answers. A frame anchor is sized by fit instead.">resize
-          <select class="mmd-f-size-rule">${sizeOptions(item.media.resize)}</select>
-        </label>`}
-        ${item.media.kind !== "image"
-          || !ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
-        <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
-          <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
-        </label>`}
-        ${item.media.kind !== "image" ? "" : `
-        <button class="mmd-f-size" title="Set the clip's width and height from this picture: its own resolution, scaled down to a size H3 renders and rounded to multiples of 32. Nothing else changes them -- and a frame anchor keeps all of itself only when its proportions and the clip's agree.">set width &amp; height</button>`}
-        <button class="mmd-f-unlink">detach media</button>
+        <div class="mmd-f-fileacts">
+          ${item.media.kind !== "image"
+            || ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
+          <label title="How large this picture reaches the model. match scales it to about the clip's pixel count: cheap, and enough for a scene or a mood. max allows 2048px on its short side: slower, and what keeps a face the same face. Left as the clip's, the settings row answers. A frame anchor is sized by fit instead.">resize
+            <select class="mmd-f-size-rule">${sizeOptions(item.media.resize)}</select>
+          </label>`}
+          ${item.media.kind !== "image"
+            || !ANCHOR_ROLES.includes(String(item.media.role || "")) ? "" : `
+          <label title="How this picture is brought to the clip's shape when the two disagree. crop keeps its proportions and loses its edges, centred; stretch is what ComfyUI does on its own -- the whole picture, squashed to fit. A picture already of the clip's shape is untouched either way.">fit
+            <select class="mmd-f-fit">${fitOptions(item.media.fit)}</select>
+          </label>`}
+          ${item.media.kind !== "image" ? "" : `
+          <button class="mmd-f-size" title="Set the clip's width and height from this picture: its own resolution, scaled down to a size H3 renders and rounded to multiples of 32. Nothing else changes them -- and a frame anchor keeps all of itself only when its proportions and the clip's agree.">set width &amp; height</button>`}
+          <button class="mmd-f-unlink">detach media</button>
+        </div>
       </div>
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
         <span class="mmd-f-claim-head">describes</span>
