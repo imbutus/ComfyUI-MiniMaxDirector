@@ -2010,12 +2010,16 @@ export class TimelineEditor {
       this.commit(next);
     });
 
-    // A picker inside a draggable chip: pointing at it must not start a drag, or the list
-    // gives the file up instead of opening the list of two words.
+    // A control inside a draggable chip: pressing it must not start a drag, or the list
+    // gives the file up instead of answering -- the picker opens no list of two words, and
+    // re-upload and the cross lose the click to a chip lifting out from under them.
+    // The chip is found by its class rather than by data-file, which the resize picker
+    // carries as well: `closest` stopped at the picker, so the flag was being set on the
+    // picker and the chip stayed draggable the whole time.
     this.filesList.addEventListener("pointerdown", (event) => {
-      const chip = event.target.closest("[data-file]");
+      const chip = event.target.closest(".mmd-file");
       if (!chip) return;
-      chip.draggable = !event.target.closest(".mmd-file-resize");
+      chip.draggable = !event.target.closest(".mmd-file-resize, button");
     });
 
     this.filesList.addEventListener("dragstart", (event) => {
