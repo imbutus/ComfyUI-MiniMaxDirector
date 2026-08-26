@@ -182,11 +182,20 @@ const CSS = `
 .mmd-file.mmd-gone:hover { border-color:#b45848; }
 .mmd-file.mmd-gone .mmd-file-name, .mmd-file.mmd-gone .mmd-file-token { color:#e07b6a; }
 .mmd-file.mmd-gone .mmd-file-thumb { opacity:.4; }
-.mmd-file-find { background:#3a2422; color:#ffd9d2; border:1px solid #5c332d;
+/* Named through the element as well as the class, because .mmd-file button -- the bare
+   grey cross that takes a file off the clip -- is written further down and carries one
+   type more than a class on its own. It was winning, and the repair arrived as grey text
+   in the middle of a row of its own rather than as a button.
+   It shares its line with the cross rather than claiming the full width: at 100% the cross
+   had nowhere to go but a fourth line, and the row that says a file is missing was twice
+   the height of the rows around it. */
+.mmd-file button.mmd-file-find { background:#3a2422; color:#ffd9d2;
+  border:1px solid #5c332d;
   border-radius:4px; padding:2px 7px; font:inherit; font-size:9.5px; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center; gap:4px;
-  white-space:nowrap; flex:1 0 100%; margin-top:1px; }
-.mmd-file-find:hover { background:#5a3029; border-color:#8a4238; color:#fff; }
+  white-space:nowrap; flex:1 1 auto; margin-top:1px; }
+.mmd-file button.mmd-file-find:hover { background:#5a3029; border-color:#8a4238;
+  color:#fff; }
 .mmd-file-find .mmd-icon { width:11px; height:11px; }
 
 /* The same red wherever else the file is named. A block whose picture is gone draws an
@@ -294,7 +303,11 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 .mmd-locked .mmd-stage .mmd-seg:not(.mmd-gone),
 .mmd-locked .mmd-labels, .mmd-locked .mmd-ruler { opacity:.4; }
 .mmd-locked .mmd-seg-refile { pointer-events:auto; }
-.mmd-locked .mmd-files-bar, .mmd-locked .mmd-files {
+/* Both are direct children of the timeline panel, so the dimming rule above names them
+   through one class more than .mmd-locked .mmd-files does and was taking the list back.
+   The way out of the lock is in this list -- re-upload -- and it was inert. */
+.mmd-locked .mmd-panel[data-panel="timeline"] > .mmd-files-bar,
+.mmd-locked .mmd-panel[data-panel="timeline"] > .mmd-files {
   opacity:1; pointer-events:auto; user-select:auto; }
 .mmd-locked .mmd-bar button:not(.mmd-danger):not([data-reset]) {
   opacity:.4; pointer-events:none; }
