@@ -74,6 +74,12 @@ export async function upload(kind, file) {
       record.height = size.height;
     }
   }
+  // Anything already worked out about a file of this name is now about a different file.
+  // The envelope a waveform is drawn from is cached by URL, and a re-upload keeps the URL
+  // whenever the name is kept -- so a recording put back after going missing was handed the
+  // failed decode from while it was missing, and its block came back black. Cached failures
+  // are worth keeping only until the file itself changes, which is here.
+  ENVELOPES.delete(url(record));
   return record;
 }
 
