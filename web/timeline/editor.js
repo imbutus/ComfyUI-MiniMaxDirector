@@ -1552,7 +1552,12 @@ export class TimelineEditor {
     // names it off the clip. The classes do the work; `nag` answers a click on the rest.
     this.root.classList.toggle("mmd-locked", names.length > 0);
     if (before !== [...names].sort().join("|")) {
-      this.paintFiles(this.read());
+      // The list is where a missing file is put back, and the editor is locked to that one
+      // way out -- so it opens itself rather than waiting behind a closed panel nobody has
+      // been told to look in. Only when the set of missing names changes: reopening a list
+      // the author has just closed would leave them no way to close it at all.
+      if (names.length && this.filesPanel.classList.contains("mmd-hide")) this.showFiles(true);
+      else this.paintFiles(this.read());
       // The blocks and the chips carry the mark too, and the cards live in another editor.
       // Only from the tab the tracks are on: laying them out while the panel is hidden
       // measures a stage of zero width and squeezes the whole clip into a corner. The way

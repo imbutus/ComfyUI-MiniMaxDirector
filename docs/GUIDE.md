@@ -254,7 +254,9 @@ clicking one flashes the blocks whose file is gone three times, on TIMELINE — 
 the reason nothing is answering and where the repair is. Three things stay
 live, because they are the ways out — **re-upload**, on the block itself and on the file's
 row in **Files**; and **Delete** and **Clear**, for when the answer is that the block should
-go. The button sits in the middle of the block, where the picture would be: a missing
+go. **Files** opens itself the moment a file goes missing, so the row that repairs it is on
+screen rather than behind a closed panel; close it again and it stays closed until the list
+of missing names changes. The button sits in the middle of the block, where the picture would be: a missing
 picture, clip or recording leaves an empty rectangle exactly where you are already looking.
 Pick any file off disk for it — renamed on disk is the ordinary reason one goes missing, so
 the name you pick need not match — and every block, token and card that named the old one
