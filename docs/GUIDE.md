@@ -748,11 +748,16 @@ panorama is refused rather than letter-boxed.
 Two of these are caught before the file lands. **Shape and clip length belong to the
 file** — they are settled when it is picked and never change — so a picture outside the
 bounds, or a recording outside 2–15 s, is refused at the moment it is chosen and says why
-beside the buttons; nothing is placed. Once a file has a block, a card and a token,
-taking it back is work. **The counts cannot be caught there**, because switching a
+in a dialog over the editor; nothing is placed. Once a file has a block, a card and a
+token, taking it back is work. **The counts cannot be caught there**, because switching a
 `first frame` back to `reference` reaches ten pictures with no button pressed: the three
-media buttons go dim and dashed once their bucket is full, and `report` is the guard that
-actually holds.
+media buttons go dim and dashed once their bucket is full — pressing one anyway says how
+many are already held rather than doing nothing — and `report` is the guard that actually
+holds.
+
+Every refusal the editor makes goes to that same dialog: the shape and length above, a
+bucket already full, a file that is not a picture, a recording or a clip, and an upload
+that fails. It is dismissed with OK, Escape, or a click outside it.
 
 **A picture that only exists to define somebody gets no entry of its own.** MiniMax's
 guide is explicit: if an image is used only to establish a character, a scene, a costume

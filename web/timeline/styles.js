@@ -19,7 +19,7 @@ const CSS = `
    off at the node border rather than land on top of somebody's sampler. */
 .mmd { display:flex; flex-direction:column; gap:7px; width:100%; height:100%;
   overflow:hidden; font:12px/1.4 system-ui,sans-serif; color:#e5e7eb;
-  box-sizing:border-box; }
+  box-sizing:border-box; position:relative; }
 
 /* toolbar ---------------------------------------------------------------- */
 .mmd-bar { display:flex; align-items:center; gap:6px; flex:0 0 auto; flex-wrap:wrap; }
@@ -409,6 +409,24 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 .mmd-cast-node .mmd-prompt { flex:0 0 auto; }
 .mmd-cast-node .mmd-stamp { color:#4b5563; font-size:9px; font-variant-numeric:tabular-nums; }
 .mmd-hide { display:none; }
+
+/* A refusal, where the eye already is. The one line under IMPORT / EXPORT was where these
+   used to go, and that panel is shut nearly always: a picture the wrong shape was picked,
+   uploaded and then quietly not placed, which reads as a broken editor rather than a rule.
+   Over the editor rather than the page, because the node is what the reader is looking at
+   and the window may have scrolled it anywhere. */
+.mmd-modal { position:absolute; inset:0; z-index:40; display:flex;
+  align-items:center; justify-content:center; background:rgba(10,12,16,.66); }
+.mmd-modal.mmd-hide { display:none; }
+.mmd-modal-box { max-width:min(460px, 82%); background:#171b22; color:#e5e7eb;
+  border:1px solid #3a4150; border-radius:6px; padding:14px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5); }
+.mmd-modal-head { color:#e0b055; font-weight:600; margin-bottom:6px; }
+.mmd-modal-body { line-height:1.5; overflow-wrap:anywhere; }
+.mmd-modal-foot { display:flex; justify-content:flex-end; margin-top:12px; }
+.mmd-modal-ok { background:#2c313c; border:1px solid #3a4150; color:#e5e7eb;
+  border-radius:4px; padding:4px 14px; font:inherit; cursor:pointer; }
+.mmd-modal-ok:hover { background:#39404d; border-color:#4a5262; }
 
 /* The cast: one card per person, not a form. A face, a name, what stays the same and how
    they sound sit on one card because they are one person -- spread across the block panel

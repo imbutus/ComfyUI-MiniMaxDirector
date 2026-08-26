@@ -372,6 +372,14 @@ cast, which borrows the set through `absentOf` because it never asks the server 
 by the refused run, by the report the editor shows while writing, and quoted by the panel
 that repairs it. Three phrasings of one problem read as three problems.
 
+**A refusal is a dialog, not a line.** `editor.alert(sentence, head)` puts `.mmd-modal`
+over the whole editor; `editor.say` still exists but writes into the IMPORT / EXPORT panel
+and is for that panel's own results. Everything the browser turns down goes to `alert`:
+`media.unusable` (shape, ratio, 2-15s), `this.capacity[kind]` (the 9/3/3 ceilings, written
+by `renderCapacity` and read before the picker opens), a file of no recognised kind, and a
+failed upload. The three Add buttons are dimmed rather than `disabled` for exactly this
+reason -- a disabled button eats the click, and the click is where the sentence comes from.
+
 **The lock is a courtesy; validation is the guard.** `mmd-locked` dims the panels and takes
 their pointer events while a file is missing, leaving exactly three things live: the Files
 list (each missing row has a `re-upload` button), Delete, and Clear -- the two ways out are

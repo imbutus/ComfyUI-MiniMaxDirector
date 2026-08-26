@@ -318,9 +318,13 @@ export class CastEditor {
     // -- a voice row, a second source, a transfer -- left the box a row short again. Asking
     // for the content height plus the chrome around it cannot be short by construction, and
     // SLACK is the rounding margin that keeps the scrollbar from coming back for one pixel.
-    const chrome = this.box.getBoundingClientRect().height - this.list.clientHeight;
+    // Layout pixels throughout, the units the height is written in. Measured through
+    // getBoundingClientRect, the chrome came back multiplied by the canvas zoom while the
+    // list's own numbers did not, so at anything but 100% the box grew by the wrong amount
+    // -- at 47% the two disagreed enough to leave the new card behind the fold.
+    const chrome = this.box.offsetHeight - this.list.clientHeight;
     const wanted = Math.round(this.list.scrollHeight + chrome + SLACK);
-    if (wanted <= Math.round(this.box.getBoundingClientRect().height)) return;
+    if (wanted <= this.box.offsetHeight) return;
     this.onBoxHeight?.(wanted);
   }
 

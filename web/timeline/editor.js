@@ -196,6 +196,9 @@ export class TimelineEditor {
      *  with the timeline and have to be written to a widget this editor has no hand on. */
     this.onImportCast = null;
     this.selected = [];
+    /** Why another file of this kind would be one too many, per kind, or "" while there
+     *  is room. Written by `renderCapacity`, read by whatever is about to add one. */
+    this.capacity = { image: "", video: "", audio: "" };
     this.drag = null;
     this.scrubbing = false;
     /** Blocks copied with Cmd/Ctrl+C, waiting for a paste. Not the system clipboard: a
@@ -1403,6 +1406,51 @@ export class TimelineEditor {
   }
 
   /**
+   * Refuse out loud.
+   *
+   * A refusal used to go to `say`, which writes into the IMPORT / EXPORT panel -- open
+   * perhaps one time in twenty. A picture the wrong shape was picked, uploaded, and then
+   * quietly not placed, and the only reading available was that the editor had broken.
+   *
+   * Over the whole editor rather than beside the control that refused, because the control
+   * is not always on screen: the file is picked from the toolbar and the reason can be
+   * about a card on another tab. Dismissed with OK, Escape, or a click outside it.
+   */
+  alert(sentence, head = "This file cannot be used") {
+    let modal = this.root.querySelector(".mmd-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.className = "mmd-modal mmd-hide";
+      modal.innerHTML = `
+        <div class="mmd-modal-box" role="alertdialog" aria-modal="true">
+          <div class="mmd-modal-head"></div>
+          <div class="mmd-modal-body"></div>
+          <div class="mmd-modal-foot">
+            <button type="button" class="mmd-modal-ok">OK</button>
+          </div>
+        </div>`;
+      const close = () => modal.classList.add("mmd-hide");
+      modal.addEventListener("click", (event) => {
+        // The backdrop itself, or the button. A click on the box is not a dismissal --
+        // the sentence is there to be read, and selecting a word of it is reading.
+        if (event.target === modal || event.target.closest(".mmd-modal-ok")) close();
+      });
+      // Stopped here as well: the canvas below reads keys of its own, and Escape reaching
+      // it while a dialog is open is the graph answering a key meant for the dialog.
+      modal.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.stopPropagation();
+        close();
+      });
+      this.root.appendChild(modal);
+    }
+    modal.querySelector(".mmd-modal-head").textContent = head;
+    modal.querySelector(".mmd-modal-body").textContent = sentence;
+    modal.classList.remove("mmd-hide");
+    modal.querySelector(".mmd-modal-ok").focus();
+  }
+
+  /**
    * The piece as one document: the timeline, the cards, and the clip's own settings.
    *
    * The three live in three widgets -- and one of them belongs to a whole other editor --
@@ -1695,6 +1743,9 @@ export class TimelineEditor {
   }
 
   async attach(kind) {
+    // Before the picker, not after it: choosing a file and then being told there was never
+    // room for it is the picker asking a question it already knew the answer to.
+    if (this.capacity[kind]) return this.alert(this.capacity[kind], "No room for another file");
     const file = await media.pick(kind);
     if (!file) return;
 
@@ -1703,7 +1754,8 @@ export class TimelineEditor {
       record = await media.upload(kind, file);
     } catch (error) {
       console.error("[MiniMaxDirector]", error);
-      return;
+      return this.alert(`${file.name} did not upload: ${error?.message || error}`,
+        "Upload failed");
     }
 
     const track = TRACK_FOR_MEDIA[kind];
@@ -1720,7 +1772,7 @@ export class TimelineEditor {
     // never change, so this is the last moment at which nothing has been built on it --
     // once there is a block, a card and a token, taking it back is the author's work.
     const refused = media.unusable(record, record.seconds ?? null);
-    if (refused) return this.say(refused, true);
+    if (refused) return this.alert(refused);
 
     const timeline = this.read();
 
@@ -1793,16 +1845,17 @@ export class TimelineEditor {
 
     const kind = media.kindOf(file);
     if (!kind) {
-      console.warn(`[MiniMaxDirector] ${file.name}: not a picture, a recording or a clip.`);
-      return;
+      return this.alert(`${file.name} is not a picture, a recording or a clip.`);
     }
+    if (this.capacity[kind]) return this.alert(this.capacity[kind], "No room for another file");
 
     let record;
     try {
       record = await media.upload(kind, file);
     } catch (error) {
       console.error("[MiniMaxDirector]", error);
-      return;
+      return this.alert(`${file.name} did not upload: ${error?.message || error}`,
+        "Upload failed");
     }
 
     // Measured here rather than at the drop: the length a recording takes on the track is
@@ -1814,7 +1867,7 @@ export class TimelineEditor {
     }
 
     const refused = media.unusable(record, record.seconds ?? null);
-    if (refused) return this.say(refused, true);
+    if (refused) return this.alert(refused);
 
     const timeline = this.read();
     if (!Array.isArray(timeline.sources)) timeline.sources = [];
@@ -2883,14 +2936,19 @@ export class TimelineEditor {
     const ceiling = { image: 9, video: 3, audio: 3 };
     const noun = { image: "pictures", video: "videos", audio: "audio files" };
     for (const kind of ["image", "video", "audio"]) {
+      const reason = !full[kind] ? "" :
+        `${held[kind]} ${noun[kind]} already. H3 takes ${ceiling[kind]}, and refuses the `
+        + "whole request over that. Take one off the clip to add another.";
+      // Remembered rather than read back off the button, because the file list adds files
+      // through a picker of its own that has no button of a kind to ask.
+      this.capacity[kind] = reason;
       const button = this.root.querySelector(`[data-media="${kind}"]`);
       if (!button) continue;
-      button.disabled = full[kind];
+      // Dimmed, not disabled: a disabled button swallows the click, and a control that
+      // answers nothing at all is the thing this whole pass is about. It takes the click
+      // and says why instead.
       button.classList.toggle("mmd-dead", full[kind]);
-      button.title = full[kind]
-        ? `${held[kind]} ${noun[kind]} already. H3 takes ${ceiling[kind]}, and refuses the `
-          + "whole request over that. Take one off the clip to add another."
-        : "";
+      button.title = reason;
     }
   }
 
