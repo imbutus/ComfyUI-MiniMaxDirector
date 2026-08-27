@@ -347,7 +347,9 @@ not on screen — and the TIMELINE tab shows:
   be cited inside that thing's definition rather than given an entry of its own, so a
   second box here was a field the prompt threw away — which is exactly how it behaved.
   Text typed on the block by an older build still compiles and is shown greyed, with the
-  card's sentence taking over the moment there is one.
+  card's sentence taking over the moment there is one. A recording has no `describes` half
+  at all: a card is drawn from a picture or a clip, so no card's `from` box can name an
+  mp3, and on an audio block the FILE group takes the whole row instead.
 
   A **frame anchor** — `first frame`, `keyframe` or `last frame` — carries no description
   box either. The picture is handed to the vision encoder along with the prompt

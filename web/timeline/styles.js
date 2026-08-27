@@ -978,6 +978,9 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
   align-content:flex-start; white-space:nowrap; gap:9px;
   flex:1 1 0; box-sizing:border-box;
   align-self:stretch; padding-right:18px; border-right:1px solid #262b34; }
+/* Nothing to its right -- a recording is described by no card, so there is no second half.
+   The rule and the space kept for it would be a column drawn against nothing. */
+.mmd-seg-fields .mmd-f-fileopts.mmd-f-alone { border-right:0; padding-right:0; }
 /* Two lines: what the file is, then what to do with it. On one line the column was as wide
    as everything it holds, and the sentences beside it wrapped in what little was left. */
 .mmd-seg-fields .mmd-f-fileacts { flex-basis:100%; display:flex; align-items:center;

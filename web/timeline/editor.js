@@ -3716,8 +3716,15 @@ export class TimelineEditor {
     // Only for a block carrying a file. Attaching one puts the clip in full-reference
     // mode, where the prompt has to say what each reference is and how much of it must
     // survive -- questions that have no meaning for a block with nothing attached.
+    // A subject card is drawn from a picture or a clip: `filesOf` numbers those two and
+    // never a recording, so no card's from box can name an mp3 and describes had nothing
+    // to say on an audio block but an invitation that leads nowhere. A card that already
+    // names one -- written from here before this was true -- is still shown, so nothing
+    // goes quiet; only the offer to make another is withdrawn.
+    const cardable = !!item.media && item.media.kind !== "audio";
+    const describes = cardable || claimed.length > 0;
     const subject = !item.media ? "" : `
-      <div class="mmd-f-fileopts">
+      <div class="mmd-f-fileopts${describes || orphaned ? "" : " mmd-f-alone"}">
         ${rolesFor(item.media.kind, item.media.role).length < 2 ? "" : `
         <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
           <select class="mmd-f-role">${roleOptions(item.media.role, item.media.kind)}</select>
@@ -3747,7 +3754,9 @@ export class TimelineEditor {
           <button class="mmd-f-unlink">detach media</button>
         </div>
       </div>
+      ${!describes && !orphaned ? "" : `
       <div class="mmd-f-wide mmd-f-claimed" title="What this file is is written once, on a subject card -- a person, a costume, a prop, a place. The guide asks for a file used to define something to be cited inside that thing's definition rather than described twice, so this is a reading of the WHO & WHAT tab, not a second box to fill in.">
+        ${!describes ? "" : `
         <span class="mmd-f-claim-head">describes</span>
         <div class="mmd-f-claims">${claimed.length ? claimed.map(({ card, at, index }) => `
           <span class="mmd-f-claim">
@@ -3759,15 +3768,16 @@ export class TimelineEditor {
           </span>`).join("") : `
           <span class="mmd-f-claim mmd-f-claim-none">${
             orphaned && !anchored ? text(orphaned) : "nothing describes this file yet"}</span>`}
+          ${!cardable ? "" : `
           <button type="button" class="mmd-f-addcard" title="Another card pointed at this same file. One photograph can hold several people, or a person and their coat and the room behind them, and each takes a &lt;Subject n&gt; and a retention marker of its own.">${
-            claimed.length ? "+ another card" : "add a card"}</button>
-        </div>
+            claimed.length ? "+ another card" : "add a card"}</button>`}
+        </div>`}
         ${!orphaned || anchored ? "" : (this.silences(item, claimed) ? `
         <div class="mmd-f-note">“${text(orphaned)}” is no longer compiled: the subject card
           above describes this file instead.</div>` : `
         <div class="mmd-f-note">Typed on the block itself, before subjects were the one
           place. It still compiles; a subject card replaces it.</div>`)}
-      </div>`;
+      </div>`}`;
 
     // MAIN blocks only. H3 generates the voice with the picture in one pass, and the
     // guide's form is exact enough that typing it by hand is how you get it wrong: the
