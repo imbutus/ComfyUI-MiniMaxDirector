@@ -54,12 +54,16 @@ def boot():
     comfy_nodes.NODE_CLASS_MAPPINGS.update(ours)
     comfy_nodes.NODE_CLASS_MAPPINGS.update(stubs.REPLACEMENTS)
 
-    # The loaders are stubbed, so a file named by a test graph is never opened -- and the
-    # director refuses to run while a file it names is not in the input folder. That check
-    # is about the real world; in here the input folder is as fictional as the weights, so
-    # it is answered the same way everything else in this harness is. A name containing
-    # `missing` is the one file this pretend folder does not have, which is what lets the
-    # refusal itself be tested.
+    # The director refuses to run while a file it names is not in the input folder. That
+    # check is about the real world; in here the input folder is as fictional as the
+    # weights, so it is answered the same way everything else in this harness is. A name
+    # containing `missing` is the one file this pretend folder does not have, which is what
+    # lets the refusal itself be tested.
+    #
+    # Getting past the refusal is only half of it: the director then asks core to open the
+    # file, so `LoadImage` is stubbed too -- see stubs.py. `LoadAudio` and `LoadVideo` are
+    # not, because no graph test attaches a recording or a clip yet; one that does will
+    # fail here exactly the way the picture tests did, and the answer is another stub.
     import folder_paths
 
     folder_paths.exists_annotated_filepath = lambda name: "missing" not in str(name)

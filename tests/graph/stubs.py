@@ -68,6 +68,36 @@ class VAELoader(_Loader):
     RETURN_TYPES = ("VAE",)
 
 
+class LoadImage:
+    """The picture a timeline names, with no file behind it.
+
+    The input folder in this harness is as fictional as the weights: `harness.boot` answers
+    `exists_annotated_filepath` for every name but `missing`, so the director gets past its
+    own refusal and then asks core to open a file that was never written. Core's own
+    LoadImage reads it with PyAV and raises -- which is the whole of what five graph tests
+    were failing on.
+
+    768x768, because that is the size the sizing tests are written around: a square larger
+    than the clip in both directions, so `match` visibly scales it down and `max` --
+    scale-down only -- leaves it alone.
+    """
+
+    SIDE = 768
+    RETURN_TYPES = ("IMAGE", "MASK")
+    FUNCTION = "load_image"
+    CATEGORY = CATEGORY
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"image": ("STRING", {"default": "example.png"})}}
+
+    def load_image(self, image):
+        return (
+            torch.zeros(1, self.SIDE, self.SIDE, 3),
+            torch.zeros(1, self.SIDE, self.SIDE),
+        )
+
+
 class _H3:
     """Records what the director asked for, then returns a latent of that geometry."""
 
@@ -272,6 +302,7 @@ class VAEDecodeAudio:
 
 
 REPLACEMENTS: dict[str, type] = {
+    "LoadImage": LoadImage,
     "UNETLoader": UNETLoader,
     "CLIPLoader": CLIPLoader,
     "VAELoader": VAELoader,
