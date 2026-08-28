@@ -1,0 +1,9 @@
+# What an installed pack has no use for. `comfy node publish` zips every git-tracked file,
+# so the maintainer's own tools shipped to every user: two shell scripts that copy trees,
+# remove them and run node with a -e string, which is what a security scanner reads a
+# package for. Nothing here is imported by __init__.py or by anything under src/.
+tools/
+tests/
+AGENTS.md
+.gitignore
+.comfyignore
