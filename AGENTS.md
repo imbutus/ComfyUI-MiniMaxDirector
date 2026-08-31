@@ -391,6 +391,70 @@ question lives in `preview.missing_files`, which returns `[]` outside ComfyUI --
 is not evidence about a folder that is not there -- while the names it checks come from
 `attachments.named_files`, which is pure and tested.
 
+## Authoring a document by hand
+
+The envelope above is what IMPORT reads, so a document written in a text editor loads like
+one the editor wrote. Worth doing: a whole piece can be drafted, compiled and linted on a
+laptop with no weights --
+
+```python
+from minimax_director.timeline import Timeline
+from minimax_director import cast
+from minimax_director.compile import compile_timeline
+from minimax_director.lint import lint
+
+merged = cast.merge(document["timeline"], document["cast"])   # cards -> subjects, speakers
+piece = Timeline.from_dict(merged)
+print(compile_timeline(piece).prompt)
+for issue in lint(piece):
+    print(issue.level, issue.message)
+```
+
+`cast.merge` first, always: the cards are folded into the timeline before it is parsed, and
+`Timeline.from_dict` on the raw document silently has no subjects and no speakers.
+
+**The fields**, all read by `Timeline.from_dict` and none of them required:
+
+| Where | Keys |
+|---|---|
+| `timeline` | `duration`, `fps`, `global_prompt`, `music`, `speech`, `shots`, `cues`, `moves`, `sources` |
+| a shot | `start`, `length`, `prompt`, `screen_text`, `transition`, `camera`, `media`, `lines` |
+| a cue | `start`, `length`, `prompt`, `media` |
+| a move | `start`, `length`, `camera`, `amplitude`, `speed`, `prompt` |
+| a media record | `kind` (`image`/`video`/`audio`), `filename`, `subfolder`, `role`, `retention` |
+| a line | `text`, `ids` (`"S1"`, `"S1,S2"`), `delivery`, `language`, `speaker`, `offscreen`, `carries` |
+| a card | `id`, `uid`, `name`, `file`, `description`, `keep`, `onto`, `voice`, `voice_from`, `motion_from` |
+
+`start` and `length` are frames, `camera` takes a key of `CAMERA_MOTION`, `role` a key of
+`ROLE_TASKS`, and `retention` a member of `RETENTIONS` (`AUDIO_RETENTIONS` on an audio
+file). A card's `file` and its `voice_from` are matched to media **by filename**, so a file
+has to be on a block or in `sources` before a card can point at it.
+
+### Five things that only bite a hand-written document
+
+The editor cannot express any of these wrongly. A text editor can.
+
+1. **`length % 17 == 5`, and the shots must tile the duration.** `lattice.snap_up` is the
+   arithmetic; `duration` is the clip, and every shot's `start + length` has to meet the
+   next shot's `start` with no gap and no overlap.
+2. **Subjects are numbered images first, then videos** -- `attachments.collect` -- not in
+   card order. A card on an image outranks a card on a video however the cards are
+   ordered, so `<Subject 1>` typed into a prompt can name the wrong person. Compile it and
+   read `subject_definitions` before trusting a number you typed.
+3. **A reference video's soundtrack is silent until the prose names it.** `_rides_along`
+   suppresses the token nobody pointed at, which also suppresses the
+   `is the voice-timbre reference for <Subject n>` sentence `voice_from` was set for.
+   Writing `<Audio 1>` into any shot prompt is what declares it.
+4. **That soundtrack shares the video's `keep`.** One record, one `retention`, translated
+   through `RETENTION_ACROSS` -- so `fully_preserved` on a reference video compiles as
+   `<Audio 1>: fully_copy`, telling H3 the source audio is the finished track. When only
+   the timbre was wanted, `partially_preserved` on the record is the closest the format
+   gets; the visual line is unchanged by it, because the compiler already rewrites the
+   receiver of a face transfer to `partially_preserved` anyway.
+5. **`Timeline.voices()` counts `voice` and not `voice_from`**, so a card voiced purely
+   from a recording draws `S1 speaks with no description` out of `_check_dialogue`. Filling
+   in `voice` as well as `voice_from` clears it, and the two agree by construction.
+
 ## What the compiler emits
 
 Two formats, chosen by whether anything is attached -- never by a widget. Nothing attached
