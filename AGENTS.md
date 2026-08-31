@@ -286,6 +286,15 @@ through `editor.onAddCard`.
   own, and doing so asked for a second person while the receiver was `fully_preserved`,
   which is the face swap that did not happen. `cast.numbering` skips the same cards, or the
   tab would offer a chip for a token the prompt never defines.
+- **A card drawn from a reference video is not offered in the `onto` picker**, and
+  `voice from` is drawn dead while a reference video is on the timeline -- the two shapes
+  eight renders proved return the video's own face and voice (see the traps list above and
+  `notes/face-swap-investigation.md`). `voice from` goes dead only while it is *empty*: a
+  card already naming a recording keeps a working picker, because the note under it asks
+  for that value to be cleared and a disabled select cannot be. Typed prose in `onto` still
+  takes anything, since that box also names somebody only the shot describes. A reference
+  video used purely for style, with the swap between two stills, is untested -- it is
+  warned about by `lint._check_reference_video_dominance` and not prevented.
 - Free text in `onto` names nobody the cast knows, so there is no definition to fold into:
   it still compiles as `, transferred onto the woman at the desk` on the subject's own
   line (`_named_subject` remains for documents written before the fold).
