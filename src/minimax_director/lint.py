@@ -45,6 +45,7 @@ def lint(timeline: Timeline) -> list[Issue]:
         *_check_cut_worthiness(timeline),
         *_check_silence(timeline),
         *_check_voice_references(timeline),
+        *_check_reference_video_dominance(timeline),
         *_check_continuity(timeline),
         *_check_speakers(timeline),
     ]
@@ -176,6 +177,60 @@ def _check_voice_references(timeline: Timeline) -> Iterator[Issue]:
                 f"which asks for the recording itself. Use reference: the timbre is "
                 f"followed, the signal is not copied.",
             )
+
+
+def _check_reference_video_dominance(timeline: Timeline) -> Iterator[Issue]:
+    """A face or a voice asked to replace what a reference video already shows.
+
+    Measured on this pack over eight renders (2026-08-31), the same 90-frame document each
+    time, with output pitch read back by autocorrelation as the objective probe: **with a
+    reference video attached, H3 keeps that video's face and that video's voice**. Four
+    shapes were tried and all four failed -- `attribute_transfer` onto the video's own card,
+    the same with the swap restated and the face image sharpened, `motion_from` so the video
+    claimed nothing visual, and MiniMax's own documented swap (the video
+    `partially_preserved` over framing, environment and full choreography, the incoming face
+    `attribute_transfer`). Every one returned the video's original face and a voice 30+ Hz
+    away from the reference recording; the same documents with the video removed transferred
+    both, twice.
+
+    So this is not a warning about wording, and no marker clears it. It says the clip asks
+    for something the model does not do, and names the way out: drop the video and write its
+    scene into the prompt, which is what the verified shape does.
+    """
+    videos = [item for item in attachments.collect(timeline)
+              if item.kind == "video"
+              and str(item.record.get("role", "reference") or "reference") == "reference"]
+    if not videos:
+        return
+    named = _join_tokens([item.token for item in videos])
+
+    carried = [subject for subject in attachments.subjects(timeline)
+               if str(subject.record.get("subject_retention", "")).strip() == "attribute_transfer"]
+    if carried:
+        yield Issue(
+            "warning",
+            f"{_join_tokens([subject.token for subject in carried])} is carried onto what "
+            f"{named} shows, and a reference video wins that: measured over eight renders, "
+            f"the face in the video came back every time whatever the retention said. Take "
+            f"the video off the timeline and describe its scene and action in the prompt.",
+        )
+
+    voiced = [speaker for speaker in timeline.speakers if str(speaker.voice_from).strip()]
+    if voiced:
+        yield Issue(
+            "warning",
+            f"A voice reference is set while {named} is attached. A reference video's own "
+            f"soundtrack rides along with it and outweighs the recording -- measured, the "
+            f"output followed neither. Take the video off the timeline, or let the video "
+            f"supply the voice and clear `voice from`.",
+        )
+
+
+def _join_tokens(tokens: list[str]) -> str:
+    """`<Video 1>`, or `<Video 1> and <Video 2>`, or a comma list ending in `and`."""
+    if len(tokens) == 1:
+        return tokens[0]
+    return ", ".join(tokens[:-1]) + " and " + tokens[-1]
 
 
 def _check_continuity(timeline: Timeline) -> Iterator[Issue]:

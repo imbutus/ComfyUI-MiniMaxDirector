@@ -609,6 +609,19 @@ A card holds:
   comes out of keeps no entry of its own either: it is cited inside the definition it
   feeds, which is the same rule.
 
+  **A reference video defeats all of this.** Measured over eight renders on 2026-08-31,
+  the same 90-frame document each time: with a reference video on the timeline, H3 keeps
+  that video's face and that video's voice, and no marker changes it. Four shapes were
+  tried and all four came back with the original performer's face and a voice 30 Hz or
+  more away from the reference recording -- the transfer `onto` the video's own card, the
+  same with the swap restated and the face image sharpened, `motion from` so the video
+  claimed nothing visual at all, and MiniMax's own documented swap with the video
+  `partially_preserved` over framing, environment and full choreography. The same
+  documents with the video taken off transferred the face and the voice both, twice over.
+  So a face swap wants a **still** to replace, not a clip: put the person's photograph on
+  the timeline and write the location, the wardrobe and the action into the prompt. The
+  report says so before the run, on the transfer and on the voice reference alike.
+
   Typed prose that names no card is left as written and still compiles as
   `…, transferred onto the woman at the desk` — there is no definition to fold into.
   Empty, the model is told to move a trait and never told where, and the block's chip

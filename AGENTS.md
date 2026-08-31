@@ -430,7 +430,7 @@ for issue in lint(piece):
 file). A card's `file` and its `voice_from` are matched to media **by filename**, so a file
 has to be on a block or in `sources` before a card can point at it.
 
-### Five things that only bite a hand-written document
+### Six things that only bite a hand-written document
 
 The editor cannot express any of these wrongly. A text editor can.
 
@@ -451,7 +451,13 @@ The editor cannot express any of these wrongly. A text editor can.
    the timbre was wanted, `partially_preserved` on the record is the closest the format
    gets; the visual line is unchanged by it, because the compiler already rewrites the
    receiver of a face transfer to `partially_preserved` anyway.
-5. **`Timeline.voices()` counts `voice` and not `voice_from`**, so a card voiced purely
+5. **A reference video defeats a face swap and a voice reference.** Not a document fault
+   and not fixable by wording -- measured over eight renders (2026-08-31): with a reference
+   video attached H3 keeps that video's face and voice, through `attribute_transfer` onto
+   it, through `motion_from`, and through MiniMax's own documented swap shape. Without the
+   video, both transfer. `_check_reference_video_dominance` warns on it; the fix is a still
+   plus the scene in words.
+6. **`Timeline.voices()` counts `voice` and not `voice_from`**, so a card voiced purely
    from a recording draws `S1 speaks with no description` out of `_check_dialogue`. Filling
    in `voice` as well as `voice_from` clears it, and the two agree by construction.
 

@@ -225,3 +225,64 @@ def test_a_speaker_from_another_shot_is_reported():
 
 def test_a_face_carried_onto_the_speaker_answers_for_them():
     assert "attached to a different shot" not in messages(carried("SPEAKER"))
+
+
+def _swap_document(*, with_video: bool):
+    """A face and a voice asked to replace somebody, with and without a reference video.
+
+    The failing shape from 2026-08-31: a still supplies a face, an mp3 supplies a timbre,
+    and a reference video supplies the person they are meant to replace.
+    """
+    shot = {
+        "start": 0, "length": 90,
+        "prompt": "<Subject 1> stands in a concrete yard with a phone at his ear.",
+        "lines": [{"text": "It's done.", "ids": "S1"}],
+        "media": {"kind": "video", "filename": "clip.mp4", "role": "reference",
+                  "retention": "partially_preserved"},
+    }
+    if not with_video:
+        shot["media"] = {"kind": "image", "filename": "face.png", "role": "reference",
+                         "retention": "fully_preserved"}
+    timeline = {
+        "duration": 90, "speech": True, "global_prompt": "A concrete yard.",
+        "shots": [shot],
+        "cues": [{"start": 0, "length": 90, "prompt": "A recording of the voice.",
+                  "media": {"kind": "audio", "filename": "voice.mp3", "role": "reference",
+                            "retention": "reference", "description": "a voice recording"}}],
+        "sources": ([{"kind": "image", "filename": "face.png", "role": "reference",
+                      "retention": "attribute_transfer"}] if with_video else []),
+    }
+    cards = {"cards": [
+        {"id": 1, "uid": "c1", "name": "MAN", "file": "face.png",
+         "description": "the face and head",
+         "keep": "attribute_transfer" if with_video else "fully_preserved",
+         "onto": "SCENE" if with_video else "",
+         "voice": "a low gravelly man", "voice_from": "voice.mp3"},
+    ]}
+    if with_video:
+        cards["cards"].append(
+            {"id": 2, "uid": "c2", "name": "SCENE", "file": "clip.mp4",
+             "description": "the framing, the backdrop and the choreography",
+             "keep": "partially_preserved", "onto": "", "voice": ""})
+    from minimax_director import cast
+    return Timeline.from_dict(cast.merge(timeline, cards))
+
+
+def test_a_transfer_against_a_reference_video_is_warned_about():
+    """Eight renders said the video wins, so the linter says so before the GPU is booked."""
+    reported = messages(_swap_document(with_video=True))
+    assert "a reference video wins that" in reported
+    assert "describe its scene and action in the prompt" in reported
+
+
+def test_a_voice_reference_against_a_reference_video_is_warned_about():
+    reported = messages(_swap_document(with_video=True))
+    assert "A voice reference is set while <Video 1> is attached" in reported
+    assert "outweighs the recording" in reported
+
+
+def test_neither_warning_fires_without_a_reference_video():
+    """The shape that was verified to work must lint clean, or the warning is noise."""
+    reported = messages(_swap_document(with_video=False))
+    assert "reference video wins" not in reported
+    assert "A voice reference is set while" not in reported
