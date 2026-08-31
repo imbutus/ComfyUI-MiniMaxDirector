@@ -411,6 +411,24 @@ export class CastEditor {
     // from something audible -- so the two extra pickers are drawn from their own lists
     // rather than from every file on the timeline.
     const clips = files.filter((file) => file.media.kind === "video");
+    // Cards a face cannot be carried onto, and whether a voice can be taken off a
+    // recording at all. Both answers come from one fact -- a reference video on the
+    // timeline keeps its own face and its own voice -- so they are worked out once, here,
+    // where every card's markup can read them.
+    // Dead only while it is empty. A card that already names a recording keeps a working
+    // picker, because the amber under it asks for that value to be cleared and a disabled
+    // select cannot be. Locking somebody out of undoing the thing you are warning them
+    // about is the worst shape this could take.
+    const refClip = files.find((file) => file.media.kind === "video"
+      && String(file.media.role || "reference") === "reference");
+    const videoBacked = new Set(state.cards
+      .filter((card) => {
+        const drawn = files.find((file) => file.media.filename === card.file);
+        return drawn && drawn.media.kind === "video"
+          && String(drawn.media.role || "reference") === "reference";
+      })
+      .map((card) => String(card.name || "").trim().toLowerCase())
+      .filter(Boolean));
     const heard = audioOf(timeline || {});
     const numbers = numbering(timeline, state.cards);
 
@@ -484,7 +502,13 @@ export class CastEditor {
                 <select class="mmd-card-onto-pick" title="The other people in this clip, and what each shot is about. Picking one writes it into the box; the box takes anything else.">
                   <option value="">pick…</option>
                   ${state.cards
-                    .filter((other, at) => at !== position && String(other.name || "").trim())
+                    .filter((other, at) => at !== position && String(other.name || "").trim()
+                      // A card drawn from a reference video cannot receive a face: H3
+                      // keeps the video's own, measured over eight renders. Offering it
+                      // here is offering a run that comes back wrong, so it is left out
+                      // of the list -- typed prose still takes anything, because the box
+                      // is also how you name somebody the shot describes.
+                      && !videoBacked.has(String(other.name || "").trim().toLowerCase()))
                     .map((other) => `<option value="${value(other.name)}">${value(other.name)}</option>`)
                     .join("")}
                   ${(timeline?.shots || [])
@@ -509,8 +533,10 @@ export class CastEditor {
                      placeholder="how they sound — not what they say: age, gender, pitch, timbre, accent"
                      value="${value(card.voice)}">
               ${!heard.length ? "" : `
-              <label class="mmd-card-from mmd-card-voice-src" title="Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide's own words.">voice from
-                <select class="mmd-card-voice-from">
+              <label class="mmd-card-from mmd-card-voice-src${refClip && !card.voice_from ? " mmd-dead" : ""}" title="${refClip && !card.voice_from
+                ? "Nothing reads this while a reference video is on the timeline: the video&#39;s own soundtrack rides along with it and outweighs the recording -- measured over eight renders, the output followed neither. Take the video off, or let it supply the voice."
+                : "Take the timbre from a recording instead of describing it. The signal is never copied -- only the voice and the delivery are followed -- and the prompt says so in the guide&#39;s own words."}">voice from
+                <select class="mmd-card-voice-from"${refClip && !card.voice_from ? " disabled" : ""}>
                   <option value=""${card.voice_from ? "" : " selected"}>— no recording</option>
                   ${heard.map((item) => `
                   <option value="${value(item.media.filename)}"${

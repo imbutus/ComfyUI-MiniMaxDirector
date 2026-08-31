@@ -621,6 +621,13 @@ A card holds:
   So a face swap wants a **still** to replace, not a clip: put the person's photograph on
   the timeline and write the location, the wardrobe and the action into the prompt. The
   report says so before the run, on the transfer and on the voice reference alike.
+  Two controls stop offering the run that fails: **onto** leaves out a card drawn from a
+  reference video — typed prose still takes anything, because that box also names somebody
+  the shot describes — and **voice from** goes dead while a reference video is on the
+  timeline, unless it already names a recording, so a value the note asks you to clear is
+  never locked in. A reference video used only for style, with the swap between two
+  photographs, is untested and is warned about rather than prevented.
+
 
   Typed prose that names no card is left as written and still compiles as
   `…, transferred onto the woman at the desk` — there is no definition to fold into.

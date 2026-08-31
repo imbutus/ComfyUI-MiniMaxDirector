@@ -526,6 +526,13 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
 .mmd-card-blocked b { color:#c9a765; font-weight:600; }
 .mmd-card-blocked.mmd-hide { display:none; }
 .mmd-card .mmd-blocked-box > select { border-color:#a2854f; }
+/* The same dead form the segment panel and the settings row use, for the one card control
+   a reference video takes away: dimmed, dashed, not clickable, with the reason on the
+   title -- which a disabled select still shows, because the label around it is not
+   disabled. It keeps its place: a control that vanishes is one you go looking for. */
+.mmd-card label.mmd-dead { opacity:.45; }
+.mmd-card label.mmd-dead select {
+  background:transparent; border-style:dashed; cursor:not-allowed; }
 /* The same sentence on the block that carries the video, because that is where the fix is:
    the file has to change. Sits across the file options rather than under one control -- no
    single picker on this row causes it. */
