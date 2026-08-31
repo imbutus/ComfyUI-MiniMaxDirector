@@ -516,6 +516,20 @@ select.mmd-gone { border-color:#8a4238; color:#e07b6a; }
    purpose: it is the reason the rest is dim. */
 .mmd-card.mmd-card-off .mmd-card-note { color:#e0b055; }
 .mmd-card.mmd-card-off .mmd-card-note b { color:#f6e6c8; }
+/* A card that compiles perfectly and still will not do what it says: a reference video
+   keeps its own face and its own voice whatever the retention asks for. So this is not the
+   dead form -- nothing here is dim, dashed or unusable, because everything on the card
+   works and the fault is in the combination. The quiet amber of a live row that is missing
+   something, with the two controls that cause it outlined in the same colour. */
+.mmd-card-blocked { display:flex; flex-direction:column; gap:3px;
+  color:#a2854f; font-size:11px; line-height:1.4; margin-top:2px; }
+.mmd-card-blocked b { color:#c9a765; font-weight:600; }
+.mmd-card-blocked.mmd-hide { display:none; }
+.mmd-card .mmd-blocked-box > select { border-color:#a2854f; }
+/* The same sentence on the block that carries the video, because that is where the fix is:
+   the file has to change. Sits across the file options rather than under one control -- no
+   single picker on this row causes it. */
+.mmd-f-overrules { color:#a2854f; font-size:11px; line-height:1.4; }
 .mmd-card-badge { flex:0 0 auto; background:#2f6d8f; color:#eaf2f6; border-radius:4px;
   padding:2px 6px; font-size:10px; letter-spacing:.05em; }
 .mmd-card-subject { background:#2c313c; color:#9ca3af; }

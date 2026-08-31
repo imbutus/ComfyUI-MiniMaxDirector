@@ -519,6 +519,7 @@ export class CastEditor {
                 </select>
               </label>`}
             </div>
+            <div class="mmd-card-blocked"></div>
           </div>
         </div>`;
       }).join("")
@@ -580,6 +581,40 @@ export class CastEditor {
         const box = row.querySelector(selector);
         if (box) box.classList.toggle("mmd-gone", !!(name && gone.has(name)));
       };
+      // A reference video keeps its own face and its own voice, whatever the retention
+      // says: eight renders on one document said so, four shapes each. The card still
+      // compiles, so it is not drawn as an idle one -- no dimming, no dashes. Only the two
+      // controls that cause it are outlined, with the reason under them in the quiet amber
+      // the segment panel already uses for a live row that is missing something.
+      //
+      // The wording is the linter's, byte for byte: the report and the card have to be one
+      // problem said once, not two problems said differently. `tests/test_lint.py` holds
+      // both ends of that to each other.
+      const clip = files.find((item) => item.media.kind === "video"
+        && String(item.media.role || "reference") === "reference");
+      const blocked = [];
+      if (clip && card.file && card.keep === "attribute_transfer" && index) {
+        blocked.push(`&lt;Subject ${index}&gt; is carried onto what ${clip.token.replace("<", "&lt;")}`
+          + ` shows, and a reference video wins that: measured over eight renders, the face in`
+          + ` the video came back every time whatever the retention said. Take the video off the`
+          + ` timeline and describe its scene and action in the prompt.`);
+      }
+      if (clip && String(card.voice_from || "").trim()) {
+        blocked.push(`A voice reference is set while ${clip.token.replace("<", "&lt;")} is`
+          + ` attached. A reference video's own soundtrack rides along with it and outweighs`
+          + ` the recording — measured, the output followed neither. Take the video off the`
+          + ` timeline, or let the video supply the voice and clear <b>voice from</b>.`);
+      }
+      const why = row.querySelector(".mmd-card-blocked");
+      if (why) {
+        why.innerHTML = blocked.map((line) => `<div>${line}</div>`).join("");
+        why.classList.toggle("mmd-hide", !blocked.length);
+      }
+      row.querySelector(".mmd-card-keep")?.classList.toggle("mmd-blocked-box",
+        !!(clip && card.file && card.keep === "attribute_transfer" && index));
+      row.querySelector(".mmd-card-voice-src")?.classList.toggle("mmd-blocked-box",
+        !!(clip && String(card.voice_from || "").trim()));
+
       mark(".mmd-card-file", card.file);
       mark(".mmd-card-motion", card.motion_from);
       mark(".mmd-card-voice-from", card.voice_from);

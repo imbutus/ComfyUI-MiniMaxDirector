@@ -286,3 +286,29 @@ def test_neither_warning_fires_without_a_reference_video():
     reported = messages(_swap_document(with_video=False))
     assert "reference video wins" not in reported
     assert "A voice reference is set while" not in reported
+
+
+def test_the_editor_says_the_same_two_sentences_as_the_linter():
+    """One problem said once. The report and the card must not phrase it differently.
+
+    `attachments.missing_sentence` exists for the same reason: three phrasings of one
+    problem read as three problems. The linter is Python and the card is JavaScript, so
+    nothing but this test holds the two ends together.
+    """
+    from pathlib import Path
+
+    card = (Path(__file__).resolve().parents[1] / "web" / "timeline" / "cast.js").read_text()
+    reported = messages(_swap_document(with_video=True))
+    for phrase in (
+        "is carried onto what",
+        "and a reference video wins that: measured over eight renders, the face in",
+        "the video came back every time whatever the retention said. Take the video off the",
+        "timeline and describe its scene and action in the prompt.",
+        "A voice reference is set while",
+        "A reference video's own soundtrack rides along with it and outweighs",
+        "the recording",
+        "Take the video off the",
+        "timeline, or let the video supply the voice and clear",
+    ):
+        assert phrase in card, f"cast.js has drifted from the linter: {phrase!r}"
+        assert phrase.replace("  ", " ") in reported.replace("  ", " ") or phrase in reported

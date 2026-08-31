@@ -3196,6 +3196,22 @@ export class TimelineEditor {
    *  Only a plain reference is defined entirely by the people lifted out of it. Anything
    *  used as a frame, a storyboard or an edit source is in the video on its own account
    *  and keeps its entry, so the block's own text goes on compiling beside the cards. */
+  /** Whether this file is a reference video that will outrank a face or a voice card.
+   *
+   *  Measured 2026-08-31 over eight renders: with a reference video attached H3 keeps that
+   *  video's face and voice, through `attribute_transfer` onto it, through `motion from`,
+   *  and through MiniMax's own documented swap. The linter says so on the cards; this says
+   *  it on the block, because the block is where the fix is -- the file has to change, and
+   *  a warning on the card points at a control that is not the problem.
+   */
+  overrules(item) {
+    if (item.media?.kind !== "video") return false;
+    if (String(item.media.role || "reference") !== "reference") return false;
+    return (this.castOf?.()?.cards || []).some((card) =>
+      (String(card.file || "").trim() && card.keep === "attribute_transfer")
+      || String(card.voice_from || "").trim());
+  }
+
   silences(item, claimed) {
     return claimed.length > 0
       && String(item.media?.role || "reference") === "reference";
@@ -3729,6 +3745,12 @@ export class TimelineEditor {
         <label title="What this file is for. A frame anchor makes the clip a keyframe-completion task and is named as one in retention_analysis; a source video makes it a continuation or an edit. Everything else is guidance.">used as
           <select class="mmd-f-role">${roleOptions(item.media.role, item.media.kind)}</select>
         </label>`}
+        ${!this.overrules(item) ? "" : `
+        <div class="mmd-f-wide mmd-f-overrules" title="Measured over eight renders of one document, four reference shapes each: with a reference video attached, MiniMax H3 keeps that video's face and that video's voice. attribute_transfer onto it, motion from instead of it, and MiniMax's own documented swap all came back with the original performer. The same documents without the video transferred both.">
+          this video keeps its own face and its own voice — a card asking to replace either
+          will be ignored. Use a still instead, and write this video's scene and action into
+          the shot's prompt.
+        </div>`}
         <label class="${claimed.length && !ANCHOR_ROLES.includes(String(item.media.role || ""))
           && String(item.media.role || "reference") === "reference" ? "mmd-dead" : ""}"
           title="${claimed.length && String(item.media.role || "reference") === "reference"
