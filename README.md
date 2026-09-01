@@ -5,11 +5,15 @@ video model in ComfyUI. Lay out shots, camera moves and audio cues on a track, a
 compiles them into the single structured prompt H3 actually reads — then hands the model
 its conditioning and a clip length the sampler will accept.
 
+**Video tutorial** — the whole workflow, every documented H3 feature, in order:
+
+[![MiniMax Director — the full walkthrough](https://img.youtube.com/vi/XIKDfvoFcCY/maxresdefault.jpg)](https://youtu.be/XIKDfvoFcCY)
+
+Dubbed: [Русский](https://youtu.be/zjN37BQsOrI) · [中文](https://youtu.be/te8qpVaP0yI)
+
 ![The timeline, with the block under the playhead opened below it](docs/img/minimax-director-tl.webp)
 
 ![The WHO & WHAT tab: one card per thing the prompt names](docs/img/minimax-director-ww.webp)
-
-**A video tutorial is on the way** — a few days, a week at the outside.
 
 H3 makes the picture and the voices in one pass, so the editor has a **WHO & WHAT** tab: one
 card per thing the prompt has to name, holding its face, its voice, how much of it survives
