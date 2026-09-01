@@ -7,7 +7,7 @@ its conditioning and a clip length the sampler will accept.
 
 **Video tutorial** — the whole workflow, every documented H3 feature, in order:
 
-[![MiniMax Director — the full walkthrough](https://img.youtube.com/vi/XIKDfvoFcCY/maxresdefault.jpg)](https://youtu.be/XIKDfvoFcCY)
+[![MiniMax Director — the full walkthrough](docs/img/video-thumb.jpg)](https://youtu.be/XIKDfvoFcCY)
 
 Dubbed: [Русский](https://youtu.be/zjN37BQsOrI) · [中文](https://youtu.be/te8qpVaP0yI)
 
