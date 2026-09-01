@@ -188,6 +188,23 @@ the same graph again: nothing upstream changed, so ComfyUI serves the first pass
 cache and only the second one costs anything. That second pass is a real render at the
 larger size — it costs time and VRAM, not just the download.
 
+`megapixels` is a **budget of pixels** — not a multiplier, and not a width. The node reads it
+as `megapixels × 1024 × 1024`, spends that many pixels at the aspect ratio the render already
+has, and rounds both sides to the nearest `align`. It is area rather than width, so doubling
+the number makes the picture about 1.41× wider, not twice as wide. From the default 1344×768
+canvas — 0.98 MP by that count:
+
+| megapixels | you get |
+|---|---|
+| 2.0 | 1920 × 1088 |
+| 4.0 | 2720 × 1536 |
+| 7.0 | 3584 × 2048 |
+| 9.0 | 4064 × 2336 |
+
+To aim at a size you already have in mind, divide its pixel count by 1,048,576: 3600×2024 is
+6.95, so 7.0 — which lands on 3584×2048, because the shape stays the canvas's whatever number
+you type.
+
 This is the one part of the graph that needs a second node pack:
 
 ```
