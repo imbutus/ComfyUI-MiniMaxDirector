@@ -40,7 +40,8 @@ The editor is content-sized: the node is as tall as the panel you have open, and
 list is the only part with a height of its own — set by its grip or by the node's corner,
 stored on the node, restored with the workflow.
 
-It ships as a whole workflow, not just a node pack: `examples/minimax-director.json` is a
+It ships as a whole workflow, not just a node pack:
+[`examples/minimax-director.json`](examples/minimax-director.json) is a
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
 and video out. Install it, open it, start writing shots. See **[Install](#install)**.
 
@@ -123,7 +124,7 @@ which is the one place a file is also described.
 
 Three steps: the nodes, the weights, the workflow. The nodes on their own leave you with a
 timeline and nothing to render it — the graph around them is the product, and it ships here
-as `examples/minimax-director.json`.
+as [`examples/minimax-director.json`](examples/minimax-director.json).
 
 Requires ComfyUI 0.31.0 or newer. The nodes themselves work on 0.30.0, where the MiniMax
 H3 nodes landed, but the workflow's **Turbo** switch needs `ModelSamplingAV` from 0.31.0 —
@@ -154,8 +155,10 @@ differently named copy shows up as an empty dropdown rather than an error.
 Two VAEs is not a mistake. H3 generates picture and sound together, and they decode
 separately.
 
-**3. The workflow.** Drag `examples/minimax-director.json` onto the ComfyUI canvas, or open
-it from the Workflows sidebar. It wires up:
+**3. The workflow.** Drag
+[`examples/minimax-director.json`](examples/minimax-director.json) onto the ComfyUI canvas,
+or open it from the Workflows sidebar — cloning in step 1 already put it on your disk. It
+wires up:
 
 - **MiniMax Director** — the timeline you work in.
 - **MiniMax Director — Prompt** — the compiled prompt, beside it, updating as you type.
