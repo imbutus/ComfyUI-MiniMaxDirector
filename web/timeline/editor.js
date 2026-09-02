@@ -475,7 +475,7 @@ export class TimelineEditor {
      */
     this.onPreview = null;
 
-    this.bind();
+    this.bindEvents();
     this.schedulePreview();
   }
 
@@ -498,7 +498,7 @@ export class TimelineEditor {
     return this.selected.some((s) => s.track === track && s.index === index);
   }
 
-  bind() {
+  bindEvents() {
     this.root.addEventListener("click", (event) => {
       const el = event.target.closest("button");
       if (!el) return;
