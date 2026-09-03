@@ -165,7 +165,14 @@ function pullUp(node, widget, editor) {
   const drawn = canvas.onDrawForeground;
   canvas.onDrawForeground = function (...args) {
     for (const [held, state] of PULLED) {
-      if (!held.element?.isConnected) { PULLED.delete(held); continue; }
+      // Out of the document is not the same as gone: collapsing a Nodes 2.0 node takes the
+      // editor's whole row out and puts a new one back on expand, and an entry dropped
+      // here is the state `pullUpUnderVue` needs to pull that new row up again. Skipped
+      // while it is away, deleted only once the node has left the graph.
+      if (!held.element?.isConnected) {
+        if (state.node.graph == null) PULLED.delete(held);
+        continue;
+      }
       // The first frame's own value *is* the band: whatever the layout reserved for the
       // sockets is exactly what the editor now has to stay clear of.
       const learned = held.y > TOP_INSET;
@@ -395,6 +402,9 @@ function attach(node) {
   // Up into the socket band: ten input labels reserved 200px of node that nothing was
   // ever drawn in.
   pullUp(node, widget, editor);
+
+  // And the same job again for the renderer that ignores `hidden`.
+  watchRows(widget);
 
   // Open at workspace size. A saved graph overwrites this afterwards, so a node the
   // user has resized keeps its own dimensions.
@@ -774,6 +784,152 @@ function hideElement(widget) {
   if (box?.style) box.style.display = "none";
 }
 
+
+/** The class Nodes 2.0 gives each widget row. Upstream markup, so it is checked for
+ *  rather than assumed: on the canvas renderer nothing carries it. */
+const VUE_ROW = ".lg-node-widget";
+
+/** Widgets whose rows are waiting on a Vue render. One page, one observer. */
+const ROW_WATCH = new Set();
+let ROW_OBSERVER = null;
+
+/** Take the settings back off the node under Nodes 2.0.
+ *
+ * The Vue renderer draws every widget as its own DOM row and never asks litegraph whether
+ * a widget is visible -- `widget.hidden` and `computeSize` are read by the canvas and by
+ * nothing else. So the five settings hidden above (timeline, width, height,
+ * ref_image_size, cast) came back as full rows, JSON textareas included, and pushed the
+ * editor 260px down a node that already knows its own height.
+ *
+ * A row carries no name, only the class every row shares, so ours is found the one way
+ * that cannot be mistaken: it is the row the editor element sits inside. Every other row
+ * in that grid belongs to a widget this file hides. Nothing is removed and no value is
+ * touched -- a widget taken out of `node.widgets` is a widget dropped from the prompt,
+ * which is how the timeline, the size and the cast would have stopped reaching the server.
+ *
+ * On the canvas renderer the editor is not inside a row at all, `closest` returns null,
+ * and this does nothing.
+ */
+function hideRowsUnderVue(widget) {
+  const own = widget.element?.closest?.(VUE_ROW);
+  const grid = own?.parentElement;
+  if (!grid) return false;
+  for (const row of grid.children) {
+    if (row !== own && row.style.display !== "none") row.style.display = "none";
+  }
+  return true;
+}
+
+/** Up into the socket band again, for the renderer that has no draw pass.
+ *
+ * `pullUp` does this by writing `widget.y` from `onDrawForeground`, and Nodes 2.0 never
+ * calls it: the editor started below the sockets and left the band empty across the whole
+ * width of a 1380px node. Here the same move is a negative top margin on our row, and the
+ * same `setBand` call keeps the editor's own first row clear of the socket labels, so the
+ * toolbar sits beside `clip` exactly as it does on the canvas.
+ *
+ * Rects come back in screen pixels, which the graph's zoom has already multiplied; the
+ * margin is written inside that same transform, so the band is divided back down first.
+ * The margin is read from the grid's top, not the row's: a margin on a row moves the row
+ * within the grid and leaves the grid box where the layout put it, so the same band comes
+ * back every frame instead of growing by the pull already applied.
+ */
+function pullUpUnderVue(widget) {
+  const state = PULLED.get(widget);
+  const own = widget.element?.closest?.(VUE_ROW);
+  const grid = own?.parentElement;
+  const body = grid?.parentElement;
+  if (!state || !body) return;
+
+  const scale = app.canvas?.ds?.scale || 1;
+  const band = (grid.getBoundingClientRect().top - body.getBoundingClientRect().top)
+    / scale;
+  const pull = Math.max(0, Math.round(band - TOP_INSET));
+  // Written every time rather than compared against what we think is applied: collapsing
+  // the node throws the row away, and the row that comes back on expand is a new element
+  // with no margin, which a remembered value would have said was already done.
+  own.style.marginTop = `${-pull}px`;
+  state.editor.setBand(pull, socketInset(state.node));
+}
+
+/** The build stamp, as an element rather than a `fillText`.
+ *
+ * `stampTitle` draws it into the canvas title band, which Nodes 2.0 does not have. The
+ * node's host is positioned, so the badge is hung from its top right corner and lands in
+ * the Vue title bar at the same place, in the same grey, reading the same string.
+ */
+function stampVersionUnderVue(widget) {
+  const host = widget.element?.closest?.("[data-node-id]");
+  if (!host || host.querySelector("[data-mmd-version]")) return;
+  const badge = document.createElement("div");
+  badge.dataset.mmdVersion = "";
+  badge.textContent = `v${VERSION} · ${BUILD}`;
+  badge.style.cssText = "position:absolute;top:5px;right:10px;font:10px system-ui,"
+    + "sans-serif;color:#7b8494;pointer-events:none;z-index:1";
+  host.appendChild(badge);
+}
+
+/** Keep all three off and on, however the grid was rebuilt.
+ *
+ * Vue re-renders on its own schedule -- a renderer toggle, a reload of the node's panel --
+ * and a rebuilt row arrives visible, unpulled and unstamped. The one observer watches for
+ * nodes appearing anywhere and answers once a frame; the work is a `closest` call, a loop
+ * over six children and two rect reads, so a frame that changed nothing costs nothing.
+ * Rows are hidden by style and only `childList` is watched, so this cannot call itself.
+ */
+function dressVueNode(widget) {
+  if (!hideRowsUnderVue(widget)) return;
+  // Seen in the document at least once, which is what makes "gone" meaningful below.
+  const state = PULLED.get(widget);
+  if (state) state.vueSeen = true;
+  pullUpUnderVue(widget);
+  stampVersionUnderVue(widget);
+}
+
+function watchRows(widget) {
+  ROW_WATCH.add(widget);
+  if (ROW_OBSERVER) { dressAll(); return; }
+  let queued = false;
+  ROW_OBSERVER = new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      dressAll();
+      // Twice more, later. Hiding a row is true whenever it is done, but the band is a
+      // measurement, and the frame a rebuilt node first appears in is one where Vue has
+      // not placed the grid yet: the read comes back as no band at all and the editor
+      // keeps the settings' worth of empty space it was supposed to move into. An expand
+      // settles well inside these two.
+      requestAnimationFrame(dressAll);
+      setTimeout(dressAll, 120);
+    });
+  });
+  ROW_OBSERVER.observe(document.body, { childList: true, subtree: true });
+  dressAll();
+}
+
+/** Every watched editor, and forget the ones whose node has left the graph.
+ *
+ * Not `isConnected`: a collapsed node has no rows in the document at all, and a widget
+ * dropped from the watch on collapse is a widget nobody dresses again when it is expanded
+ * -- which is how the settings came back on the second click.
+ */
+function dressAll() {
+  for (const held of ROW_WATCH) {
+    // `node.graph`, not `app.graph`: reading the app's graph before it exists is an error
+    // the frontend logs. A node carries its own graph, and litegraph nulls it on removal.
+    //
+    // Only a node that has been dressed once and has since left the graph is finished
+    // with. `onNodeCreated` runs during construction, before the graph has taken the node,
+    // so a null graph on its own means "not added yet" just as often as "removed" -- and
+    // reading it as "removed" dropped every editor from the watch on the frame it
+    // registered, which left the settings on the node and no observer to take them off.
+    const state = PULLED.get(held);
+    if (state?.vueSeen && state.node.graph == null) ROW_WATCH.delete(held);
+    else dressVueNode(held);
+  }
+}
 
 function refuseWidthStamp(widget) {
   Object.defineProperty(widget, "width", {
