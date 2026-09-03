@@ -794,6 +794,16 @@ the canvas when they open the workflow.
    why the pod's onstart pins its clone to a commit rather than tracking `main`; with the Upscale switch off the graph still runs,
    because nothing downstream of it is used. That pack and its model are documented in
    README's Install, which is the only place an outside user is told to fetch them.
+
+   **`examples/` is a published name, not just a folder.** ComfyUI serves a pack's example
+   workflows as a template category — `GET /api/workflow_templates` answers
+   `{"minimax-director": ["minimax-director"]}` — so an installed user opens the graph from
+   **Workflow → Browse Templates → minimax-director** and never downloads a file. The
+   accepted folder names are `example_workflows`, `workflow`, `workflows`, `example` and
+   `examples`; renaming ours to anything else takes the workflow out of that menu. A `.jpg`
+   beside the `.json`, same basename, becomes the thumbnail; there is none today. The
+   Workflows sidebar is a different list — what the user has saved — and this never appears
+   in it.
 4. **The recording plan** —
    `~/Projects/experiments/the-project-promotion/socials/youtube/imbutus-media/minimax-director/actions.md`,
    whenever the feature is something a viewer would see happen on screen.

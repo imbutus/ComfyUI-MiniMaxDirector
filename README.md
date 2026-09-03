@@ -155,10 +155,12 @@ differently named copy shows up as an empty dropdown rather than an error.
 Two VAEs is not a mistake. H3 generates picture and sound together, and they decode
 separately.
 
-**3. The workflow.** Drag
-[`examples/minimax-director.json`](examples/minimax-director.json) onto the ComfyUI canvas,
-or open it from the Workflows sidebar — cloning in step 1 already put it on your disk. It
-wires up:
+**3. The workflow.** Restart ComfyUI, then open **Workflow → Browse Templates →
+minimax-director**. The pack ships the graph in `examples/`, which ComfyUI serves as a
+template, so there is nothing to download and nothing to drag. (If you would rather open the
+file itself, drag [`examples/minimax-director.json`](examples/minimax-director.json) onto the
+canvas — step 1 already put it on your disk. It is not in the Workflows sidebar; that lists
+the workflows you have saved.) It wires up:
 
 - **MiniMax Director** — the timeline you work in.
 - **MiniMax Director — Prompt** — the compiled prompt, beside it, updating as you type.
