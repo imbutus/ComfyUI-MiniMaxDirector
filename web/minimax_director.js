@@ -845,11 +845,23 @@ function pullUpUnderVue(widget) {
   const band = (grid.getBoundingClientRect().top - body.getBoundingClientRect().top)
     / scale;
   const pull = Math.max(0, Math.round(band - TOP_INSET));
-  // Written every time rather than compared against what we think is applied: collapsing
-  // the node throws the row away, and the row that comes back on expand is a new element
-  // with no margin, which a remembered value would have said was already done.
-  own.style.marginTop = `${-pull}px`;
-  state.editor.setBand(pull, socketInset(state.node));
+
+  // Compared against the element and against the band the editor was last given, never
+  // against a remembered "already done": collapsing the node throws the row away, and the
+  // row that comes back on expand is a new element with no margin, which a remembered
+  // value would have called finished.
+  //
+  // The comparison is the whole point of this pass, not a saving. Every DOM change on the
+  // page reaches the observer -- a tooltip opening under the menu button is a DOM change --
+  // and writing the same margin and the same band again each time re-laid the editor,
+  // resized the node and redrew the graph, which is what made the picture shake while the
+  // pointer was nowhere near it.
+  const want = `${-pull}px`;
+  if (own.style.marginTop !== want) own.style.marginTop = want;
+  if (state.vueBand !== pull) {
+    state.vueBand = pull;
+    state.editor.setBand(pull, socketInset(state.node));
+  }
 }
 
 /** The build stamp, as an element rather than a `fillText`.
