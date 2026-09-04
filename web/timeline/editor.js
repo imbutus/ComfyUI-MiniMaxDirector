@@ -672,13 +672,41 @@ export class TimelineEditor {
       if (back) this.replaceFile(back.dataset.refile);
     });
 
+    // The tracks are laid out in pixels derived from the stage's width, so a node made
+    // narrower or wider has to redraw them: `width()` reads `stage.clientWidth`, and
+    // without this the blocks keep the pixels they had and run off the right-hand edge
+    // while the ruler still reads the old span. Measured on both renderers -- the stage
+    // went 1336 -> 856 and the block stayed 351px wide.
+    //
+    // Width only, and never mid-gesture. Height belongs to `fitPulled`, and `scale()` is
+    // frozen for a drag on purpose -- rendering there would rebuild the element under the
+    // cursor. Coalesced to a frame, because a resize fires this on every pointer move.
+    let stageWidth = this.stage.clientWidth;
+    let queued = false;
+    new ResizeObserver(() => {
+      const now = this.stage.clientWidth;
+      if (now === 0 || now === stageWidth || queued) return;
+      stageWidth = now;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        if (this.drag || this.scrubbing) return;
+        this.render();
+      });
+    }).observe(this.stage);
+
     this.canvas.addEventListener("pointerdown", (event) => this.grab(event));
     this.canvas.addEventListener("dblclick", (event) => this.editInPlace(event));
     this.canvas.addEventListener("change", (event) => {
       if (event.target.classList.contains("mmd-cam-pick")) this.setCamera(event);
       if (event.target.classList.contains("mmd-keep-pick")) this.setRetention(event);
     });
-    document.addEventListener("pointermove", (event) => this.move(event));
+    // Capture, both of them. Nodes 2.0 puts its own pointer handlers on the node and stops
+    // the event before it bubbles back out, so a drag begun on a block reached `grab` and
+    // then never saw another move: the block sat still while the pointer walked away. On
+    // the canvas renderer nothing stops it and capture behaves the same, so this is one
+    // listener for both. Measured: `move()` was entered 0 times under Nodes 2.0.
+    document.addEventListener("pointermove", (event) => this.move(event), true);
     document.addEventListener("pointerup", () => {
       // A drag paints only the blocks it touched, so the tracks are redrawn once here --
       // captions, chips and the panel catch up with the document in one pass rather than
@@ -698,7 +726,7 @@ export class TimelineEditor {
       }
       this.pending = null;
       if (dragged) this.render();
-    });
+    }, true);
 
     this.scrub.addEventListener("input", () => {
       const extent = this.extent();
