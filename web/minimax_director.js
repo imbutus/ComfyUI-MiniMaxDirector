@@ -148,11 +148,16 @@ let SIZING = false;
  * `onResize` looking exactly like a grip drag -- so a node that had only just opened
  * remembered its opening height as one the user had asked for. A drag has a button down
  * and a re-measure does not. Read from the pointer rather than from litegraph's own
- * gesture state, which the two renderers do not share. */
+ * gesture state, which the two renderers do not share.
+ *
+ * Guarded because this runs at import: `tools/loadcheck.sh` imports the module under node,
+ * where there is no window to listen on, and an unguarded call fails the whole load. */
 let POINTER_DOWN = false;
-addEventListener("pointerdown", () => { POINTER_DOWN = true; }, true);
-addEventListener("pointerup", () => { POINTER_DOWN = false; }, true);
-addEventListener("pointercancel", () => { POINTER_DOWN = false; }, true);
+if (typeof addEventListener === "function") {
+  addEventListener("pointerdown", () => { POINTER_DOWN = true; }, true);
+  addEventListener("pointerup", () => { POINTER_DOWN = false; }, true);
+  addEventListener("pointercancel", () => { POINTER_DOWN = false; }, true);
+}
 
 /** `node.setSize`, marked as ours. */
 function sizeNode(node, width, height) {
