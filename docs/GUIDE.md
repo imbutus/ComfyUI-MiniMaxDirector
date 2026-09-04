@@ -199,6 +199,24 @@ The first three are where the piece is written, and they sit together on the lef
 IMPORT / EXPORT is what you do with the piece once it is written, so it sits apart at the
 right-hand end of the row rather than in the run of panels.
 
+### The node's size
+
+Drag the node's bottom-right corner. The height you drag to is kept, and it travels with
+the workflow, so a node you made roomy opens roomy next time.
+
+The node is never shorter than what it is drawing. Adding a prompt, a card or a track
+makes it taller whatever you dragged to, and the panel below it grows rather than
+scrolling — so nothing hangs out through the bottom edge. That means an upward drag can
+only take you back down to the content, and no further.
+
+Two ways back to snug: drag the corner up past the content, or right-click the node and
+choose **Fit node to content**. Either one forgets the height you asked for.
+
+The card list on WHO & WHAT keeps a height of its own, set by the grip in its own corner.
+That is separate from the node's, and it survives a fit.
+
+This works the same on the classic canvas and on Nodes 2.0.
+
 ### Import and export
 
 The tab holds the whole piece as one JSON — the timeline, the cards on WHO & WHAT and the
@@ -964,6 +982,13 @@ latent only reaches `VAEDecode`. Both decoders take the *same* latent.
 
 **A block won't get longer by dragging.** It has hit the end of the clip or a neighbour.
 Type the length instead — typing grows the clip; dragging does not.
+
+**The node won't get shorter.** It is already as short as its content. Right-click →
+**Fit node to content** confirms it: if nothing moves, that is the floor. Close a panel or
+remove a block to go lower.
+
+**Dragging the node's corner does nothing.** Another node is sitting over that corner —
+the press lands on whichever node is on top. Move it, or drag a corner that is clear.
 
 ---
 

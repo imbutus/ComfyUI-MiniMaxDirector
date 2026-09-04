@@ -187,13 +187,29 @@ One JSON object in one widget. It is the only state; the editor is a view over i
 
 Two numbers, and one function that writes each.
 
-- **The node's height is its content**, up and down, measured once by
-  `contentHeightOf` and applied by `fitPulled`. Every path goes through it: load,
-  tab switch, a card edit, a prompt box growing. The node's own corner cannot: the height is
-  clamped back to the content inside `onResize`, in the same frame, on every tab.
+- **The node's height is the larger of its content and a height the user dragged to.**
+  The content is measured by `contentHeightOf` and applied by `fitPulled`, and every path
+  goes through it: load, tab switch, a card edit, a prompt box growing. The dragged height
+  lives in `node.properties.nodeHeight`, read by `askedHeight` and written only by
+  `setAskedHeight`. Content is the floor, so the node is never shorter than what it draws
+  and adding a block still grows it; the dragged height only ever adds room on top.
+  Dragging below the content clears the stored height, as does **Fit node to content** in
+  the node's menu.
 - **The card list's height is stored**, in `node.properties.castHeight`, written only by
   `setListHeight` and only from one gesture: the list's own grip. With none stored the list
   is as tall as its cards.
+
+`onResize` is the only place a gesture is read, and two guards decide whether it *is* one.
+Both matter, and both were found the hard way:
+
+- **`SIZING`**, set around every `setSize` this file makes (`sizeNode`). `setSize` calls
+  `onResize`, so without it our own fits arrive looking exactly like a drag — and a fit
+  that grew the node past a stored height read that height back as "the content" and
+  deleted it.
+- **`POINTER_DOWN`**, a page-wide pointerdown/up flag. Nodes 2.0 sizes the node itself
+  once it has laid the DOM widget out, and that reaches `onResize` in the same shape as a
+  grip drag, so a node nobody had touched remembered its opening height. A drag has a
+  button held down; a re-measure does not.
 
 It was not always two. There were six: a fixed-height box fed by a `--mmd-cast-height`
 variable remembered from the *timeline* panel, an `absorb` that handed the node's spare
@@ -203,7 +219,9 @@ measuring children while `fitPulled` measured scrollHeight, a grow-only rule at 
 only ever grow. They ratcheted against each other: a pass that ran before layout settled
 asked for the same room twice, the box kept it, the next measurement read it back as
 content, and the node opened several screens tall with empty space under the last card. If
-you are tempted to add a third number here, that is what happens.
+you are tempted to add a third number here, that is what happens. Two numbers and two
+writers each -- `fitPulled` and the gesture for the node, `setListHeight` and the grip for
+the list -- is the whole of it.
 
 ## The WHO & WHAT document
 

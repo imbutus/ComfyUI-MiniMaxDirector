@@ -112,6 +112,12 @@ clock reads the frame count in frames and seconds, the rounded length rides in t
 `latent` the sampler receives, and the editor compiles and lints on every edit pause. Each
 of the three was a second route to something already on screen.
 
+The editor runs on both node renderers — the classic canvas and **Nodes 2.0**, ComfyUI's
+Vue rendering — from one code path, with no setting to pick. Drag the node's bottom-right
+corner to give it more room; the height is kept with the workflow, the node still grows
+when you add a prompt or a card, and **Fit node to content** in its right-click menu puts
+it back.
+
 The director calls the core `MiniMaxH3ImageToVideo` / `MiniMaxH3ReferenceToVideo` nodes
 rather than reimplementing them, resolving both by introspection so an upstream signature
 change surfaces as a clear message instead of a stack trace. The path is picked automatically from the
