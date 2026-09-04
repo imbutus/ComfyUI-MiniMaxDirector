@@ -122,6 +122,57 @@ function setListHeight(node, editor, height) {
   box.style.height = `${to}px`;
 }
 
+/**
+ * The height the user last dragged the node to, or 0 for "no opinion".
+ *
+ * Stored on the node rather than in a variable so it travels with the workflow, the same
+ * way the card list's own height does. It is a floor, never a ceiling: see `fitPulled`.
+ */
+function askedHeight(node) {
+  return Math.round(node.properties?.nodeHeight ?? 0);
+}
+
+/** True while this file is sizing a node itself.
+ *
+ * `setSize` calls `onResize`, so without this every fit we perform arrives at the same
+ * handler as a pointer drag and is mistaken for one. Both ways round: opening the node at
+ * its default size was remembered as a height the user had asked for, and a fit that grew
+ * the node past a stored height then read that height back as "the content, so no opinion"
+ * and forgot it. Only a gesture writes `nodeHeight`. */
+let SIZING = false;
+
+/** True while a pointer button is held down anywhere on the page.
+ *
+ * The other half of telling a drag from a measurement, and the half `SIZING` cannot cover:
+ * Nodes 2.0 sizes the node itself once it has laid the editor out, and that arrives at
+ * `onResize` looking exactly like a grip drag -- so a node that had only just opened
+ * remembered its opening height as one the user had asked for. A drag has a button down
+ * and a re-measure does not. Read from the pointer rather than from litegraph's own
+ * gesture state, which the two renderers do not share. */
+let POINTER_DOWN = false;
+addEventListener("pointerdown", () => { POINTER_DOWN = true; }, true);
+addEventListener("pointerup", () => { POINTER_DOWN = false; }, true);
+addEventListener("pointercancel", () => { POINTER_DOWN = false; }, true);
+
+/** `node.setSize`, marked as ours. */
+function sizeNode(node, width, height) {
+  const was = SIZING;
+  SIZING = true;
+  try {
+    node.setSize([width, height]);
+  } finally {
+    SIZING = was;
+  }
+}
+
+/** Remember a dragged height, or forget it -- `0` is how the node is put back on its
+ *  content, and it is the way out if a stored height ever ends up wrong. */
+function setAskedHeight(node, height) {
+  node.properties = node.properties || {};
+  if (height > 0) node.properties.nodeHeight = Math.round(height);
+  else delete node.properties.nodeHeight;
+}
+
 /** How tall a pulled-up editor wants to be: its content, plus the inset it starts at. */
 function contentHeightOf(state, widget) {
   const root = state.editor.root;
@@ -142,14 +193,18 @@ function contentHeightOf(state, widget) {
 }
 
 function fitPulled(state, widget) {
-  // Exactly its content, up or down. There is nothing left for a shrink to discard: the
-  // one height anybody asks for by hand belongs to the card list, it is stored on the
-  // node, and it is part of that content. Everything that used to argue over this number
-  // -- a list that absorbed the node's spare room, a remembered panel height, a rule that
-  // the node may grow but never shrink -- was three answers to a question with one.
-  const target = contentHeightOf(state, widget);
+  // Two numbers, and the larger one wins. The content is the floor -- the node is never
+  // shorter than what it is drawing, which is what stops the editor hanging out through
+  // the bottom. A height the user dragged to is the other, and it only ever adds room on
+  // top of that. So adding a prompt, a card or a track still grows the node, and slack
+  // somebody asked for by hand is still there afterwards.
+  //
+  // These are the only two writers of this number. Do not add a third: a list that
+  // absorbed the node's spare room, a remembered panel height and a grow-only rule were
+  // once three more answers to a question with one.
+  const target = Math.max(contentHeightOf(state, widget), askedHeight(state.node));
   if (Math.abs(state.node.size[1] - target) >= 2) {
-    state.node.setSize([state.node.size[0], Math.max(MIN_HEIGHT, Math.round(target))]);
+    sizeNode(state.node, state.node.size[0], Math.max(MIN_HEIGHT, Math.round(target)));
   }
   state.node.graph?.setDirtyCanvas(true, true);
 }
@@ -408,35 +463,55 @@ function attach(node) {
 
   // Open at workspace size. A saved graph overwrites this afterwards, so a node the
   // user has resized keeps its own dimensions.
-  node.setSize([
+  sizeNode(
+    node,
     Math.max(node.size?.[0] ?? 0, DEFAULT_SIZE[0]),
     Math.max(node.size?.[1] ?? 0, DEFAULT_SIZE[1]),
-  ]);
+  );
 
-  // Dragging the node's own corner asks for room, and every panel but the card list is as
-  // tall as its content -- so on WHO & WHAT the gesture means "show me more cards" and the
-  // difference goes to the list, where it is stored and stays. Anywhere else there is
-  // nothing to stretch, and the next fit puts the node back on its content.
+  // Dragging the node's own corner. Both renderers arrive here: the canvas calls this from
+  // its own resize gesture, and a Nodes 2.0 grip does too -- measured, one call per pointer
+  // move, carrying the height the pointer is asking for in `node.size[1]`.
+  //
+  // Taller than the content is the user's business, and it is remembered on the node.
+  // Shorter is a request to fit, so the remembered height is dropped and the node snaps
+  // back onto its content. That upward drag is the way out of a height that ended up
+  // wrong, and "Fit node to content" in the node's own menu is the other.
   const resized = node.onResize;
   node.onResize = function () {
     const result = resized?.apply(this, arguments);
     const state = PULLED.get(widget) ?? { node, editor };
 
-    // The height is the content's, on every tab, and the answer is given in this frame
-    // rather than the next one. Answering late is what made the drag blink: litegraph had
-    // already drawn the node at the height the pointer asked for, and the correction
-    // arrived after that frame was on screen -- once per pointer move, for the whole drag.
-    // Refused inside the gesture there is nothing to see; the width still follows the
-    // pointer, which is the dimension a timeline is dragged for.
-    //
-    // The card list used to take the difference on its own tab, which made one gesture
-    // mean two things depending on which panel was open -- and the tab where it meant
-    // something was the tab that still moved while every other one stood still. The grip
-    // in the list's own corner is how it is given a height, and it is the only way.
-    //
+    // Answered in this frame rather than the next one. Answering late is what made the
+    // drag blink: litegraph had already drawn the node at the height the pointer asked
+    // for, and the correction arrived after that frame was on screen -- once per pointer
+    // move, for the whole drag.
+    const wanted = Math.round(node.size[1]);
+    const content = Math.round(contentHeightOf(state, widget));
+    // A pixel of slack: a height that only rounds above the content is layout noise, not
+    // somebody asking for room.
+    if (!SIZING && POINTER_DOWN) {
+      setAskedHeight(node, wanted > content + 1 ? wanted : 0);
+    }
+
     // `size[1]` directly, never `setSize`: that calls this handler, and a handler that
     // resizes its own node is a handler that calls itself.
-    node.size[1] = Math.max(MIN_HEIGHT, Math.round(contentHeightOf(state, widget)));
+    node.size[1] = Math.max(MIN_HEIGHT, Math.max(content, askedHeight(node)));
+    return result;
+  };
+
+  // The way back, for a node that ends up the wrong height and a user who would rather not
+  // discover the upward drag. Nodes 2.0 builds its menu from the same list.
+  const extraOptions = node.getExtraMenuOptions;
+  node.getExtraMenuOptions = function (canvas, options) {
+    const result = extraOptions?.apply(this, arguments);
+    options?.push({
+      content: "Fit node to content",
+      callback: () => {
+        setAskedHeight(node, 0);
+        fitPulled(PULLED.get(widget) ?? { node, editor }, widget);
+      },
+    });
     return result;
   };
 
