@@ -193,6 +193,12 @@ already defaults to, so leave its strength at 1.0 and the scheduler on `simple`.
 Ref2VA turbo is a v0.1 preview: audio and fast motion are its weak spots. Switch it off for
 a final render.
 
+lightx2v has since published an 8-step Ref2VA
+(`minimax_h3_ref2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors`). To try it, put it in
+`models/loras/`, pick it in the **Turbo LoRA** dropdown and set **steps — turbo** to 8 —
+the two go together, which is what those two node titles say. We have not measured it
+against the 4-step one, so the graph still ships v0.1.
+
 **Bigger, when you want it.** The **Upscale** switch in the workflow's *Upscale* group adds
 a second stage: the finished latent is enlarged to the node's `megapixels` target and refined
 there.

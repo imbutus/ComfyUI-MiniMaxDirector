@@ -163,6 +163,10 @@ Set the clip length in the **duration** box, then arrange blocks inside it.
 - **Neither** lets two blocks on one track overlap. Two descriptions of the same frames
   is not something the prompt can express.
 
+**H3 renders 4 to 15 seconds**, and the editor does not stop you outside that — a
+two-second clip compiles and queues like any other. The frame numbers are under *The frame
+lattice* below.
+
 **The clip is always a length H3 can render.** The lattice below is `17n+5`, so 144 frames
 is not a length that exists: it generates as 158 whatever the editor says. Rather than let
 those fourteen frames sit in the output with no shot describing them, the editor lands on
@@ -754,8 +758,10 @@ Only **8s (192 f), 25s (600 f) and 42s (1008 f)** land on whole seconds.
 The editor always rounds **up**, never down, and does it while you build rather than at
 render time: see *Duration comes first* above.
 
-The trained range is roughly **124–362 frames** (5.2–15.1s). Shorter and longer are
-accepted by the node but untested.
+The model card gives output duration as **4–15 seconds** — 96 to 360 frames. On this
+lattice that is **107 f (4.46s)** at the short end and **345 f (14.38s)** at the long one;
+the next length up, 362 f, is 15.08s and already over. Anything outside is accepted by the
+node and untested.
 
 ---
 

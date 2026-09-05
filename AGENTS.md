@@ -47,7 +47,8 @@ These are the model's, not design choices. Verified in
 |---|---|---|
 | Frame rate | fixed **24 fps** (`FPS = 24`) | no rate to expose; Wan2GP raises on anything else |
 | Clip length | `length % 17 == 5` | 5, 22, 39, 56, 73, 90, 107, 124 … only 8s, 25s, 42s are whole seconds |
-| Trained range | ~124–362 frames (5.2–15.1s) | the node accepts up to 3600, untested there |
+| Output duration | **4–15s** — 96–360 frames; on the lattice, 107 f (4.46s) to 345 f (14.38s) | model card, *System Overview* table. Nothing enforces it: the node accepts up to 3600, and 362 f is already 15.08s |
+| Reference clip length | each video and audio clip **2–15s**, total 15s per kind | model card (H3-Base-Ref2VA row). `CLIP_SECONDS` in `media.js` refuses at attach time; `lint._check_clip_lengths` warns |
 | Reference caps | 9 images, 3 videos, 3 audios; 15s of video and of audio in total; 12 files across all three | model card (H3-Base-Ref2VA row) and `platform.minimax.io/docs/api-reference/video-generation-v2-create`. A video's soundtrack is not a file of its own. `lint._check_reference_counts` warns; frame anchors are counted apart |
 | Picture shape | 256–5760 px each side, 0.4–2.5 wide-to-tall | same API page, for every `image_url`. Recorded by `media.upload` at attach time and checked by `lint._check_image_shape` |
 | `used as` per kind | image: reference, storyboard, the three anchors · video: reference, continue from, edit · audio: reference | `ROLES_FOR` in `model.js`; the picker narrows, the store does not. A value already saved outside its kind's list is kept and shown, never rewritten |
