@@ -70,7 +70,7 @@ source="$HOME/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/
 if [ -f "$source" ]; then
     python3 tools/sync_workflow.py
 else
-    echo "release: no the-project checkout -- examples/minimax-director.json left as it is" >&2
+    echo "release: no the-project checkout -- example_workflows/minimax-director.json left as it is" >&2
 fi
 
 # --- the gate --------------------------------------------------------------------------
@@ -88,7 +88,7 @@ echo "release: loadcheck"
 ./tools/loadcheck.sh >/dev/null
 
 # --- commit, tag, push ------------------------------------------------------------------
-git add pyproject.toml web/build.js examples/minimax-director.json
+git add pyproject.toml web/build.js example_workflows/minimax-director.json
 git commit -q -m "$version"
 git tag ${retag:+-f} -a "$tag" -m "$message"
 
