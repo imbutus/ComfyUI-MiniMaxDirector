@@ -589,7 +589,7 @@ director's `length` output. The product is the whole workflow, not parts wired b
 the timeline's clock reads frames and seconds, the rounded length rides in the `latent`,
 and the editor compiles and lints on every edit pause, so each was a second route to
 something already on screen. Dropping an output renumbers the slots after it, which breaks
-the links in already-saved graphs -- do it at a version bump and re-save `examples/`.
+the links in already-saved graphs -- do it at a version bump and re-save `example_workflows/`.
 
 ## Invariants — break these and something silently misbehaves
 
@@ -794,7 +794,7 @@ four say the same thing. A feature the docs do not mention is a feature nobody f
 the info note is the only documentation most people ever read, because it is already on
 the canvas when they open the workflow.
 
-1. **The info node** — the `MarkdownNote` inside `examples/minimax-director.json`. One
+1. **The info node** — the `MarkdownNote` inside `example_workflows/minimax-director.json`. One
    file now: turbo is a switch in that graph rather than a second copy of it, which is what
    the old pair kept drifting over.
 2. **The local docs** — `docs/GUIDE.md` for anything an author can see or press,
@@ -802,7 +802,7 @@ the canvas when they open the workflow.
    invariants.
 3. **The-project copy** — `~/Projects/experiments/the-project/comfyui/examples/video-minimaxh3/minimaxh3-director.json`.
    **One graph, everywhere.** It carries both switches, Turbo and Upscale, and the public
-   `examples/minimax-director.json` is the same graph. Edit the-project's copy, then run
+   `example_workflows/minimax-director.json` is the same graph. Edit the-project's copy, then run
    `tools/sync_workflow.py` — it rewrites the public file and adds the two things only an
    outside user needs, `cnr_id` on our nodes and `properties.models` on the loaders.
    `tools/sync_workflow.py --check` fails if the two have drifted; never hand-edit the
@@ -814,13 +814,15 @@ the canvas when they open the workflow.
    because nothing downstream of it is used. That pack and its model are documented in
    README's Install, which is the only place an outside user is told to fetch them.
 
-   **`examples/` is a published name, not just a folder.** ComfyUI serves a pack's example
+   **`example_workflows/` is a published name, not just a folder.** ComfyUI serves a pack's example
    workflows as a template category — `GET /api/workflow_templates` answers
    `{"minimax-director": ["minimax-director"]}` — so an installed user opens the graph from
    **Workflow → Browse Templates → minimax-director** and never downloads a file. The
    accepted folder names are `example_workflows`, `workflow`, `workflows`, `example` and
-   `examples`; renaming ours to anything else takes the workflow out of that menu. A `.jpg`
-   beside the `.json`, same basename, becomes the thumbnail; there is none today. The
+   `examples`; renaming ours to anything else takes the workflow out of that menu; `example_workflows`
+   is the name the server asks for by name in its own log line. A `.jpg`
+   beside the `.json`, same basename, becomes the thumbnail; ours is
+   `example_workflows/minimax-director.jpg`. The
    Workflows sidebar is a different list — what the user has saved — and this never appears
    in it.
 4. **The recording plan** —

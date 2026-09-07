@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate `examples/minimax-director.json` from the copy the-project ships.
+"""Regenerate `example_workflows/minimax-director.json` from the copy the-project ships.
 
 One graph, two homes. It is edited in the-project, where it is rendered on a real pod, and
 copied here for everyone else — two hand-maintained copies of one workflow drift, and the
@@ -13,7 +13,7 @@ a pod already has the pack cloned and the weights on disk:
 
 Run it after any change to the shared graph:
 
-    tools/sync_workflow.py            # writes examples/minimax-director.json
+    tools/sync_workflow.py            # writes example_workflows/minimax-director.json
     tools/sync_workflow.py --check    # exit 1 if it is out of date, changes nothing
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent.parent
 SRC = pathlib.Path.home() / (
     "Projects/experiments/the-project/comfyui/examples/video-minimaxh3/minimaxh3-director.json")
-DST = HERE / "examples/minimax-director.json"
+DST = HERE / "example_workflows/minimax-director.json"
 
 CNR = "minimax-director"
 OURS = ("MiniMaxDirector", "MiniMaxDirectorPrompt", "MiniMaxDirectorReport")

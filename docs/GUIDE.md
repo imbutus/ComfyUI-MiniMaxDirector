@@ -32,7 +32,7 @@ second node pack, which the README's Install names.
 
 ## Wiring it up
 
-The example workflow in `examples/` is already wired; open it and swap in your files.
+The example workflow in `example_workflows/` is already wired; open it and swap in your files.
 Built by hand, the chain is:
 
 ```

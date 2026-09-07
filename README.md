@@ -41,7 +41,7 @@ list is the only part with a height of its own — set by its grip or by the nod
 stored on the node, restored with the workflow.
 
 It ships as a whole workflow, not just a node pack:
-[`examples/minimax-director.json`](examples/minimax-director.json) is a
+[`example_workflows/minimax-director.json`](example_workflows/minimax-director.json) is a
 complete graph — timeline, live compiled-prompt view, loaders, sampler, both VAE decodes
 and video out. Install it, open it, start writing shots. See **[Install](#install)**.
 
@@ -130,7 +130,7 @@ which is the one place a file is also described.
 
 Three steps: the nodes, the weights, the workflow. The nodes on their own leave you with a
 timeline and nothing to render it — the graph around them is the product, and it ships here
-as [`examples/minimax-director.json`](examples/minimax-director.json).
+as [`example_workflows/minimax-director.json`](example_workflows/minimax-director.json).
 
 Requires ComfyUI 0.31.0 or newer. The nodes themselves work on 0.30.0, where the MiniMax
 H3 nodes landed, but the workflow's **Turbo** switch needs `ModelSamplingAV` from 0.31.0 —
@@ -162,9 +162,9 @@ Two VAEs is not a mistake. H3 generates picture and sound together, and they dec
 separately.
 
 **3. The workflow.** Restart ComfyUI, then open **Workflow → Browse Templates →
-minimax-director**. The pack ships the graph in `examples/`, which ComfyUI serves as a
+minimax-director**. The pack ships the graph in `example_workflows/`, which ComfyUI serves as a
 template, so there is nothing to download and nothing to drag. (If you would rather open the
-file itself, drag [`examples/minimax-director.json`](examples/minimax-director.json) onto the
+file itself, drag [`example_workflows/minimax-director.json`](example_workflows/minimax-director.json) onto the
 canvas — step 1 already put it on your disk. It is not in the Workflows sidebar; that lists
 the workflows you have saved.) It wires up:
 
@@ -306,7 +306,7 @@ src/minimax_director/
   core.py                adapter over ComfyUI's built-in H3 nodes
   nodes/                 the classes ComfyUI registers
 web/                     the timeline widget: plain ES modules, no build step
-examples/                the ready-to-run workflow
+example_workflows/       the ready-to-run workflow
 tests/                   pure-Python tests and golden prompts
 tests/graph/             in-process ComfyUI execution with the weights stubbed
 AGENTS.md                how it all works, for contributors and coding agents
