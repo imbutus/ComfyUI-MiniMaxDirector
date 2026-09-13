@@ -29,7 +29,7 @@ SRC = pathlib.Path.home() / (
 DST = HERE / "example_workflows/minimax-director.json"
 
 CNR = "minimax-director"
-OURS = ("MiniMaxDirector", "MiniMaxDirectorPrompt", "MiniMaxDirectorReport")
+OURS = ("MiniMaxDirector", "MiniMaxDirectorPrompt", "MiniMaxDirectorReport", "MiniMaxDirectorRefit")
 
 HF = "https://huggingface.co/{repo}/resolve/main/{path}"
 WEIGHTS = {
@@ -41,6 +41,14 @@ WEIGHTS = {
     "minimax_h3_audio_vae_fp32.safetensors": ("Comfy-Org/MiniMax-H3", "vae", "vae"),
     "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors": (
         "lightx2v/Minimax-h3-Turbo", "", "loras"),
+}
+
+
+# The bundle's copy loads a fine-tune the pod fetches at boot; the public graph stays on the
+# stock base, which is what the pack documents and what a ComfyUI Manager install can fetch.
+BUNDLE_ONLY = {
+    "Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors":
+        "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
 }
 
 
@@ -63,7 +71,10 @@ def build() -> str:
         if n["type"] in OURS:
             props["cnr_id"] = CNR
             props["ver"] = ver
-        for w in (n.get("widgets_values") or []):
+        values = n.get("widgets_values") or []
+        for i, w in enumerate(values):
+            if isinstance(w, str) and w in BUNDLE_ONLY:
+                values[i] = w = BUNDLE_ONLY[w]
             if isinstance(w, str) and w in WEIGHTS:
                 repo, sub, directory = WEIGHTS[w]
                 props["models"] = [{

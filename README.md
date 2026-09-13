@@ -248,8 +248,12 @@ pointing at the old name stopped opening. This workflow tracks the current one,
 The upscaler works directly on H3's 24-channel latents, so nothing round-trips through the
 VAE. H3's latent carries picture and sound together, though, and the upscaler takes the video
 half alone — so the branch splits the audio off with core `Separate AV Latent`, upscales, and
-rejoins with `Concat AV Latent` before the refine pass. It is new and unproven at large sizes
-— check a short clip before trusting it with a long one.
+rejoins with `Concat AV Latent` before the refine pass. A picture used as a *first frame* or
+*last frame* is a keyframe, and H3 lays a keyframe out on the grid of the latent it is
+sampling — so the refine pass takes its conditioning from **refit the keyframes to the new
+size** (`MiniMaxDirectorRefit`), which encodes the same pictures again at the enlarged size;
+without it the refine failed with a shape mismatch (issue #4). It is new and unproven at
+large sizes — check a short clip before trusting it with a long one.
 
 This is why the workflow is one file and not several. Turbo needs no pack at all; Upscale
 needs that one, and only when you switch it on.

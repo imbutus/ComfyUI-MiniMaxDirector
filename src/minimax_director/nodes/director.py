@@ -427,8 +427,75 @@ class MiniMaxDirectorReport(io.ComfyNode):
         return io.NodeOutput(ui=ui.PreviewText(source or ""))
 
 
-# The pack ships the timeline node and the two panels that read back from it, and
-# nothing else. A `Compile` node (a run with no model) and a `Length` node (seconds to a
+class MiniMaxDirectorRefit(io.ComfyNode):
+    """The director's conditioning made to fit a latent of another size, for the refine pass.
+
+    A picture used as a first or last frame is handed to H3 as a keyframe, and the model lays
+    a keyframe's rows out on the grid of the latent being sampled ("sharing the target
+    spatial grid", `comfy/ldm/minimax/model.py`). The director encodes that keyframe at the
+    timeline's width and height. The Upscale branch then samples a bigger latent with the
+    same conditioning, and the two grids disagree -- `shape mismatch: value tensor of shape
+    [988, 96] cannot be broadcast to indexing result of shape [2035, 96]` (issue #4). This
+    node sits between the two: every keyframe is decoded, scaled to the latent's size and
+    encoded again, and the rest of the conditioning -- the text, the references -- is passed
+    on as it was. Conditioning without keyframes goes through untouched.
+    """
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxDirectorRefit",
+            display_name="MiniMax Director — Refit for the refine",
+            category=CATEGORY,
+            description=cls.__doc__,
+            inputs=[
+                io.Conditioning.Input("positive", tooltip="The director's `positive`."),
+                io.Latent.Input("latent", tooltip="The latent the refine pass samples -- "
+                                "the upscaled one, audio rejoined."),
+                io.Vae.Input("vae", tooltip="The video VAE the director was given."),
+            ],
+            outputs=[io.Conditioning.Output(display_name="positive")],
+        )
+
+    @classmethod
+    def execute(cls, positive, latent, vae) -> io.NodeOutput:
+        samples = latent["samples"]
+        if getattr(samples, "is_nested", False):
+            inner = getattr(samples, "tensors", None)
+            samples = inner[0] if inner is not None else samples.unbind()[0]
+        # H3's video latent is 16 pixels a cell each way (`_empty_av_latent`, core).
+        height, width = int(samples.shape[-2]) * 16, int(samples.shape[-1]) * 16
+
+        out = []
+        for text, extra in positive:
+            keyframes = extra.get("minimax_keyframes")
+            if not keyframes:
+                out.append([text, extra])
+                continue
+            refit = []
+            for keyframe in keyframes:
+                image = vae.decode(keyframe["latent"])
+                if len(image.shape) == 5:
+                    image = image.reshape(-1, *image.shape[-3:])
+                # A plain scale: the director already brought the picture to the clip's
+                # shape, and the upscaler keeps that shape to within its rounding.
+                refit.append({**keyframe, "latent": vae.encode(_scaled(image[:1], width, height))})
+            out.append([text, {**extra, "minimax_keyframes": refit}])
+        return io.NodeOutput(out)
+
+
+def _scaled(image, width: int, height: int):
+    """The picture at exactly `width` x `height`, every pixel kept, as core's own
+    `_resize(..., "disabled")` does it."""
+    import comfy.utils
+
+    samples = image[..., :3].movedim(-1, 1)
+    samples = comfy.utils.common_upscale(samples, width, height, "lanczos", "disabled")
+    return samples.movedim(1, -1)
+
+
+# The pack ships the timeline node, the two panels that read back from it, and the refit
+# the Upscale branch needs, and nothing else. A `Compile` node (a run with no model) and a `Length` node (seconds to a
 # legal frame count) both existed for wiring a graph by hand; the timeline already hands
 # out `length` and `seconds`, and the editor already compiles and lints on every edit
 # pause, so both only offered a second way to reach an answer that was already on screen.
@@ -436,6 +503,7 @@ NODES = [
     MiniMaxDirector,
     MiniMaxDirectorPrompt,
     MiniMaxDirectorReport,
+    MiniMaxDirectorRefit,
 ]
 
 

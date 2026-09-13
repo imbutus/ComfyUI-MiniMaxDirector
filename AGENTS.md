@@ -581,8 +581,14 @@ reference the prose points at.
 The first six are the whole product and run under `pytest` with no torch, no ComfyUI,
 no weights, in about 0.2 seconds.
 
-`NODES` is three long -- `MiniMaxDirector`, `MiniMaxDirectorPrompt`, `MiniMaxDirectorReport`
--- and the director outputs `positive`, `latent`, `prompt`, `report`. Three things were
+`NODES` is four long -- `MiniMaxDirector`, `MiniMaxDirectorPrompt`, `MiniMaxDirectorReport`,
+`MiniMaxDirectorRefit` -- and the director outputs `positive`, `latent`, `prompt`, `report`.
+The refit exists for the Upscale branch alone: H3 lays a first/last-frame keyframe out on the
+grid of the latent being sampled (`comfy/ldm/minimax/model.py`, `all_video_rows[~img_update]
+= cond_video_rows`), and the director encodes it at the timeline's size, so the refine pass
+at the enlarged size needs the keyframes decoded, scaled and encoded again -- issue #4's
+`shape mismatch ... [988, 96] ... [2035, 96]`. It takes the director's `positive`, the
+upscaled latent and the video VAE, and passes keyframe-less conditioning through untouched. Three things were
 removed in 0.10.0 and should not come back without a new reason: a `Compile` node (the
 compile step with no model), a `Length` node (seconds to a legal frame count), and the
 director's `length` output. The product is the whole workflow, not parts wired by hand:
