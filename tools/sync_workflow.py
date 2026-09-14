@@ -71,6 +71,16 @@ def build() -> str:
         if n["type"] in OURS:
             props["cnr_id"] = CNR
             props["ver"] = ver
+        if n["type"] == "MiniMaxH3Base":
+            # The bundle's own loader: the same file through core's Load Diffusion Model,
+            # plus a fetch-on-first-use of the Singularity fine-tune. The public pack does
+            # not ship it, so the public graph loads the stock base through core directly.
+            n["type"] = "UNETLoader"
+            n.pop("title", None)
+            props["Node name for S&R"] = "UNETLoader"
+            values = n.get("widgets_values") or []
+            n["widgets_values"] = ["minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+                                   values[1] if len(values) > 1 else "default"]
         values = n.get("widgets_values") or []
         for i, w in enumerate(values):
             if isinstance(w, str) and w in BUNDLE_ONLY:
